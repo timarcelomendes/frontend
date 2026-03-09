@@ -19,8 +19,10 @@ pnpm-debug.log*
 # Ficheiros de Ambiente (Segurança)
 .env
 .env.local
-.env.*.local
-*.local
+.env.development.local
+# ! significa "não ignore este"
+!.env.production
+!.env.development
 
 # Configurações de Editores / IDEs
 .vscode/*
