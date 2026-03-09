@@ -242,23 +242,6 @@ const salvarConfiguracoesAI = async () => {
 };
 
 // ==========================================
-// 📡 CARREGAR UTILIZADORES
-// ==========================================
-const carregarUtilizadores = async () => {
-  carregandoUtilizadores.value = true;
-  try {
-    const response = await api.get('/usuarios');
-    if (response.data) {
-      utilizadores.value = Array.isArray(response.data) ? response.data : [response.data];
-    }
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro de Sincronização', detail: 'Falha ao listar utilizadores do banco.', life: 5000 });
-  } finally {
-    carregandoUtilizadores.value = false;
-  }
-};
-
-// ==========================================
 // 🔐 MICROSOFT OAUTH2 (FRONTEND)
 // ==========================================
 const autorizarMicrosoft = () => {
@@ -267,17 +250,12 @@ const autorizarMicrosoft = () => {
     return;
   }
 
-  // 🟢 LIMPEZA RIGOROSA: Garante que a URL não tem barras no fim antes de somar o path
   const baseLimpa = config.value.base_url_frontend.trim().replace(/\/+$/, '');
-  
-  // A URL tem de ser exatamente igual à que está no portal Azure
   const redirectUri = `${baseLimpa}/configuracoes`;
-  
   const scope = encodeURIComponent("offline_access mail.send");
   
   const authUrl = `https://login.microsoftonline.com/${config.value.tenant_id}/oauth2/v2.0/authorize?client_id=${config.value.client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&response_mode=query&scope=${scope}`;
   
-  // Redireciona para o portal da Microsoft
   window.location.href = authUrl;
 };
 
@@ -305,21 +283,10 @@ const enviandoTeste = ref(false);
 const enviarTeste = async () => {
   enviandoTeste.value = true;
   try {
-    // Chamamos a API de teste
     const response = await api.post('/config/email/teste');
-    toast.add({ 
-      severity: 'success', 
-      summary: 'E-mail Enviado', 
-      detail: 'Verifique a sua caixa de entrada (incluindo spam).', 
-      life: 5000 
-    });
+    toast.add({ severity: 'success', summary: 'E-mail Enviado', detail: 'Verifique a sua caixa de entrada.', life: 5000 });
   } catch (error) {
-    toast.add({ 
-      severity: 'error', 
-      summary: 'Falha no Teste', 
-      detail: error.response?.data?.detail || 'Erro ao disparar e-mail.', 
-      life: 5000 
-    });
+    toast.add({ severity: 'error', summary: 'Falha no Teste', detail: error.response?.data?.detail || 'Erro ao disparar e-mail.', life: 5000 });
   } finally {
     enviandoTeste.value = false;
   }
@@ -328,15 +295,40 @@ const enviarTeste = async () => {
 // ==========================================
 // 💾 GESTÃO DE UTILIZADORES
 // ==========================================
+
+// 🚀 FUNÇÃO UNIFICADA: Carregar e Ordenar Utilizadores
+const carregarUtilizadores = async () => {
+  carregandoUtilizadores.value = true;
+  try {
+    const response = await api.get('/usuarios'); 
+    
+    // Pega os dados, converte em array (se não for), e ordena inativos primeiro
+    let lista = Array.isArray(response.data) ? response.data : [response.data];
+    
+    const utilizadoresOrdenados = lista.sort((a, b) => {
+      // Inativos (0/false) vão para cima, Ativos (1/true) vão para baixo
+      return Number(a.ativo) - Number(b.ativo); 
+    });
+
+    utilizadores.value = utilizadoresOrdenados;
+
+  } catch (error) {
+    console.error("Erro ao carregar utilizadores", error);
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao listar utilizadores.', life: 5000 });
+  } finally {
+    carregandoUtilizadores.value = false;
+  }
+};
+
 const salvarUtilizador = async () => {
   submetendoUser.value = true;
   try {
     if (editandoUser.value) {
       await api.put(`/usuarios/${usuario.value.usuario_id}`, usuario.value);
-      toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Senha e dados atualizados.' });
+      toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Dados atualizados com sucesso.' });
     } else {
       await api.post('/usuarios', usuario.value);
-      toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Utilizador criado com a senha gerada.' });
+      toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Utilizador criado.' });
     }
     usuarioDialog.value = false;
     carregarUtilizadores();
@@ -344,6 +336,34 @@ const salvarUtilizador = async () => {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao processar operação.' });
   } finally {
     submetendoUser.value = false;
+  }
+};
+
+// 🚀 NOVA FUNÇÃO: Ativar/Inativar utilizador diretamente pela tabela
+const alternarStatus = async (user_data) => {
+  const novoStatus = !user_data.ativo; 
+  
+  try {
+    await api.put(`/usuarios/${user_data.usuario_id}`, {
+      ...user_data,
+      ativo: novoStatus 
+    });
+
+    user_data.ativo = novoStatus; // Atualiza a tela na hora
+
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Acesso Atualizado', 
+      detail: novoStatus ? 'Utilizador ativado com sucesso!' : 'Acesso bloqueado com sucesso.', 
+      life: 3000 
+    });
+
+    // Reordena a lista na hora para mandar os novos pendentes pro topo
+    utilizadores.value.sort((a, b) => Number(a.ativo) - Number(b.ativo));
+
+  } catch (error) {
+    console.error("Erro ao alterar status:", error);
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível alterar o status.', life: 3000 });
   }
 };
 
@@ -361,14 +381,15 @@ const prepararEdicaoUser = (dados) => {
 
 const iniciais = (nome) => nome ? nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U';
 
-// --- INICIALIZAÇÃO ---
+// --- INICIALIZAÇÃO AO MONTAR O COMPONENTE ---
 onMounted(() => {
   carregarDadosConfig();
   carregarConfiguracoesAI();
   carregarUtilizadores();
-  processarCallbackMicrosoft();
   carregarSessoesReais();
+  processarCallbackMicrosoft();
 });
+
 </script>
 
 <template>
@@ -508,18 +529,21 @@ onMounted(() => {
             </div>
 
             <DataTable :value="utilizadores" class="p-datatable-sm custom-table" :rows="5" paginator rowHover>
-                <Column header="Utilizador" style="min-width: 200px">
-                <template #body="s">
-                    <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[11px] font-black text-slate-500 border border-slate-100 dark:border-slate-700 shrink-0">
-                        {{ iniciais(s.data.nome) }}
+                <Column field="nome" header="Utilizador">
+                  <template #body="s">
+                    <div class="flex items-center gap-3">
+                      <span class="font-bold text-slate-800 dark:text-white">
+                        {{ s.data.nome }}
+                      </span>
+                      
+                      <Tag 
+                        v-if="!s.data.ativo" 
+                        value="Aguardando Aprovação" 
+                        class="text-[10px] font-bold uppercase tracking-wider !bg-yellow-600 !text-white" 
+                        rounded
+                      />
                     </div>
-                    <div class="flex flex-col leading-tight gap-0.5">
-                        <span class="text-[12px] font-bold text-slate-800 dark:text-white">{{ s.data.nome }}</span>
-                        <span class="text-[10px] text-slate-400 font-medium">{{ s.data.email }}</span>
-                    </div>
-                    </div>
-                </template>
+                  </template>
                 </Column>
 
                 <Column header="Perfil">
@@ -541,10 +565,29 @@ onMounted(() => {
                 </template>
                 </Column>
 
-                <Column alignFrozen="right" style="width: 80px">
-                <template #body="s">
-                    <Button icon="pi pi-pencil" @click="prepararEdicaoUser(s.data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" />
-                </template>
+                <Column alignFrozen="right" style="width: 100px">
+                  <template #body="s">
+                    <div class="flex gap-2 justify-end">
+                      <Button 
+                        icon="pi pi-pencil" 
+                        @click="prepararEdicaoUser(s.data)" 
+                        v-tooltip.top="'Editar Utilizador'"
+                        class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" 
+                      />
+                      
+                      <Button 
+                        :icon="s.data.ativo ? 'pi pi-lock' : 'pi pi-unlock'" 
+                        @click="alternarStatus(s.data)" 
+                        v-tooltip.top="s.data.ativo ? 'Bloquear Acesso' : 'Desbloquear Acesso'"
+                        :class="[
+                          'w-8 h-8 !border-none !text-[10px] rounded-lg transition-colors',
+                          s.data.ativo 
+                            ? '!bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 hover:!bg-rose-500 hover:!text-white' 
+                            : '!bg-emerald-50 dark:!bg-emerald-500/10 !text-emerald-500 hover:!bg-emerald-500 hover:!text-white'
+                        ]" 
+                      />
+                    </div>
+                  </template>
                 </Column>
 
                 <template #empty>

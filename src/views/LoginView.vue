@@ -55,13 +55,29 @@ const fazerLogin = async () => {
   }
 };
 
-// 1. A função de registo (para não dar erro)
 const fazerRegistro = async () => {
-  console.log("A tentar registar:", registro.value);
-  toast.add({ severity: 'info', summary: 'Em breve', detail: 'A criação de conta será implementada em breve.', life: 3000 });
+  if (!registro.value.nome || !registro.value.email || !registro.value.password) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha todos os campos para solicitar o acesso.', life: 3000 });
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const response = await api.post('/register', registro.value); 
+    
+    toast.add({ severity: 'success', summary: 'Sucesso!', detail: response.data.mensagem, life: 5000 });
+    
+    registro.value = { nome: '', email: '', password: '' };
+    isLoginMode.value = true; 
+    
+  } catch (error) {
+    const msgErro = error.response?.data?.detail || 'Erro ao solicitar acesso. Tente novamente.';
+    toast.add({ severity: 'error', summary: 'Erro no Registo', detail: msgErro, life: 5000 });
+  } finally {
+    loading.value = false;
+  }
 };
 
-// 2. O controlador do formulário
 const handleSubmit = () => {
   if (isLoginMode.value) {
     fazerLogin();
