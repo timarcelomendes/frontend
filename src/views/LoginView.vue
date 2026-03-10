@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'; // Unificado aqui
+import { ref, onMounted } from 'vue'; 
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import api from '../services/api';
@@ -10,7 +10,6 @@ import Password from 'primevue/password';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Toast from 'primevue/toast';
-
 
 const router = useRouter();
 const toast = useToast();
@@ -37,6 +36,7 @@ onMounted(() => {
 });
 
 const fazerLogin = async () => {
+  // ✅ Usando 'credenciais.value.email' como no seu original
   if (!credenciais.value.email || !credenciais.value.password) {
     toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha os campos.', life: 3000 });
     return;
@@ -47,7 +47,7 @@ const fazerLogin = async () => {
   
   try {
     // 1. Tenta o login
-    const response = await api.post('/login', {
+    const response = await api.post('/login', { // Confirme se a sua rota é /login ou /api/login
       email: credenciais.value.email,
       password: credenciais.value.password,
       remember: lembrarDeMim.value
@@ -56,7 +56,7 @@ const fazerLogin = async () => {
     const token = response.data.access_token;
 
     if (token) {
-      // 2. 🚀 SALVAMENTO IMEDIATO (Antes de qualquer outra coisa)
+      // 2. 🚀 SALVAMENTO IMEDIATO
       if (lembrarDeMim.value) {
         localStorage.setItem('nps_remember_email', credenciais.value.email);
       } else {
@@ -72,14 +72,29 @@ const fazerLogin = async () => {
       
       toast.add({ severity: 'success', summary: 'Conectado!', detail: `Bem-vindo!`, life: 3000 });
       
-      // 4. Aguarda um pouco mais para garantir que o IO do localStorage terminou
+      // 4. Redirecionamento
       setTimeout(() => {
         window.location.href = '/';
       }, 800); 
     }
   } catch (error) {
     temErro.value = true;
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha no login.' });
+    
+    // 🛡️ LÓGICA DE CAPTURA DO ERRO DO BACKEND 
+    const msgErro = error.response?.data?.detail || 'Falha no login. Verifique as suas credenciais.';
+    
+    // Verifica se a mensagem devolvida pelo Python contém "inativa" ou "aprovação"
+    if (msgErro.toLowerCase().includes('inativa') || msgErro.toLowerCase().includes('aprovação')) {
+      toast.add({ 
+        severity: 'warn', 
+        summary: 'Acesso Restrito', 
+        detail: msgErro, // Mostra a mensagem exata que você escreveu no Python
+        life: 6000 
+      });
+    } else {
+      // Erros genéricos ou senha incorreta
+      toast.add({ severity: 'error', summary: 'Erro no Login', detail: msgErro, life: 4000 });
+    }
   } finally {
     loading.value = false;
   }
