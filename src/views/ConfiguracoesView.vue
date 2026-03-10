@@ -56,13 +56,6 @@ const utilizadores = ref([]);
 const usuarioDialog = ref(false);
 const editandoUser = ref(false);
 const submetendoUser = ref(false);
-const usuario = ref({ 
-  nome: '', 
-  email: '', 
-  tipo: 'Viewer', 
-  ativo: true, 
-  password: '' 
-});
 
 const opcoesTipo = ['Admin', 'Manager', 'Viewer'];
 
@@ -296,6 +289,15 @@ const enviarTeste = async () => {
 // 💾 GESTÃO DE UTILIZADORES
 // ==========================================
 
+const usuario = ref({ 
+  nome: '', 
+  email: '', 
+  cargo: '',
+  tipo: 'Viewer', 
+  ativo: true, 
+  password: '' 
+});
+
 // 🚀 FUNÇÃO UNIFICADA: Carregar e Ordenar Utilizadores
 const carregarUtilizadores = async () => {
   carregandoUtilizadores.value = true;
@@ -339,7 +341,6 @@ const salvarUtilizador = async () => {
   }
 };
 
-// 🚀 NOVA FUNÇÃO: Ativar/Inativar utilizador diretamente pela tabela
 const alternarStatus = async (user_data) => {
   const novoStatus = !user_data.ativo; 
   
@@ -368,7 +369,14 @@ const alternarStatus = async (user_data) => {
 };
 
 const abrirNovoUser = () => {
-  usuario.value = { nome: '', email: '', tipo: 'Viewer', ativo: true, password: '' };
+  usuario.value = { 
+    nome: '', 
+    email: '', 
+    cargo: '',
+    tipo: 'Viewer', 
+    ativo: true, 
+    password: '' 
+  };
   editandoUser.value = false;
   usuarioDialog.value = true;
 };
@@ -546,6 +554,14 @@ onMounted(() => {
                   </template>
                 </Column>
 
+                <Column field="cargo" header="Cargo">
+                  <template #body="s">
+                    <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">
+                      {{ s.data.cargo || 'Analista' }}
+                    </span>
+                  </template>
+                </Column>
+
                 <Column header="Perfil">
                 <template #body="s">
                     <Tag :value="s.data.tipo" 
@@ -697,78 +713,66 @@ onMounted(() => {
 
     </TabView>
 
-    <Dialog v-model:visible="usuarioDialog" :header="editandoUser ? 'Editar Utilizador' : 'Novo Utilizador'" modal :style="{width: '380px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
-        <div class="p-8 space-y-5 bg-slate-50/50 dark:bg-slate-900">
+    <Dialog v-model:visible="usuarioDialog" :header="editandoUser ? 'Editar Utilizador' : 'Novo Utilizador'" :modal="true" class="custom-dialog w-full max-w-lg" @hide="usuarioDialog = false">
+        <div class="p-8 space-y-5">
             <div class="flex flex-col gap-1.5">
-            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nome Completo</label>
-            <InputText v-model="usuario.nome" class="custom-input !text-[12px]" placeholder="Ex: João Silva" />
+                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nome Completo</label>
+                <InputText v-model="usuario.nome" class="custom-input" placeholder="Ex: Marcelo Mendes" />
             </div>
-            
+
             <div class="flex flex-col gap-1.5">
-            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Endereço de E-mail</label>
-            <InputText v-model="usuario.email" class="custom-input !text-[12px]" placeholder="joao@empresa.com" />
+                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">E-mail Corporativo</label>
+                <InputText v-model="usuario.email" class="custom-input" placeholder="nome@empresa.com" />
             </div>
 
             <div class="grid grid-cols-2 gap-4">
-            <div class="flex flex-col gap-1.5">
-                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Tipo de Perfil</label>
-                <Dropdown v-model="usuario.tipo" :options="opcoesTipo" class="custom-dropdown !text-[11px]" />
-            </div>
-            <div class="flex flex-col gap-1.5 items-center">
-                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400">Conta Ativa</label>
-                <InputSwitch v-model="usuario.ativo" class="mt-2" />
-            </div>
-            </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Perfil de Acesso</label>
+                    <Dropdown v-model="usuario.tipo" :options="['Admin', 'Editor', 'Viewer']" class="custom-dropdown" />
+                </div>
 
-            <div class="flex flex-col gap-2 pt-2">
-            <div class="flex justify-between items-center px-1">
-                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                {{ editandoUser ? 'Redefinir Senha' : 'Senha de Acesso' }}
-                </label>
-                <div class="flex gap-3">
-                <button type="button" @click="gerarSenhaAleatoria" class="text-[9px] font-bold text-orange-500 hover:underline uppercase tracking-widest bg-transparent border-none cursor-pointer flex items-center gap-1">
-                    <i class="pi pi-refresh"></i> Gerar
-                </button>
-                <button v-if="usuario.password" type="button" @click="copiarSenha" class="text-[9px] font-bold text-blue-500 hover:underline uppercase tracking-widest bg-transparent border-none cursor-pointer flex items-center gap-1">
-                    <i class="pi pi-copy"></i> Copiar
-                </button>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Status</label>
+                    <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 h-[42px] px-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <InputSwitch v-model="usuario.ativo" />
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                            {{ usuario.ativo ? 'Ativo' : 'Inativo' }}
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            <div class="p-inputgroup flex-1">
-                <Password 
-                v-model="usuario.password" 
-                toggleMask 
-                :feedback="true"
-                inputClass="custom-input !text-[12px] w-full" 
-                class="w-full"
-                :placeholder="editandoUser ? 'Deixe vazio para manter' : 'Digite ou gere uma senha'"
-                >
-                <template #footer>
-                    <div class="p-3 border-t border-slate-100 mt-2">
-                    <p class="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-tight">Requisitos:</p>
-                    <ul class="text-[10px] text-slate-400 pl-4 space-y-1 list-disc">
-                        <li>Mínimo 8 caracteres</li>
-                        <li>Letras e números</li>
-                        <li>Símbolos (!@#$)</li>
-                    </ul>
-                    </div>
-                </template>
-                </Password>
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Cargo / Função na Empresa</label>
+                <InputText v-model="usuario.cargo" class="custom-input w-full" placeholder="Ex: Diretor de Operações" />
             </div>
-            
-            <p v-if="editandoUser && !usuario.password" class="text-[9px] text-slate-400 font-bold ml-1 uppercase tracking-widest mt-1">
-                * A senha atual permanecerá ativa.
-            </p>
+
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                    {{ editandoUser ? 'Alterar Palavra-passe (Deixe vazio para manter)' : 'Palavra-passe Inicial' }}
+                </label>
+                <div class="flex gap-2">
+                    <Password 
+                        v-model="usuario.password" 
+                        toggleMask 
+                        :feedback="false" 
+                        class="flex-1" 
+                        inputClass="custom-input w-full" 
+                        placeholder="Nova senha ou deixe vazio"
+                    />
+                    <Button 
+                        icon="pi pi-refresh" 
+                        @click="gerarSenhaAleatoria" 
+                        class="!bg-slate-800 !border-none !rounded-xl !w-[48px] !h-[42px] flex-shrink-0" 
+                    />
+                </div>
             </div>
         </div>
 
         <template #footer>
-            <div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900">
-            <Button :label="editandoUser ? 'Guardar Alterações' : 'Criar Utilizador'" 
-                    @click="salvarUtilizador" 
-                    :loading="submetendoUser" 
-                    class="w-full !bg-indigo-500 !text-white !border-none !py-4 !rounded-2xl !font-black !text-[11px] !uppercase !tracking-widest shadow-xl hover:scale-[1.02] transition-transform" />
+            <div class="flex gap-3 justify-end px-8 pb-8">
+                <Button label="Cancelar" icon="pi pi-times" class="p-button-text !text-slate-500 !font-bold" @click="usuarioDialog = false" />
+                <Button :label="editandoUser ? 'Atualizar' : 'Criar Utilizador'" icon="pi pi-check" :loading="submetendoUser" class="!bg-orange-600 !border-none !rounded-xl !px-6 !font-black !uppercase !text-[11px] tracking-widest" @click="salvarUtilizador" />
             </div>
         </template>
     </Dialog>

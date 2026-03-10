@@ -1,14 +1,16 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue'; // Unificado aqui
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import api from '../services/api';
 
+// Componentes PrimeVue
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Toast from 'primevue/toast';
+
 
 const router = useRouter();
 const toast = useToast();
@@ -21,35 +23,63 @@ const credenciais = ref({ email: '', password: '' });
 const registro = ref({ nome: '', email: '', password: '' });
 const lembrarDeMim = ref(false);
 
+onMounted(() => {
+  const emailSalvo = localStorage.getItem('nps_remember_email');
+  console.log('Tentando carregar e-mail salvo:', emailSalvo); // Debug no console
+
+  if (emailSalvo) {
+    credenciais.value = { 
+      ...credenciais.value, 
+      email: emailSalvo 
+    };
+    lembrarDeMim.value = true;
+  }
+});
+
 const fazerLogin = async () => {
   if (!credenciais.value.email || !credenciais.value.password) {
-    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha o e-mail e a palavra-passe.', life: 3000 });
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha os campos.', life: 3000 });
     return;
   }
 
   loading.value = true;
   temErro.value = false;
+  
   try {
-    const response = await api.post('/login', credenciais.value); 
+    // 1. Tenta o login
+    const response = await api.post('/login', {
+      email: credenciais.value.email,
+      password: credenciais.value.password,
+      remember: lembrarDeMim.value
+    }); 
+    
     const token = response.data.access_token;
 
     if (token) {
+      // 2. 🚀 SALVAMENTO IMEDIATO (Antes de qualquer outra coisa)
+      if (lembrarDeMim.value) {
+        localStorage.setItem('nps_remember_email', credenciais.value.email);
+      } else {
+        localStorage.removeItem('nps_remember_email');
+      }
+
+      // 3. Guarda o restante dos dados
       localStorage.setItem('token', token);
       localStorage.setItem('usuario_id', response.data.usuario_id);
       localStorage.setItem('usuario_nome', response.data.nome);
       localStorage.setItem('usuario_cargo', response.data.cargo || 'Analista');
       localStorage.setItem('usuario_tipo', response.data.tipo); 
       
-      toast.add({ severity: 'success', summary: 'Conectado!', detail: `Bem-vindo, ${response.data.nome}!`, life: 3000 });
+      toast.add({ severity: 'success', summary: 'Conectado!', detail: `Bem-vindo!`, life: 3000 });
       
+      // 4. Aguarda um pouco mais para garantir que o IO do localStorage terminou
       setTimeout(() => {
         window.location.href = '/';
-      }, 500);
+      }, 800); 
     }
   } catch (error) {
     temErro.value = true;
-    const msgErro = error.response?.data?.detail || 'Verifique o e-mail e a palavra-passe.';
-    toast.add({ severity: 'error', summary: 'Acesso Negado', detail: msgErro, life: 5000 });
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha no login.' });
   } finally {
     loading.value = false;
   }
@@ -158,10 +188,17 @@ const handleSubmit = () => {
             </div>
 
             <div v-if="isLoginMode" class="flex items-center justify-between py-2">
-                <div class="flex items-center gap-2">
-                <Checkbox v-model="lembrarDeMim" :binary="true" />
-                <span class="text-sm text-slate-600 dark:text-slate-400">Lembrar de mim</span>
-                </div>
+            <div class="flex items-center">
+                <Checkbox 
+                    v-model="lembrarDeMim" 
+                    :binary="true" 
+                    id="remember" 
+                    class="mr-2" 
+                />
+                <label for="remember" class="text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
+                    Lembrar de mim
+                </label>
+            </div>
                 <router-link to="/forgot-password" class="text-sm font-bold text-orange-500 hover:text-orange-600">
                 Esqueci a minha senha
                 </router-link>

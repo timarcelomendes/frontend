@@ -54,8 +54,21 @@ const toggleTema = () => {
 };
 
 const fazerLogout = () => {
-  localStorage.clear();
-  router.push('/login');
+  try {
+    // 1. ⚠️ NÃO use clear(). Remova apenas o que é sessão.
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario_id');
+    localStorage.removeItem('usuario_nome');
+    localStorage.removeItem('usuario_cargo');
+    localStorage.removeItem('usuario_tipo');
+
+    // 2. Redirecionamento usando o Router (mais estável que o location.href)
+    router.push('/login');
+    
+  } catch (error) {
+    console.error("Erro ao sair:", error);
+    window.location.href = '/login';
+  }
 };
 </script>
 
