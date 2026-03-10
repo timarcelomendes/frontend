@@ -9,14 +9,14 @@ import Button from 'primevue/button';
 const router = useRouter();
 const route = useRoute();
 
+const isAdmin = ref(false);
+const nomeExibido = ref('');
+const cargoExibido = ref('');
+const iniciais = ref('');
+
 const sidebarExpandida = ref(true);
 const mobileMenuAberto = ref(false);
 const isDark = ref(false);
-
-// 👤 ESTADOS DO UTILIZADOR (Marcelo Mendes)
-const nomeExibido = ref('Marcelo Mendes');
-const cargoExibido = ref('HEAD OF PRODUCTS');
-const iniciais = ref('MM');
 
 // Lógica para esconder menus em páginas de login/senha
 const exibirLayout = computed(() => {
@@ -30,22 +30,27 @@ const toggleSidebar = () => {
 };
 
 onMounted(() => {
-  // 1. Recuperar dados reais do utilizador (se existirem no storage)
   const nome = localStorage.getItem('usuario_nome');
   const cargo = localStorage.getItem('usuario_cargo');
+  
+  const perfil = localStorage.getItem('usuario_tipo'); 
+  isAdmin.value = (perfil || '').toLowerCase() === 'admin';
+  // 🕵️‍♂️ O DETETIVE: Vai imprimir a verdade na consola
+  console.log("---- DEBUG MENU ----");
+  console.log("Valor bruto que está no storage:", perfil);
+  console.log("É Admin?", isAdmin.value);
+  console.log("--------------------");
 
   if (nome) {
     nomeExibido.value = nome;
     cargoExibido.value = cargo || 'Analista';
     
-    // Gerar iniciais dinamicamente
     const partes = nome.trim().split(' ');
     iniciais.value = partes.length > 1 
       ? (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
       : partes[0][0].toUpperCase();
-  }
+  } 
   
-  // 2. Lógica de tema (Dark Mode)
   const savedTheme = localStorage.getItem('theme');
   if (savedTheme === 'dark') {
     isDark.value = true;
@@ -119,7 +124,7 @@ const logout = () => {
           <i class="pi pi-users"></i> <span>Audiência</span>
         </router-link>
 
-        <router-link to="/configuracoes" class="nav-item" @click="mobileMenuAberto = false">
+        <router-link v-if="isAdmin" to="/configuracoes" class="nav-item" @click="mobileMenuAberto = false">
           <i class="pi pi-cog"></i> <span>Configurações</span>
         </router-link>
 
@@ -186,7 +191,7 @@ const logout = () => {
           <i class="pi pi-users"></i> <span v-if="sidebarExpandida" class="animate-fadein">Audiência</span>
         </router-link>
 
-        <router-link to="/configuracoes" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Configurações' : null">
+        <router-link v-if="isAdmin" to="/configuracoes" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Configurações' : null">
           <i class="pi pi-cog"></i> <span v-if="sidebarExpandida" class="animate-fadein">Configurações</span>
         </router-link>
       </nav>
