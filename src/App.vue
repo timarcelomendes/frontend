@@ -79,10 +79,16 @@ const logout = () => {
     <header v-if="exibirLayout" 
             class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30">
       <div class="flex items-center gap-2">
-        <div class="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center shadow-lg shadow-orange-600/20">
-          <i class="pi pi-chart-bar text-white text-xs"></i>
+        <img src="/nps.svg" alt="Logo" class="w-8 h-8 object-contain shrink-0" />
+        
+        <div class="flex flex-col justify-center">
+          <h1 class="text-sm font-black tracking-tighter uppercase italic leading-none text-slate-800 dark:text-white">
+            NPS GAUGE
+          </h1>
+          <span class="text-[9px] font-black tracking-widest uppercase text-orange-500 mt-0.5">
+            INTELLIGENCE
+          </span>
         </div>
-        <h1 class="text-md font-black tracking-tighter uppercase italic">NPS<span class="text-orange-500">PRO</span></h1>
       </div>
       <Button icon="pi pi-bars" @click="mobileMenuAberto = true" class="p-button-text !text-slate-600 dark:!text-slate-400" />
     </header>
@@ -142,12 +148,18 @@ const logout = () => {
       :class="[sidebarExpandida ? 'w-64' : 'w-20']"
     >
       <div class="p-6 flex items-center justify-between h-20">
-        <div v-if="sidebarExpandida" class="flex items-center gap-2 animate-fadein">
-          <div class="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center shadow-lg shadow-orange-600/20">
-            <i class="pi pi-chart-bar text-white text-xs"></i>
-          </div>
-          <h1 class="text-xl font-black tracking-tighter uppercase italic">NPS<span class="text-orange-500">PRO</span></h1>
+      <div v-if="sidebarExpandida" class="flex items-center gap-3 animate-fadein">
+        <img src="/nps.svg" alt="Logo" class="w-8 h-8 object-contain shrink-0" />
+        
+        <div class="flex flex-col justify-center mt-1">
+          <h1 class="text-lg font-black tracking-tighter uppercase italic leading-none text-slate-800 dark:text-white">
+            NPS GAUGE
+          </h1>
+          <span class="text-[10px] font-black tracking-[0.2em] uppercase text-orange-500 mt-0.5">
+            INTELLIGENCE
+          </span>
         </div>
+      </div>
         <button @click="toggleSidebar" class="p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400">
           <i :class="sidebarExpandida ? 'pi pi-angle-left' : 'pi pi-angle-right'"></i>
         </button>

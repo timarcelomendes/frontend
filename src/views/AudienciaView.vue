@@ -24,7 +24,9 @@ const loading = ref(true);
 const enviandoEmail = ref(false);
 const idsEnviando = ref([]); 
 
-// 2. Filtros e Pesquisa
+// ==========================================
+// 🔍 FILTROS AVANÇADOS
+// ==========================================
 const pesquisa = ref('');
 const filtrosTabela = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS }
@@ -33,6 +35,67 @@ const filtrosTabela = ref({
 const atualizarFiltro = () => {
   filtrosTabela.value.global.value = pesquisa.value;
 };
+
+// Estados dos novos filtros
+const filtroStatus = ref(null);
+const opcoesStatus = [
+  { label: 'Todos', value: null },
+  { label: 'Respondido', value: 'Respondido' },
+  { label: 'Enviado', value: 'Enviado' },
+  { label: 'Pendente', value: 'Pendente' }
+];
+
+const filtroTipoData = ref('proximo_envio');
+const opcoesTipoData = [
+  { label: 'Próximo Envio', value: 'proximo_envio' },
+  { label: 'Último Envio', value: 'ultimo_envio' }
+];
+
+const filtroDataInicio = ref(null);
+const filtroDataFim = ref(null);
+
+const limparFiltros = () => {
+  pesquisa.value = '';
+  filtrosTabela.value.global.value = null;
+  filtroStatus.value = null;
+  filtroDataInicio.value = null;
+  filtroDataFim.value = null;
+  filtroTipoData.value = 'proximo_envio';
+};
+
+// ⚡ Lógica de filtragem reativa
+const clientesFiltrados = computed(() => {
+  return clientes.value.filter(c => {
+    // 1. Filtro de Status
+    let matchesStatus = true;
+    if (filtroStatus.value) {
+      const st = (c.status_envio || 'Pendente').trim().toLowerCase();
+      matchesStatus = st === filtroStatus.value.toLowerCase();
+    }
+
+    // 2. Filtro de Data (Ciclo de Envio)
+    let matchesDate = true;
+    if (filtroDataInicio.value || filtroDataFim.value) {
+      const dataAlvo = c[filtroTipoData.value];
+      
+      if (!dataAlvo || dataAlvo === 'None' || dataAlvo === 'null') {
+        matchesDate = false; // Se quer filtrar por data e não tem data, exclui
+      } else {
+        // Extrai apenas o "YYYY-MM-DD" para comparar strings de forma segura
+        const dataLimpa = dataAlvo.slice(0, 10);
+        
+        if (filtroDataInicio.value && dataLimpa < filtroDataInicio.value) {
+          matchesDate = false;
+        }
+        if (filtroDataFim.value && dataLimpa > filtroDataFim.value) {
+          matchesDate = false;
+        }
+      }
+    }
+
+    return matchesStatus && matchesDate;
+  });
+});
 
 const clientesSelecionados = ref([]);
 
@@ -48,23 +111,22 @@ const cliente = ref({
   perfil_decisor: 'Influenciador' 
 });
 
-// Opções para o Dropdown (única declaração)
 const opcoesPerfil = ['Decisor', 'Influenciador']; 
 
 // ==========================================
-// 📊 MÉTRICAS COMPUTADAS 
+// 📊 MÉTRICAS COMPUTADAS (Agora baseadas nos filtros)
 // ==========================================
-const totalClientes = computed(() => clientes.value.length);
+const totalClientes = computed(() => clientesFiltrados.value.length);
 
 const totalDecisores = computed(() => {
-  return clientes.value.filter(c => {
+  return clientesFiltrados.value.filter(c => {
     const p = (c.perfil_decisor || '').trim().toLowerCase();
     return p === 'decisor';
   }).length;
 });
 
 const totalInfluenciadores = computed(() => {
-  return clientes.value.filter(c => {
+  return clientesFiltrados.value.filter(c => {
     const p = (c.perfil_decisor || '').trim().toLowerCase();
     return p === 'influenciador';
   }).length;
@@ -190,14 +252,12 @@ const formatarData = (dataStr) => {
   }
 };
 
-// Define as cores das Tags consoante o status devolvido pela API
 const obterCorStatus = (status) => {
   if (!status) return 'warning'; 
   const st = status.toLowerCase();
-  
-  if (st === 'respondido') return 'success'; // Verde
-  if (st === 'enviado') return 'info';       // Azul
-  return 'warning';                          // Laranja para Pendente
+  if (st === 'respondido') return 'success';
+  if (st === 'enviado') return 'info';
+  return 'warning';
 };
 
 const gerarIniciais = (nome) => {
@@ -210,36 +270,25 @@ const gerarPlano = async (empresa) => {
     empresaSelecionada.value = empresa;
     planoDialog.value = true;
     
-    // 1. 🔍 TENTAR RECUPERAR DO CACHE (SessionStorage)
     const chaveCache = `nps_ai_plano_${empresa}`;
     const planoNoCache = sessionStorage.getItem(chaveCache);
 
     if (planoNoCache) {
-        console.log(`🚀 Plano de [${empresa}] recuperado do sessionStorage.`);
         planoTexto.value = planoNoCache;
         carregandoPlano.value = false;
-        return; // Sai da função sem gastar API
+        return; 
     }
 
-    // 2. ⚡ SE NÃO HOUVER CACHE, FAZ O CARREGAMENTO REAL
     planoTexto.value = '';
     carregandoPlano.value = true;
 
     try {
         const res = await api.get(`/audiencia/plano-acao?empresa=${encodeURIComponent(empresa)}`);
         const resultado = res.data.plano;
-
-        // 3. 💾 SALVAR NO CACHE para persistir durante a sessão
         sessionStorage.setItem(chaveCache, resultado);
-        
         planoTexto.value = resultado;
     } catch (error) {
-        toast.add({ 
-            severity: 'error', 
-            summary: 'Erro na Consultoria', 
-            detail: 'Não foi possível gerar o plano agora.', 
-            life: 3000 
-        });
+        toast.add({ severity: 'error', summary: 'Erro na Consultoria', detail: 'Não foi possível gerar o plano agora.', life: 3000 });
         planoDialog.value = false;
     } finally {
         carregandoPlano.value = false;
@@ -247,19 +296,9 @@ const gerarPlano = async (empresa) => {
 };
 
 const recarregarPlano = (empresa) => {
-    // 1. Remove apenas o cache desta empresa
-    const chaveCache = `nps_ai_plano_${empresa}`;
-    sessionStorage.removeItem(chaveCache);
-    
-    // 2. Chama a função principal que agora não encontrará o cache e irá à API
+    sessionStorage.removeItem(`nps_ai_plano_${empresa}`);
     gerarPlano(empresa);
-    
-    toast.add({ 
-        severity: 'info', 
-        summary: 'IA Atualizada', 
-        detail: 'Gerando uma nova análise baseada nos dados mais recentes.', 
-        life: 2000 
-    });
+    toast.add({ severity: 'info', summary: 'IA Atualizada', detail: 'Gerando uma nova análise baseada nos dados mais recentes.', life: 2000 });
 };
 
 onMounted(carregarClientes);
@@ -291,7 +330,7 @@ onMounted(carregarClientes);
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
       <div class="bg-white dark:bg-slate-900 p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
         <div>
-          <span class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Total de Clientes</span>
+          <span class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Total Filtrado</span>
           <div class="text-3xl font-black text-slate-800 dark:text-white tracking-tighter mt-1">{{ totalClientes }}</div>
         </div>
         <div class="w-11 h-11 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 text-xl"><i class="pi pi-users"></i></div>
@@ -314,18 +353,47 @@ onMounted(carregarClientes);
       </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-6">
-      
-      <div class="flex justify-between items-center mb-6">
-        <h3 class="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest italic">Lista de Contactos</h3>
-        <span class="p-input-icon-left w-full md:w-72">
-          <i class="pi pi-search text-slate-400 text-xs" />
-          <InputText v-model="pesquisa" @input="atualizarFiltro" placeholder="Pesquisar..." class="w-full custom-input !py-1.5 !text-[12px] !rounded-lg" />
-        </span>
-      </div>
+    <div class="bg-white dark:bg-slate-900 p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm mb-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-end">
+        
+        <div class="lg:col-span-3">
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Pesquisar</label>
+          <span class="p-input-icon-left w-full">
+            <i class="pi pi-search text-slate-400 text-xs" />
+            <InputText v-model="pesquisa" @input="atualizarFiltro" placeholder="Nome, email ou empresa..." class="w-full custom-input !py-2.5 !text-xs" />
+          </span>
+        </div>
 
+        <div class="lg:col-span-2">
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Status</label>
+          <Dropdown v-model="filtroStatus" :options="opcoesStatus" optionLabel="label" optionValue="value" placeholder="Todos" class="w-full custom-dropdown !h-[42px]" />
+        </div>
+
+        <div class="lg:col-span-2">
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Referência</label>
+          <Dropdown v-model="filtroTipoData" :options="opcoesTipoData" optionLabel="label" optionValue="value" class="w-full custom-dropdown !h-[42px]" />
+        </div>
+
+        <div class="lg:col-span-2">
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">A partir de</label>
+          <input type="date" v-model="filtroDataInicio" class="w-full custom-input !py-2.5 !px-3 !text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 text-slate-700 dark:text-slate-300" />
+        </div>
+
+        <div class="lg:col-span-2">
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Até</label>
+          <input type="date" v-model="filtroDataFim" class="w-full custom-input !py-2.5 !px-3 !text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 text-slate-700 dark:text-slate-300" />
+        </div>
+
+        <div class="lg:col-span-1 flex justify-end lg:justify-start">
+          <Button icon="pi pi-filter-slash" @click="limparFiltros" v-tooltip.top="'Limpar Filtros'" class="w-full lg:w-[42px] h-[42px] shrink-0 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 !border-none hover:!bg-rose-100 transition-colors rounded-xl" />
+        </div>
+
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-6 pt-2">
       <DataTable 
-        :value="clientes" 
+        :value="clientesFiltrados" 
         v-model:selection="clientesSelecionados"
         :paginator="true" 
         :rows="10" 
@@ -337,7 +405,7 @@ onMounted(carregarClientes);
         rowHover
       >
         <template #empty>
-          <div class="text-center py-12 text-[12px] text-slate-400 italic">Nenhum cliente registado.</div>
+          <div class="text-center py-12 text-[12px] text-slate-400 italic">Nenhum cliente atende aos filtros atuais.</div>
         </template>
 
         <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
@@ -378,12 +446,7 @@ onMounted(carregarClientes);
               icon="pi pi-sparkles" 
               @click="gerarPlano(slotProps.data.empresa)" 
               :loading="carregandoPlano && empresaSelecionada === slotProps.data.empresa"
-              class="p-button-text p-button-sm 
-                    !text-[10px] !font-black !uppercase !tracking-widest
-                    !text-orange-600 !border !border-orange-500/20 !rounded-xl
-                    !py-2 !px-3 
-                    hover:!bg-orange-500/5 hover:!border-orange-500/40 
-                    transition-all duration-300 group"
+              class="p-button-text p-button-sm !text-[10px] !font-black !uppercase !tracking-widest !text-orange-600 !border !border-orange-500/20 !rounded-xl !py-2 !px-3 hover:!bg-orange-500/5 hover:!border-orange-500/40 transition-all duration-300 group"
             />
           </template>
         </Column>
@@ -391,8 +454,8 @@ onMounted(carregarClientes);
         <Column field="status_envio" header="Status" sortable style="min-width: 140px">
         <template #body="slotProps">
             <div class="flex items-center gap-2">
-            <i v-if="slotProps.data.status_envio === 'Respondido'" class="pi pi-check-circle text-emerald-500 text-[12px]"></i>
-            <i v-else-if="slotProps.data.status_envio === 'Enviado'" class="pi pi-send text-blue-500 text-[11px] transform -rotate-12 mt-0.5"></i>
+            <i v-if="(slotProps.data.status_envio || '').toLowerCase() === 'respondido'" class="pi pi-check-circle text-emerald-500 text-[12px]"></i>
+            <i v-else-if="(slotProps.data.status_envio || '').toLowerCase() === 'enviado'" class="pi pi-send text-blue-500 text-[11px] transform -rotate-12 mt-0.5"></i>
             <i v-else class="pi pi-clock text-orange-400 text-[12px]"></i>
             
             <Tag 
@@ -409,15 +472,11 @@ onMounted(carregarClientes);
             <div class="flex flex-col gap-1.5 bg-slate-50/50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
               <div class="flex items-center justify-between text-[10px]">
                 <span class="text-slate-400 font-bold uppercase">Último:</span>
-                <span class="text-slate-600 dark:text-slate-300 font-bold">
-                  {{ formatarData(slotProps.data.ultimo_envio) }}
-                </span>
+                <span class="text-slate-600 dark:text-slate-300 font-bold">{{ formatarData(slotProps.data.ultimo_envio) }}</span>
               </div>
               <div class="flex items-center justify-between text-[10px]">
                 <span class="text-orange-500 font-bold uppercase">Próximo:</span>
-                <span class="text-orange-600 font-black">
-                  {{ formatarData(slotProps.data.proximo_envio) }}
-                </span>
+                <span class="text-orange-600 font-black">{{ formatarData(slotProps.data.proximo_envio) }}</span>
               </div>
             </div>
           </template>
@@ -426,14 +485,7 @@ onMounted(carregarClientes);
         <Column header="Ações" alignFrozen="right" style="width: 130px">
           <template #body="slotProps">
             <div class="flex gap-1.5 justify-end">
-              <Button 
-                icon="pi pi-send" 
-                v-tooltip.top="'Disparar n8n'" 
-                @click="dispararIndividual(slotProps.data.cliente_id)" 
-                :loading="idsEnviando.includes(slotProps.data.cliente_id)"
-                :disabled="enviandoEmail" 
-                class="w-7 h-7 !bg-orange-50 !text-orange-500 !border-none hover:!bg-orange-100 rounded-lg transition-colors !text-xs" 
-              />
+              <Button icon="pi pi-send" v-tooltip.top="'Disparar n8n'" @click="dispararIndividual(slotProps.data.cliente_id)" :loading="idsEnviando.includes(slotProps.data.cliente_id)" :disabled="enviandoEmail" class="w-7 h-7 !bg-orange-50 !text-orange-500 !border-none hover:!bg-orange-100 rounded-lg transition-colors !text-xs" />
               <Button icon="pi pi-pencil" v-tooltip.top="'Editar'" @click="editarCliente(slotProps.data)" class="w-7 h-7 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none hover:!text-slate-700 rounded-lg transition-colors !text-xs" />
               <Button icon="pi pi-trash" v-tooltip.top="'Excluir'" @click="excluirCliente(slotProps.data.cliente_id)" class="w-7 h-7 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-400 !border-none hover:!bg-rose-100 rounded-lg transition-colors !text-xs" />
             </div>
@@ -448,12 +500,10 @@ onMounted(carregarClientes);
           <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nome Completo</label>
           <InputText v-model="cliente.nome" class="custom-input !text-xs" placeholder="Ex: Ana Silva" autofocus />
         </div>
-
         <div class="flex flex-col gap-1.5">
           <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">E-mail Corporativo</label>
           <InputText v-model="cliente.email" type="email" class="custom-input !text-xs" placeholder="ana@empresa.com" />
         </div>
-
         <div class="grid grid-cols-2 gap-4">
           <div class="flex flex-col gap-1.5">
             <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Empresa</label>
@@ -472,6 +522,7 @@ onMounted(carregarClientes);
         </div>
       </template>
     </Dialog>
+
     <Dialog v-model:visible="planoDialog" :modal="true" :draggable="false" class="custom-dialog w-full max-w-xl">
       <template #header>
           <div class="flex items-center justify-between w-full pr-8">
@@ -479,35 +530,20 @@ onMounted(carregarClientes);
                   <i class="pi pi-sparkles text-orange-500"></i>
                   <span class="text-sm font-black uppercase tracking-widest text-slate-400">Plano de Ação Inteligente</span>
               </div>
-              
-              <Button 
-                  v-if="!carregandoPlano"
-                  icon="pi pi-refresh" 
-                  @click="recarregarPlano(empresaSelecionada)" 
-                  class="p-button-text p-button-secondary !p-2 !rounded-full hover:!bg-slate-100 dark:hover:!bg-slate-800 transition-all"
-                  v-tooltip.left="'Gerar nova análise (ignorar cache)'"
-              />
+              <Button v-if="!carregandoPlano" icon="pi pi-refresh" @click="recarregarPlano(empresaSelecionada)" class="p-button-text p-button-secondary !p-2 !rounded-full hover:!bg-slate-100 dark:hover:!bg-slate-800 transition-all" v-tooltip.left="'Gerar nova análise (ignorar cache)'" />
           </div>
       </template>
-
       <div class="p-8 pt-2">
-          <div class="mb-6">
-              <h2 class="text-2xl font-black italic text-slate-800 dark:text-white leading-tight">
-                  {{ empresaSelecionada }}
-              </h2>
-          </div>
-
+          <div class="mb-6"><h2 class="text-2xl font-black italic text-slate-800 dark:text-white leading-tight">{{ empresaSelecionada }}</h2></div>
           <div v-if="carregandoPlano" class="flex flex-col items-center justify-center py-12 gap-4">
               <i class="pi pi-spin pi-spinner text-3xl text-orange-500"></i>
               <p class="text-[10px] font-black uppercase tracking-tighter text-slate-400">Consultando Gauge AI...</p>
           </div>
-          
           <div v-else class="relative pl-6 border-l-2 border-orange-500/30 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">
               {{ planoTexto }}
           </div>
       </div>
-      
-      </Dialog>
+    </Dialog>
 
   </div>
 </template>
@@ -515,21 +551,19 @@ onMounted(carregarClientes);
 <style scoped>
 @reference "tailwindcss";
 
-.animate-fadein {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(15px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+.animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
 :deep(.custom-input), :deep(.custom-dropdown) {
   @apply bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium;
 }
 
-:deep(.p-dropdown-label) {
-  @apply py-0;
+/* Modificação para Dropdowns menores na barra de filtros */
+:deep(.custom-dropdown.w-full) {
+  @apply flex items-center px-1;
 }
+
+:deep(.p-dropdown-label) { @apply py-0 text-xs; }
 
 :deep(.p-datatable .p-datatable-thead > tr > th) {
   @apply bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 py-6 px-4;
@@ -537,15 +571,8 @@ onMounted(carregarClientes);
 :deep(.p-datatable .p-datatable-tbody > tr) {
   @apply bg-transparent hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-50 dark:border-slate-800/50;
 }
-:deep(.p-datatable .p-datatable-tbody > tr > td) {
-  @apply py-4 px-4;
-}
+:deep(.p-datatable .p-datatable-tbody > tr > td) { @apply py-4 px-4; }
 
-/* 💡 Estilos extras para as Checkboxes do PrimeVue casarem com o design */
-:deep(.p-checkbox .p-checkbox-box) {
-  @apply border-slate-300 dark:border-slate-600 rounded-md transition-colors;
-}
-:deep(.p-checkbox.p-highlight .p-checkbox-box) {
-  @apply border-orange-500 bg-orange-500;
-}
+:deep(.p-checkbox .p-checkbox-box) { @apply border-slate-300 dark:border-slate-600 rounded-md transition-colors; }
+:deep(.p-checkbox.p-highlight .p-checkbox-box) { @apply border-orange-500 bg-orange-500; }
 </style>
