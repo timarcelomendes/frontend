@@ -445,17 +445,20 @@ onMounted(carregarDashboard);
           
           <div class="bg-white dark:bg-slate-900/80 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center relative">
             <h3 class="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] w-full text-left mb-6">Polaridade</h3>
-            <div class="relative w-40 h-40 flex items-center justify-center">
-              <Chart v-if="chartDataPie" type="doughnut" :data="chartDataPie" :options="chartOptionsPie" class="w-full h-full absolute z-10 drop-shadow-md" />
-              <div class="absolute flex flex-col items-center z-0">
+            
+            <div class="relative w-48 h-48 flex items-center justify-center mx-auto">
+              <Chart v-if="chartDataPie" type="doughnut" :data="chartDataPie" :options="chartOptionsPie" class="w-full h-full relative z-10 drop-shadow-md" />
+              
+              <div class="absolute inset-0 flex flex-col items-center justify-center z-0 pointer-events-none">
                 <span class="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{{ kpis.total_respostas }}</span>
                 <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Respostas</span>
               </div>
             </div>
+
             <div class="flex gap-4 mt-8 w-full justify-center">
-               <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-emerald-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.promotores }}</span></div>
-               <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-yellow-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.neutros }}</span></div>
-               <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-rose-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.detratores }}</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-emerald-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.promotores }}</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-yellow-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.neutros }}</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-rose-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.detratores }}</span></div>
             </div>
           </div>
 
