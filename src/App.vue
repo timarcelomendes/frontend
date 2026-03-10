@@ -1,40 +1,51 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
+import Sidebar from 'primevue/sidebar';
+import Button from 'primevue/button';
+
+const router = useRouter();
+const route = useRoute();
 
 const sidebarExpandida = ref(true);
+const mobileMenuAberto = ref(false);
+const isDark = ref(false);
+
+// 👤 ESTADOS DO UTILIZADOR (Marcelo Mendes)
+const nomeExibido = ref('Marcelo Mendes');
+const cargoExibido = ref('HEAD OF PRODUCTS');
+const iniciais = ref('MM');
+
+// Lógica para esconder menus em páginas de login/senha
+const exibirLayout = computed(() => {
+  const paginasSemMenu = ['Login', 'ForgotPassword', 'ResetPassword'];
+  // Verifica pelo nome da rota (definido no seu router/index.js)
+  return !paginasSemMenu.includes(route.name);
+});
 
 const toggleSidebar = () => {
   sidebarExpandida.value = !sidebarExpandida.value;
 };
 
-const router = useRouter();
-const isDark = ref(false);
-
-// 👤 ESTADOS DO UTILIZADOR
-const nomeExibido = ref('Utilizador');
-const cargoExibido = ref('Carregando...');
-const iniciais = ref('U');
-
 onMounted(() => {
-  // 1. Recuperar dados do localStorage
+  // 1. Recuperar dados reais do utilizador (se existirem no storage)
   const nome = localStorage.getItem('usuario_nome');
   const cargo = localStorage.getItem('usuario_cargo');
 
   if (nome) {
     nomeExibido.value = nome;
     cargoExibido.value = cargo || 'Analista';
-
-    // 2. Gerar iniciais (Ex: Marcelo Mendes -> MM)
+    
+    // Gerar iniciais dinamicamente
     const partes = nome.trim().split(' ');
     iniciais.value = partes.length > 1 
       ? (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
       : partes[0][0].toUpperCase();
   }
   
-  // Lógica de tema
+  // 2. Lógica de tema (Dark Mode)
   const savedTheme = localStorage.getItem('theme');
   if (savedTheme === 'dark') {
     isDark.value = true;
@@ -53,170 +64,199 @@ const toggleTema = () => {
   }
 };
 
-const fazerLogout = () => {
-  try {
-    // 1. ⚠️ NÃO use clear(). Remova apenas o que é sessão.
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario_id');
-    localStorage.removeItem('usuario_nome');
-    localStorage.removeItem('usuario_cargo');
-    localStorage.removeItem('usuario_tipo');
-
-    // 2. Redirecionamento usando o Router (mais estável que o location.href)
-    router.push('/login');
-    
-  } catch (error) {
-    console.error("Erro ao sair:", error);
-    window.location.href = '/login';
-  }
+const logout = () => {
+  localStorage.clear();
+  router.push('/login');
 };
 </script>
 
 <template>
-  <div class="flex h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-100 antialiased overflow-hidden transition-colors duration-300">
+  <div class="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 antialiased overflow-hidden flex-col md:flex-row transition-colors duration-300">
     
     <Toast /> 
     <ConfirmDialog />
-    
-    <aside 
-      v-if="!['/login', '/forgot-password', '/reset-password'].includes($route.path)" 
-      class="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-sm dark:shadow-none z-10 transition-all duration-300 ease-in-out"
-      :class="[sidebarExpandida ? 'w-64' : 'w-20']"
-    >
-      <div class="h-20 flex items-center px-4 border-b border-slate-100 dark:border-slate-800 overflow-hidden shrink-0">
-        <div class="flex items-center gap-3 w-full" :class="{ 'justify-center': !sidebarExpandida }">
-          <img src="/nps.svg" alt="Logo" class="w-10 h-10 object-contain shrink-0" />
-          
-          <div v-if="sidebarExpandida" class="flex flex-col animate-fadein">
-            <h1 class="text-lg font-black tracking-tighter text-slate-800 dark:text-white leading-none uppercase">
-              NPS<span class="text-orange-500">PRO</span>
-            </h1>
-            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Intelligence</span>
+
+    <header v-if="exibirLayout" 
+            class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center shadow-lg shadow-orange-600/20">
+          <i class="pi pi-chart-bar text-white text-xs"></i>
+        </div>
+        <h1 class="text-md font-black tracking-tighter uppercase italic">NPS<span class="text-orange-500">PRO</span></h1>
+      </div>
+      <Button icon="pi pi-bars" @click="mobileMenuAberto = true" class="p-button-text !text-slate-600 dark:!text-slate-400" />
+    </header>
+
+    <Sidebar v-model:visible="mobileMenuAberto" class="w-72 dark:bg-slate-900 border-none">
+      <template #header>
+        <span class="font-black uppercase tracking-widest text-[10px] text-slate-400">Menu Principal</span>
+      </template>
+      
+      <nav class="flex flex-col h-full gap-1 mt-4">
+        <router-link to="/" class="nav-item" @click="mobileMenuAberto = false">
+          <i class="pi pi-chart-bar"></i> <span>Dashboard</span>
+        </router-link>
+        
+        <router-link to="/clientes" class="nav-item" @click="mobileMenuAberto = false">
+          <i class="pi pi-building"></i> <span>Contas</span>
+        </router-link>
+
+        <router-link to="/respostas" class="nav-item" @click="mobileMenuAberto = false">
+          <i class="pi pi-comments"></i> <span>Respostas</span>
+        </router-link>
+
+        <router-link to="/importacao" class="nav-item" @click="mobileMenuAberto = false">
+          <i class="pi pi-upload"></i> <span>Importação</span>
+        </router-link>
+
+        <router-link to="/audiencia" class="nav-item" @click="mobileMenuAberto = false">
+          <i class="pi pi-users"></i> <span>Audiência</span>
+        </router-link>
+
+        <router-link to="/configuracoes" class="nav-item" @click="mobileMenuAberto = false">
+          <i class="pi pi-cog"></i> <span>Configurações</span>
+        </router-link>
+
+        <div class="mt-auto border-t border-slate-100 dark:border-slate-800 pt-6 pb-8">
+          <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white font-black shadow-lg">
+                {{ iniciais }}
+              </div>
+              <div class="flex flex-col">
+                <span class="font-black text-xs text-slate-800 dark:text-white">{{ nomeExibido }}</span>
+                <span class="text-[9px] font-bold text-orange-500 uppercase tracking-widest">{{ cargoExibido }}</span>
+                <span @click="logout" class="text-[9px] font-bold text-rose-500 uppercase tracking-widest cursor-pointer mt-1">Sair</span>
+              </div>
+            </div>
+            <button @click="toggleTema" class="p-2 rounded-lg bg-white dark:bg-slate-700 shadow-sm border border-slate-100 dark:border-slate-600">
+              <i :class="isDark ? 'pi pi-sun' : 'pi pi-moon'" class="text-orange-500"></i>
+            </button>
           </div>
         </div>
-      </div>
-
-      <nav class="flex-1 p-3 space-y-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
-        
-        <router-link to="/" class="nav-item" active-class="active-nav" :title="!sidebarExpandida ? 'Dashboard' : ''">
-          <i class="pi pi-chart-bar"></i>
-          <span v-if="sidebarExpandida">Dashboard</span>
-        </router-link>
-
-        <router-link to="/clientes" class="nav-item" active-class="active-nav" :title="!sidebarExpandida ? 'Contas' : ''">
-          <i class="pi pi-building"></i>
-          <span v-if="sidebarExpandida">Contas</span>
-        </router-link>
-        
-        <router-link to="/audiencia" class="nav-item" active-class="active-nav" :title="!sidebarExpandida ? 'Audiência' : ''">
-          <i class="pi pi-users"></i>
-          <span v-if="sidebarExpandida">Audiência</span>
-        </router-link>
-
-        <router-link to="/respostas" class="nav-item" active-class="active-nav" :title="!sidebarExpandida ? 'Respostas' : ''">
-          <i class="pi pi-comments"></i>
-          <span v-if="sidebarExpandida">Respostas</span>
-        </router-link>
-
-        <router-link to="/importacao" class="nav-item" active-class="active-nav" :title="!sidebarExpandida ? 'Importação' : ''">
-          <i class="pi pi-cloud-upload"></i>
-          <span v-if="sidebarExpandida">Importação</span>
-        </router-link>
-
-        <router-link to="/configuracoes" class="nav-item" active-class="active-nav" :title="!sidebarExpandida ? 'Configurações' : ''">
-          <i class="pi pi-cog"></i>
-          <span v-if="sidebarExpandida">Configurações</span>
-        </router-link>
-
       </nav>
+    </Sidebar>
 
-      <div class="p-4 border-t border-slate-100 dark:border-slate-800">
-        <button 
-          @click="toggleSidebar" 
-          class="w-full flex items-center justify-center p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-all"
-        >
-          <i :class="sidebarExpandida ? 'pi pi-chevron-left' : 'pi pi-bars'" class="text-lg"></i>
+    <aside v-if="exibirLayout" 
+      class="hidden md:flex bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col shadow-sm z-20 transition-all duration-300"
+      :class="[sidebarExpandida ? 'w-64' : 'w-20']"
+    >
+      <div class="p-6 flex items-center justify-between h-20">
+        <div v-if="sidebarExpandida" class="flex items-center gap-2 animate-fadein">
+          <div class="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center shadow-lg shadow-orange-600/20">
+            <i class="pi pi-chart-bar text-white text-xs"></i>
+          </div>
+          <h1 class="text-xl font-black tracking-tighter uppercase italic">NPS<span class="text-orange-500">PRO</span></h1>
+        </div>
+        <button @click="toggleSidebar" class="p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400">
+          <i :class="sidebarExpandida ? 'pi pi-angle-left' : 'pi pi-angle-right'"></i>
         </button>
       </div>
 
-      <div class="p-4 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800">
-        <div 
-          class="flex items-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden"
-          :class="[sidebarExpandida ? 'p-3 justify-between' : 'p-2 justify-center']"
-        >
-          <div class="flex items-center gap-3 overflow-hidden">
-            <div class="w-10 h-10 bg-orange-500 rounded-xl flex-shrink-0 flex items-center justify-center text-white font-black">
-              {{ iniciais }}
-            </div>
+      <nav class="flex-1 px-3 space-y-1 mt-4">
+        <router-link to="/" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Dashboard' : null">
+          <i class="pi pi-chart-bar"></i> <span v-if="sidebarExpandida" class="animate-fadein">Dashboard</span>
+        </router-link>
 
-            <div v-if="sidebarExpandida" class="flex flex-col text-left overflow-hidden animate-fadein">
-              <span class="text-sm font-bold text-slate-700 dark:text-slate-200 truncate max-w-[100px]">
-                {{ nomeExibido }}
-              </span>
-              <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">
-                {{ cargoExibido }}
-              </span>
-            </div>
+        <router-link to="/clientes" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Contas' : null">
+          <i class="pi pi-building"></i> <span v-if="sidebarExpandida" class="animate-fadein">Contas</span>
+        </router-link>
+
+        <router-link to="/respostas" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Respostas' : null">
+          <i class="pi pi-comments"></i> <span v-if="sidebarExpandida" class="animate-fadein">Respostas</span>
+        </router-link>
+
+        <router-link to="/importacao" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Importação' : null">
+          <i class="pi pi-upload"></i> <span v-if="sidebarExpandida" class="animate-fadein">Importação</span>
+        </router-link>
+
+        <router-link to="/audiencia" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Audiência' : null">
+          <i class="pi pi-users"></i> <span v-if="sidebarExpandida" class="animate-fadein">Audiência</span>
+        </router-link>
+
+        <router-link to="/configuracoes" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Configurações' : null">
+          <i class="pi pi-cog"></i> <span v-if="sidebarExpandida" class="animate-fadein">Configurações</span>
+        </router-link>
+      </nav>
+
+      <div class="p-4 space-y-2">
+        <button @click="toggleTema" class="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
+          <i :class="isDark ? 'pi pi-sun' : 'pi pi-moon'"></i>
+          <span v-if="sidebarExpandida" class="text-xs font-bold uppercase tracking-widest">{{ isDark ? 'Modo Claro' : 'Modo Escuro' }}</span>
+        </button>
+
+        <div class="flex items-center gap-3 p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+          <div class="w-10 h-10 rounded-xl bg-orange-600 flex-shrink-0 flex items-center justify-center text-white text-xs font-black shadow-lg">
+            {{ iniciais }}
           </div>
-          
-          <div v-if="sidebarExpandida" class="flex items-center ml-2 border-l border-slate-100 dark:border-slate-800 pl-2">
-            <button @click="toggleTema" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
-              <i :class="isDark ? 'pi pi-sun' : 'pi pi-moon'"></i>
-            </button>
-            <button @click="fazerLogout" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-500 ml-1">
-              <i class="pi pi-sign-out"></i>
-            </button>
+          <div v-if="sidebarExpandida" class="flex-1 min-w-0 animate-fadein">
+            <p class="text-[11px] font-black text-slate-800 dark:text-white truncate leading-none mb-1">
+              {{ nomeExibido }}
+            </p>
+            <p class="text-[9px] font-bold text-orange-500 uppercase tracking-widest leading-none">
+              {{ cargoExibido }}
+            </p>
           </div>
+          <button @click="logout" v-if="sidebarExpandida" class="p-2 text-slate-400 hover:text-rose-500 transition-colors">
+            <i class="pi pi-sign-out"></i>
+          </button>
         </div>
       </div>
     </aside>
 
-    <main :class="['flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 transition-colors duration-300', ['Login', 'ForgotPassword', 'ResetPassword'].includes($route.name) ? 'p-0' : 'p-8']">
-      <router-view />
+    <main :class="['flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 transition-all duration-300', exibirLayout ? 'p-4 md:p-8 lg:p-12' : 'p-0']">
+      <router-view v-slot="{ Component }">
+        <transition name="page" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </main>
 
   </div>
 </template>
 
 <style scoped>
-/* 💡 ESSENCIAL PARA TAILWIND v4 */
+/* 💡 REFERÊNCIA TAILWIND v4 */
 @reference "tailwindcss";
 
-/* Transições de Fade */
 .animate-fadein {
   animation: fadeIn 0.3s ease-in-out;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateX(-10px); }
+  from { opacity: 0; transform: translateX(-8px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
 /* Estilos de Navegação */
 .nav-item {
-  @apply flex items-center gap-4 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-orange-500 transition-all duration-200;
+  @apply flex items-center gap-4 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 
+         hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-orange-500 transition-all duration-200;
 }
 
 .nav-item i {
-  @apply text-xl flex-shrink-0 w-6 text-center;
+  @apply text-lg w-6 text-center;
 }
 
 .nav-item span {
-  @apply text-sm font-bold whitespace-nowrap overflow-hidden;
+  @apply text-xs font-bold uppercase tracking-widest;
 }
 
-.active-nav {
-  @apply bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold shadow-sm;
+/* Link Ativo */
+.router-link-active {
+  @apply bg-orange-500/10 text-orange-600 !font-black;
 }
 
-/* Scrollbar Customizada */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+.router-link-active i {
+  @apply text-orange-600;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background-color: transparent; 
+
+/* Transição de Página */
+.page-enter-active, .page-leave-active {
+  transition: opacity 0.2s, transform 0.2s;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-slate-200 dark:bg-slate-700 rounded-full;
+.page-enter-from, .page-leave-to {
+  opacity: 0;
+  transform: translateY(5px);
 }
 </style>

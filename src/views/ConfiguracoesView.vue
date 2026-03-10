@@ -403,16 +403,16 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto animate-fadein p-4">
+  <div class="max-w-6xl mx-auto animate-fadein px-4 md:px-8 py-4">
     
-    <div class="mb-8 flex justify-between items-end">
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
       <div>
         <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight italic">
           Configurações <span class="text-orange-500">.</span>
         </h1>
         <p class="text-[12px] text-slate-400 font-bold uppercase tracking-widest mt-1">Ambiente & Infraestrutura</p>
       </div>
-      <div v-if="carregandoDados || loadingAIConfig" class="text-orange-500 text-[10px] font-black animate-pulse uppercase tracking-widest">
+      <div v-if="carregandoDados || loadingAIConfig" class="text-orange-500 text-[10px] font-black animate-pulse uppercase tracking-widest mt-2 md:mt-0">
         <i class="pi pi-spin pi-spinner mr-2"></i>Sincronizando Banco...
       </div>
     </div>
@@ -420,7 +420,7 @@ onMounted(() => {
     <TabView class="custom-tabview">
       
       <TabPanel header="Geral">
-        <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 space-y-6 shadow-sm">
+        <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-6 shadow-sm">
           <div class="flex flex-col gap-2">
             <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">URL Base do Frontend</label>
             <InputText v-model="config.base_url_frontend" class="custom-input !text-[12px]" placeholder="http://localhost:5173" />
@@ -428,13 +428,13 @@ onMounted(() => {
               <i class="pi pi-check"></i> Valor guardado: <span class="underline">{{ config.base_url_frontend }}</span>
             </div>
           </div>
-          <Button label="Guardar Geral" icon="pi pi-save" @click="salvarConfiguracoes" :loading="loading" class="!bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-8 !py-3 shadow-xl hover:scale-105 transition-transform" />
+          <Button label="Guardar Geral" icon="pi pi-save" @click="salvarConfiguracoes" :loading="loading" class="w-full md:w-auto !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-8 !py-3 shadow-xl hover:scale-105 transition-transform" />
         </div>
       </TabPanel>
 
       <TabPanel header="Email">
-        <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
-          <div class="flex justify-between items-center mb-10 pb-6 border-b border-slate-50 dark:border-slate-800">
+        <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 pb-6 border-b border-slate-50 dark:border-slate-800 gap-4">
             <div>
               <h3 class="text-sm font-black uppercase text-slate-800 dark:text-white">Microsoft Graph API</h3>
               <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Estado da Conexão em Tempo Real</p>
@@ -488,7 +488,7 @@ onMounted(() => {
       </TabPanel>
 
       <TabPanel header="Inteligência Artificial">
-        <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
+        <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
           
           <div class="flex justify-between items-start lg:items-center mb-8 pb-6 border-b border-slate-50 dark:border-slate-800 flex-col lg:flex-row gap-4">
             <div class="flex gap-4 items-center">
@@ -500,7 +500,7 @@ onMounted(() => {
                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Motor Preditivo do Magic AI Dashboard</p>
               </div>
             </div>
-            <Button label="Guardar Configurações" icon="pi pi-save" @click="salvarConfiguracoesAI" :loading="savingAIConfig" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform" />
+            <Button label="Guardar Configurações" icon="pi pi-save" @click="salvarConfiguracoesAI" :loading="savingAIConfig" class="w-full lg:w-auto !bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform" />
           </div>
 
           <div class="space-y-6 max-w-3xl">
@@ -517,7 +517,7 @@ onMounted(() => {
 
             <div class="flex flex-col gap-2">
               <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Temperatura de Criatividade (0.0 a 1.0)</label>
-              <InputText v-model="formConfigAI.ai_temperature" placeholder="0.4" class="custom-input !text-[12px] md:w-1/3" />
+              <InputText v-model="formConfigAI.ai_temperature" placeholder="0.4" class="custom-input !text-[12px] w-full md:w-1/3" />
               <small class="text-slate-400 italic font-medium ml-1">Valores mais baixos (0.2 - 0.4) geram respostas mais analíticas e precisas.</small>
             </div>
           </div>
@@ -526,19 +526,19 @@ onMounted(() => {
       </TabPanel>
 
         <TabPanel header="Utilizadores">
-            <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 shadow-sm">
-            <div class="flex justify-between items-center mb-6">
+            <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4 md:p-6 shadow-sm">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
                 <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Gestão de Utilizadores</h3>
                 <p class="text-[9px] text-slate-300 font-bold italic mt-1">Utilizadores registados no sistema</p>
                 </div>
-                <div class="flex gap-3 items-center">
+                <div class="flex gap-3 items-center w-full sm:w-auto">
                 <Button icon="pi pi-refresh" @click="carregarUtilizadores" :loading="carregandoUtilizadores" class="w-10 h-10 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !rounded-xl hover:!bg-slate-100 dark:hover:!bg-slate-700 transition-colors shadow-sm" />
-                <Button label="Novo Utilizador" icon="pi pi-user-plus" @click="abrirNovoUser" class="!bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-orange-500/30 hover:scale-105 transition-transform" />
+                <Button label="Novo Utilizador" icon="pi pi-user-plus" @click="abrirNovoUser" class="flex-1 sm:flex-none !bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-orange-500/30 hover:scale-105 transition-transform" />
                 </div>
             </div>
 
-            <DataTable :value="utilizadores" class="p-datatable-sm custom-table" :rows="5" paginator rowHover>
+            <DataTable :value="utilizadores" responsiveLayout="stack" breakpoint="960px" class="p-datatable-sm custom-table" :rows="5" paginator rowHover>
                 <Column field="nome" header="Utilizador">
                   <template #body="s">
                     <div class="flex items-center gap-3">
@@ -621,7 +621,7 @@ onMounted(() => {
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             <div class="lg:col-span-4 space-y-6">
-            <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
+            <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
                 <h3 class="text-[11px] font-black uppercase text-slate-800 dark:text-white tracking-widest mb-6 flex items-center gap-2">
                 <i class="pi pi-key text-orange-500"></i> Alterar Senha
                 </h3>
@@ -647,7 +647,7 @@ onMounted(() => {
                 </div>
             </div>
             
-            <div class="bg-slate-900 rounded-[2rem] p-8 text-white overflow-hidden relative shadow-xl">
+            <div class="bg-slate-900 rounded-[2rem] p-6 md:p-8 text-white overflow-hidden relative shadow-xl">
                 <i class="pi pi-shield absolute -right-4 -bottom-4 text-8xl opacity-10"></i>
                 <h4 class="text-[12px] font-black uppercase tracking-widest mb-3 text-orange-400">Autenticação 2FA</h4>
                 <p class="text-[11px] text-slate-400 mb-6 font-medium leading-relaxed">Adicione uma camada extra de proteção via Authenticator.</p>
@@ -656,9 +656,9 @@ onMounted(() => {
             </div>
 
             <div class="lg:col-span-8">
-            <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-8 shadow-sm h-full">
+            <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm h-full">
                 
-                <div class="flex justify-between items-center mb-8">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
                     <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Controlo de Dispositivos</h3>
                     <p class="text-[9px] text-slate-400 font-bold italic mt-1">Sessões ativas no momento</p>
@@ -669,7 +669,7 @@ onMounted(() => {
                     icon="pi pi-bolt" 
                     @click="encerrarTodasAsSessoes"
                     :loading="loadingSessoes"
-                    class="!bg-rose-50 dark:!bg-rose-500/10 !text-rose-600 dark:!text-rose-400 !border-none !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 !rounded-xl hover:!bg-rose-600 hover:!text-white transition-all shadow-sm hover:scale-105" 
+                    class="w-full md:w-auto !bg-rose-50 dark:!bg-rose-500/10 !text-rose-600 dark:!text-rose-400 !border-none !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 !rounded-xl hover:!bg-rose-600 hover:!text-white transition-all shadow-sm hover:scale-105" 
                 />
                 </div>
 
@@ -679,20 +679,20 @@ onMounted(() => {
                     :class="sessao.atual ? 'bg-orange-50/30 border-orange-100 shadow-inner' : 'bg-white dark:bg-slate-900 shadow-sm'">
                     
                     <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm"
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm shrink-0"
                         :class="sessao.atual ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'">
                         <i :class="[sessao.dispositivo.includes('iPhone') ? 'pi pi-mobile' : 'pi pi-desktop']"></i>
                     </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                        <h4 class="text-[11px] font-bold text-slate-800 dark:text-white">{{ sessao.dispositivo }}</h4>
+                    <div class="overflow-hidden">
+                        <div class="flex items-center gap-2 flex-wrap">
+                        <h4 class="text-[11px] font-bold text-slate-800 dark:text-white truncate">{{ sessao.dispositivo }}</h4>
                         <Tag v-if="sessao.atual" value="Este Dispositivo" severity="warning" class="!text-[8px] !px-2 !font-black !uppercase !tracking-widest" />
                         </div>
-                        <p class="text-[9px] text-slate-400 font-medium tracking-tight">{{ sessao.local }} • {{ sessao.ip }}</p>
+                        <p class="text-[9px] text-slate-400 font-medium tracking-tight truncate">{{ sessao.local }} • {{ sessao.ip }}</p>
                     </div>
                     </div>
 
-                    <div class="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-3 border-t border-slate-100 dark:border-slate-800 gap-2">
                     <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">{{ sessao.data }}</span>
                     <Button v-if="!sessao.atual" 
                             icon="pi pi-sign-out" 
@@ -715,8 +715,8 @@ onMounted(() => {
 
     </TabView>
 
-<Dialog v-model:visible="usuarioDialog" :header="editandoUser ? 'Editar Utilizador' : 'Novo Utilizador'" :modal="true" class="custom-dialog w-full max-w-lg" @hide="usuarioDialog = false">
-    <div class="p-8 space-y-5">
+<Dialog v-model:visible="usuarioDialog" :header="editandoUser ? 'Editar Utilizador' : 'Novo Utilizador'" :modal="true" class="custom-dialog w-[95vw] sm:w-[80vw] md:w-[50vw] max-w-lg" @hide="usuarioDialog = false">
+    <div class="p-4 sm:p-6 md:p-8 space-y-5">
         <div class="flex flex-col gap-1.5">
             <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nome Completo</label>
             <InputText v-model="usuario.nome" class="custom-input" placeholder="Ex: Marcelo Mendes" />
@@ -727,7 +727,7 @@ onMounted(() => {
             <InputText v-model="usuario.email" class="custom-input" placeholder="nome@empresa.com" />
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="flex flex-col gap-1.5">
                 <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Perfil de Acesso</label>
                 <Dropdown v-model="usuario.tipo" :options="['Admin', 'Editor', 'Viewer']" class="custom-dropdown" />
@@ -775,7 +775,7 @@ onMounted(() => {
     </div>
 
     <template #footer>
-        <div class="flex gap-3 justify-end px-8 pb-8">
+        <div class="flex gap-3 justify-end px-4 sm:px-6 md:px-8 pb-4 sm:pb-6 md:pb-8">
             <Button label="Cancelar" icon="pi pi-times" class="p-button-text !text-slate-500 !font-bold" @click="usuarioDialog = false" />
             <Button :label="editandoUser ? 'Atualizar' : 'Criar Utilizador'" icon="pi pi-check" :loading="submetendoUser" class="!bg-orange-600 !border-none !rounded-xl !px-6 !font-black !uppercase !text-[11px] tracking-widest" @click="salvarUtilizador" />
         </div>
@@ -791,14 +791,18 @@ onMounted(() => {
 .animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-:deep(.p-tabview-nav) { @apply bg-transparent border-none flex flex-wrap gap-1 mb-6; }
-:deep(.p-tabview-nav-link) { @apply !bg-white dark:!bg-slate-800 !text-slate-400 font-black text-[9px] uppercase tracking-[0.2em] px-6 py-4 rounded-xl border-none transition-all; }
+:deep(.p-tabview-nav) {
+    @apply flex overflow-x-auto no-scrollbar flex-nowrap mb-6 border-none bg-transparent;
+}
+:deep(.p-tabview-nav-link) {
+    @apply whitespace-nowrap !px-4 !py-3; /* Evita que o texto quebre linha */
+}
 :deep(.p-tabview-selected .p-tabview-nav-link) { @apply !bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 shadow-xl; }
 :deep(.custom-input) { @apply bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 p-4 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium; }
 
 /* Customização dos Modais (Dialog) */
 :deep(.custom-dialog .p-dialog-header) {
-  @apply bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-8 py-6;
+  @apply bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 sm:px-6 md:px-8 py-6;
 }
 :deep(.custom-dialog .p-dialog-title) {
   @apply text-lg font-black italic tracking-tight text-slate-800 dark:text-white;
