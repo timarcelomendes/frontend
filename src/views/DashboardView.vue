@@ -119,20 +119,24 @@ const obterParametrosFiltro = () => {
 const carregarDashboard = async () => {
   loading.value = true;
   try {
-    const queryParams = obterParametrosFiltro(); // Pega as datas formatadas
+    const queryParams = obterParametrosFiltro();
 
-    // Adiciona os parâmetros a todas as chamadas
-    const [resKpis, resDetalhes, resTrend, resNuvem] = await Promise.all([
+    // Chamamos a nossa nova rota unificada + as rotas de tendências/detalhes
+    const [resKpis, resDetalhes, resTrend] = await Promise.all([
       api.get(`/dashboard/kpis${queryParams}`),
       api.get(`/dashboard/detalhes${queryParams}`),
-      api.get(`/dashboard/trend${queryParams}`),
-      api.get(`/dashboard/nuvem-palavras${queryParams}`)
+      api.get(`/dashboard/trend${queryParams}`)
     ]);
 
     if (resKpis.data.status === 'success') {
+      // 1. Atualiza KPIs e Feedbacks
       kpis.value = { ...kpis.value, ...resKpis.data.kpis };
       feedbacks.value = resKpis.data.feedbacks;
       
+      // 2. 🚀 MAPEIA A NUVEM DE PALAVRAS (vindo da nova rota)
+      nuvemPalavras.value = resKpis.data.kpis.termos_frequentes || [];
+      
+      // 3. Insights Financeiros
       const percDetratores = kpis.value.total_respostas > 0 ? (kpis.value.detratores / kpis.value.total_respostas) * 100 : 0;
       smartInsights.value.valor_em_risco = `€ ${kpis.value.revenue_at_risk.toLocaleString('pt-PT')}`; 
       smartInsights.value.nivel_alerta = percDetratores > 20 ? 'Crítico' : 'Estável';
@@ -145,11 +149,9 @@ const carregarDashboard = async () => {
       taxaResposta.value = resDetalhes.data.taxa_resposta;
     }
 
-    if (resNuvem.data.status === 'success') nuvemPalavras.value = resNuvem.data.nuvem;
-
     nomeUsuario.value = (localStorage.getItem('usuario_nome') || 'Executivo').split(' ')[0];
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao aplicar filtros.', life: 5000 });
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao processar dados do dashboard.', life: 5000 });
   } finally {
     loading.value = false;
   }
@@ -193,6 +195,26 @@ const montarGraficos = (trendData) => {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     layout: { padding: 10 }
+  };
+};
+
+// Dentro do <script setup>, logo abaixo das suas outras computed
+const maxFrequencia = computed(() => {
+  if (!nuvemPalavras.value || nuvemPalavras.value.length === 0) return 1;
+  return Math.max(...nuvemPalavras.value.map(p => p.quantidade));
+});
+
+// Função para calcular o tamanho dinâmico (entre 0.7rem e 1.6rem)
+const calcularEstiloBolha = (quantidade) => {
+  const minSize = 0.7;
+  const maxSize = 1.6;
+  // Regra de três para definir o tamanho proporcional
+  const tamanho = minSize + ((quantidade / maxFrequencia.value) * (maxSize - minSize));
+  
+  return {
+    fontSize: `${tamanho}rem`,
+    opacity: 0.5 + ((quantidade / maxFrequencia.value) * 0.5),
+    padding: `${tamanho * 0.4}rem ${tamanho * 0.8}rem`
   };
 };
 
@@ -469,6 +491,34 @@ onMounted(carregarDashboard);
                 </div>
               </div>
             </div>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 col-span-12 lg:col-span-4 overflow-hidden">
+              <div class="flex items-center justify-between mb-8">
+                  <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Nuvem de Sentimentos</h3>
+                  <i class="pi pi-cloud text-slate-300"></i>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-center gap-3">
+                  <div v-for="item in nuvemPalavras" :key="item.palavra" 
+                      :style="calcularEstiloBolha(item.quantidade)"
+                      class="transition-all duration-300 hover:scale-110 cursor-default
+                              bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50
+                              rounded-full flex items-center gap-2 group shadow-sm hover:shadow-orange-500/10 hover:border-orange-500/30">
+                      
+                      <span class="font-bold text-slate-600 dark:text-slate-300 group-hover:text-orange-600 transition-colors">
+                          {{ item.palavra }}
+                      </span>
+                      
+                      <span class="text-[9px] opacity-40 group-hover:opacity-100 font-black px-1.5 py-0.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-500 transition-all">
+                          {{ item.quantidade }}
+                      </span>
+                  </div>
+              </div>
+
+              <div v-if="nuvemPalavras.length === 0" class="py-12 text-center opacity-30 italic text-xs">
+                  Aguardando dados de comentários...
+              </div>
           </div>
 
         </div>

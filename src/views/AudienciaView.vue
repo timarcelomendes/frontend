@@ -12,6 +12,11 @@ import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import Tag from 'primevue/tag';
 
+const planoDialog = ref(false);
+const carregandoPlano = ref(false);
+const planoTexto = ref('');
+const empresaSelecionada = ref('');
+
 // 1. Estados de Dados
 const toast = useToast();
 const clientes = ref([]); 
@@ -201,6 +206,62 @@ const gerarIniciais = (nome) => {
   return partes.length > 1 ? (partes[0][0] + partes[partes.length - 1][0]).toUpperCase() : partes[0][0].toUpperCase();
 };
 
+const gerarPlano = async (empresa) => {
+    empresaSelecionada.value = empresa;
+    planoDialog.value = true;
+    
+    // 1. 🔍 TENTAR RECUPERAR DO CACHE (SessionStorage)
+    const chaveCache = `nps_ai_plano_${empresa}`;
+    const planoNoCache = sessionStorage.getItem(chaveCache);
+
+    if (planoNoCache) {
+        console.log(`🚀 Plano de [${empresa}] recuperado do sessionStorage.`);
+        planoTexto.value = planoNoCache;
+        carregandoPlano.value = false;
+        return; // Sai da função sem gastar API
+    }
+
+    // 2. ⚡ SE NÃO HOUVER CACHE, FAZ O CARREGAMENTO REAL
+    planoTexto.value = '';
+    carregandoPlano.value = true;
+
+    try {
+        const res = await api.get(`/audiencia/plano-acao?empresa=${encodeURIComponent(empresa)}`);
+        const resultado = res.data.plano;
+
+        // 3. 💾 SALVAR NO CACHE para persistir durante a sessão
+        sessionStorage.setItem(chaveCache, resultado);
+        
+        planoTexto.value = resultado;
+    } catch (error) {
+        toast.add({ 
+            severity: 'error', 
+            summary: 'Erro na Consultoria', 
+            detail: 'Não foi possível gerar o plano agora.', 
+            life: 3000 
+        });
+        planoDialog.value = false;
+    } finally {
+        carregandoPlano.value = false;
+    }
+};
+
+const recarregarPlano = (empresa) => {
+    // 1. Remove apenas o cache desta empresa
+    const chaveCache = `nps_ai_plano_${empresa}`;
+    sessionStorage.removeItem(chaveCache);
+    
+    // 2. Chama a função principal que agora não encontrará o cache e irá à API
+    gerarPlano(empresa);
+    
+    toast.add({ 
+        severity: 'info', 
+        summary: 'IA Atualizada', 
+        detail: 'Gerando uma nova análise baseada nos dados mais recentes.', 
+        life: 2000 
+    });
+};
+
 onMounted(carregarClientes);
 </script>
 
@@ -310,6 +371,23 @@ onMounted(carregarClientes);
           </template>
         </Column>
 
+        <Column header="Estratégia" class="w-[180px]">
+          <template #body="slotProps">
+            <Button 
+              label="Ação" 
+              icon="pi pi-sparkles" 
+              @click="gerarPlano(slotProps.data.empresa)" 
+              :loading="carregandoPlano && empresaSelecionada === slotProps.data.empresa"
+              class="p-button-text p-button-sm 
+                    !text-[10px] !font-black !uppercase !tracking-widest
+                    !text-orange-600 !border !border-orange-500/20 !rounded-xl
+                    !py-2 !px-3 
+                    hover:!bg-orange-500/5 hover:!border-orange-500/40 
+                    transition-all duration-300 group"
+            />
+          </template>
+        </Column>
+
         <Column field="status_envio" header="Status" sortable style="min-width: 140px">
         <template #body="slotProps">
             <div class="flex items-center gap-2">
@@ -394,6 +472,42 @@ onMounted(carregarClientes);
         </div>
       </template>
     </Dialog>
+    <Dialog v-model:visible="planoDialog" :modal="true" :draggable="false" class="custom-dialog w-full max-w-xl">
+      <template #header>
+          <div class="flex items-center justify-between w-full pr-8">
+              <div class="flex items-center gap-3">
+                  <i class="pi pi-sparkles text-orange-500"></i>
+                  <span class="text-sm font-black uppercase tracking-widest text-slate-400">Plano de Ação Inteligente</span>
+              </div>
+              
+              <Button 
+                  v-if="!carregandoPlano"
+                  icon="pi pi-refresh" 
+                  @click="recarregarPlano(empresaSelecionada)" 
+                  class="p-button-text p-button-secondary !p-2 !rounded-full hover:!bg-slate-100 dark:hover:!bg-slate-800 transition-all"
+                  v-tooltip.left="'Gerar nova análise (ignorar cache)'"
+              />
+          </div>
+      </template>
+
+      <div class="p-8 pt-2">
+          <div class="mb-6">
+              <h2 class="text-2xl font-black italic text-slate-800 dark:text-white leading-tight">
+                  {{ empresaSelecionada }}
+              </h2>
+          </div>
+
+          <div v-if="carregandoPlano" class="flex flex-col items-center justify-center py-12 gap-4">
+              <i class="pi pi-spin pi-spinner text-3xl text-orange-500"></i>
+              <p class="text-[10px] font-black uppercase tracking-tighter text-slate-400">Consultando Gauge AI...</p>
+          </div>
+          
+          <div v-else class="relative pl-6 border-l-2 border-orange-500/30 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">
+              {{ planoTexto }}
+          </div>
+      </div>
+      
+      </Dialog>
 
   </div>
 </template>
