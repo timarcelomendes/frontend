@@ -792,10 +792,21 @@ onMounted(() => {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 :deep(.p-tabview-nav) {
-    @apply flex overflow-x-auto no-scrollbar flex-nowrap mb-6 border-none bg-transparent;
+    /* Removemos o no-scrollbar do apply */
+    @apply flex overflow-x-auto flex-nowrap mb-6 border-none bg-transparent;
+    
+    /* Esconde a barra no Firefox e IE */
+    scrollbar-width: none; 
+    -ms-overflow-style: none;
 }
+
+/* Esconde a barra no Chrome, Safari e Edge */
+:deep(.p-tabview-nav)::-webkit-scrollbar {
+    display: none;
+}
+
 :deep(.p-tabview-nav-link) {
-    @apply whitespace-nowrap !px-4 !py-3; /* Evita que o texto quebre linha */
+    @apply whitespace-nowrap !px-4 !py-3;
 }
 :deep(.p-tabview-selected .p-tabview-nav-link) { @apply !bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 shadow-xl; }
 :deep(.custom-input) { @apply bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 p-4 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium; }
