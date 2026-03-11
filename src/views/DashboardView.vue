@@ -27,7 +27,6 @@ const kpis = ref({
   detratores: 0, 
   nps_decisor: 0, 
   taxa_jira: 0,
-  total_decisores: 0, 
   delta_score: "+2.1", 
   delta_total: "+5%",
   total_decisores: 0, 
@@ -83,23 +82,19 @@ const chartOptionsPie = ref(null);
 // 📅 VIGILANTE DO FILTRO DE DATAS
 // ==========================================
 watch(datasFiltro, (novasDatas) => {
-  // Se o utilizador escolheu as DUAS datas (início e fim)
   if (novasDatas && novasDatas[0] && novasDatas[1]) {
     carregarDashboard();
   } 
-  // Se o utilizador clicou no "X" para limpar o calendário
   else if (!novasDatas || novasDatas.length === 0) {
     carregarDashboard(); 
   }
 });
 
 // ==========================================
-// 📅 CENTRAL DE FILTROS (Corrige bug de fuso horário)
+// 📅 CENTRAL DE FILTROS
 // ==========================================
-
 const obterParametrosFiltro = () => {
   if (datasFiltro.value && datasFiltro.value[0] && datasFiltro.value[1]) {
-    // Formata a data respeitando o fuso horário local (evita que volte 1 dia atrás)
     const formatarData = (data) => {
       const d = new Date(data);
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -121,7 +116,6 @@ const carregarDashboard = async () => {
   try {
     const queryParams = obterParametrosFiltro();
 
-    // Chamamos a nossa nova rota unificada + as rotas de tendências/detalhes
     const [resKpis, resDetalhes, resTrend] = await Promise.all([
       api.get(`/dashboard/kpis${queryParams}`),
       api.get(`/dashboard/detalhes${queryParams}`),
@@ -129,14 +123,10 @@ const carregarDashboard = async () => {
     ]);
 
     if (resKpis.data.status === 'success') {
-      // 1. Atualiza KPIs e Feedbacks
       kpis.value = { ...kpis.value, ...resKpis.data.kpis };
       feedbacks.value = resKpis.data.feedbacks;
-      
-      // 2. 🚀 MAPEIA A NUVEM DE PALAVRAS (vindo da nova rota)
       nuvemPalavras.value = resKpis.data.kpis.termos_frequentes || [];
       
-      // 3. Insights Financeiros
       const percDetratores = kpis.value.total_respostas > 0 ? (kpis.value.detratores / kpis.value.total_respostas) * 100 : 0;
       smartInsights.value.valor_em_risco = `€ ${kpis.value.revenue_at_risk.toLocaleString('pt-PT')}`; 
       smartInsights.value.nivel_alerta = percDetratores > 20 ? 'Crítico' : 'Estável';
@@ -198,17 +188,14 @@ const montarGraficos = (trendData) => {
   };
 };
 
-// Dentro do <script setup>, logo abaixo das suas outras computed
 const maxFrequencia = computed(() => {
   if (!nuvemPalavras.value || nuvemPalavras.value.length === 0) return 1;
   return Math.max(...nuvemPalavras.value.map(p => p.quantidade));
 });
 
-// Função para calcular o tamanho dinâmico (entre 0.7rem e 1.6rem)
 const calcularEstiloBolha = (quantidade) => {
   const minSize = 0.7;
   const maxSize = 1.6;
-  // Regra de três para definir o tamanho proporcional
   const tamanho = minSize + ((quantidade / maxFrequencia.value) * (maxSize - minSize));
   
   return {
@@ -233,7 +220,7 @@ const gerarInsightIA = async () => {
   resultadoAI.value = null;  
   
   try {
-    const queryParams = obterParametrosFiltro(); // Agora a IA recebe as datas!
+    const queryParams = obterParametrosFiltro();
     const response = await api.get(`/dashboard/magic-ai${queryParams}`);
     
     if (response.data.status === 'success' && response.data.insights.arder) {
@@ -258,7 +245,7 @@ const exportando = ref(false);
 const exportarDados = async () => {
   exportando.value = true;
   try {
-    const queryParams = obterParametrosFiltro(); // Agora exporta apenas as datas filtradas
+    const queryParams = obterParametrosFiltro();
     const response = await api.get(`/dashboard/exportar${queryParams}`, { responseType: 'blob' });
     
     const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -300,7 +287,6 @@ onMounted(carregarDashboard);
           </div>
         </div>
         <div class="flex flex-wrap md:flex-nowrap gap-3">
-          
           <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 h-10 shadow-sm transition-all focus-within:ring-2 focus-within:ring-orange-500/20">
             <i class="pi pi-calendar text-slate-400 text-xs"></i>
             <Calendar v-model="datasFiltro" selectionMode="range" :manualInput="false" placeholder="Filtrar por período..." dateFormat="dd/mm/yy" class="border-none w-56 shadow-none !text-[11px] !font-bold custom-calendar bg-transparent" @hide="carregarDashboard" />
@@ -320,7 +306,6 @@ onMounted(carregarDashboard);
       <div v-else class="space-y-6">
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          
           <div class="bg-white dark:bg-slate-900/80 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
             <div class="flex justify-between items-start mb-6">
               <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Score Global</span>
@@ -339,7 +324,7 @@ onMounted(carregarDashboard);
               <i class="pi pi-chart-line text-rose-500/50"></i>
             </div>
             <div class="relative z-10">
-              <div class="text-5xl font-black text-white tracking-tighter drop-shadow-md">{{ smartInsights.valor_em_risco }}</div>
+              <div class="text-5xl font-black text-white tracking-tighter drop-shadow-md truncate">{{ smartInsights.valor_em_risco }}</div>
               <div class="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-lg backdrop-blur-sm">
                  <div class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></div>
                  <span class="text-[9px] text-slate-300 font-black uppercase tracking-widest">Base Detratora</span>
@@ -396,7 +381,6 @@ onMounted(carregarDashboard);
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
           <div class="lg:col-span-2 bg-white dark:bg-slate-900/80 p-8 lg:p-10 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
             <div class="flex justify-between items-center mb-8">
               <h3 class="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Evolução da Marca</h3>
@@ -409,14 +393,12 @@ onMounted(carregarDashboard);
 
           <div class="bg-gradient-to-br from-indigo-900 to-slate-900 p-8 lg:p-10 rounded-[2.5rem] border border-indigo-500/20 shadow-xl relative overflow-hidden group flex flex-col justify-between">
             <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-[40px] pointer-events-none"></div>
-            
             <div>
               <div class="flex items-center gap-2 mb-2">
                 <i class="pi pi-sparkles text-indigo-400 text-xs"></i>
                 <h3 class="text-xs font-black text-indigo-400 uppercase tracking-[0.2em]">Simulador de Retenção</h3>
               </div>
               <p class="text-[10px] text-slate-400 font-medium mb-8">Arraste a barra para prever o impacto de converter Detratores em Promotores.</p>
-              
               <div class="mb-6 relative z-10">
                 <div class="flex justify-between text-white text-xs font-bold mb-3">
                   <span class="uppercase tracking-widest text-[9px] text-slate-300">Meta de Conversão</span>
@@ -425,7 +407,6 @@ onMounted(carregarDashboard);
                 <Slider v-model="porcentagemConversao" :min="0" :max="100" class="w-full custom-slider" />
               </div>
             </div>
-
             <div class="grid grid-cols-2 gap-4 mt-4 relative z-10">
               <div class="bg-white/5 p-4 rounded-[1.5rem] border border-white/10 backdrop-blur-sm transition-all duration-300" :class="{'border-emerald-500/30 bg-emerald-500/5': simulador.npsGanho > 0}">
                 <span class="text-[8px] font-black uppercase text-slate-400 tracking-widest">NPS Projetado</span>
@@ -434,7 +415,7 @@ onMounted(carregarDashboard);
               </div>
               <div class="bg-white/5 p-4 rounded-[1.5rem] border border-white/10 backdrop-blur-sm transition-all duration-300" :class="{'border-emerald-500/30 bg-emerald-500/5': simulador.receitaSalva > 0}">
                 <span class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Receita Salva</span>
-                <div class="text-2xl font-black text-emerald-400 mt-1">€ {{ (simulador.receitaSalva / 1000).toFixed(1) }}k</div>
+                <div class="text-2xl font-black text-emerald-400 mt-1 truncate">€ {{ (simulador.receitaSalva / 1000).toFixed(1) }}k</div>
                 <div class="text-[9px] font-black text-slate-400 uppercase mt-1" v-if="simulador.receitaSalva === 0">Sem ganhos</div>
               </div>
             </div>
@@ -445,20 +426,17 @@ onMounted(carregarDashboard);
           
           <div class="bg-white dark:bg-slate-900/80 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center relative">
             <h3 class="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] w-full text-left mb-6">Polaridade</h3>
-            
             <div class="relative w-48 h-48 flex items-center justify-center mx-auto">
               <Chart v-if="chartDataPie" type="doughnut" :data="chartDataPie" :options="chartOptionsPie" class="w-full h-full relative z-10 drop-shadow-md" />
-              
               <div class="absolute inset-0 flex flex-col items-center justify-center z-0 pointer-events-none">
                 <span class="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{{ kpis.total_respostas }}</span>
                 <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Respostas</span>
               </div>
             </div>
-
             <div class="flex gap-4 mt-8 w-full justify-center">
-                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-emerald-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.promotores }}</span></div>
-                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-yellow-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.neutros }}</span></div>
-                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-rose-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.detratores }}</span></div>
+               <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-emerald-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.promotores }}</span></div>
+               <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-yellow-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.neutros }}</span></div>
+               <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-rose-500"></div><span class="text-[9px] font-black uppercase text-slate-500">{{ kpis.detratores }}</span></div>
             </div>
           </div>
 
@@ -496,30 +474,27 @@ onMounted(carregarDashboard);
             </div>
           </div>
 
-          <div class="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 col-span-12 lg:col-span-4 overflow-hidden">
+          <div class="bg-white dark:bg-slate-900/80 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 md:col-span-3 overflow-hidden shadow-sm">
               <div class="flex items-center justify-between mb-8">
                   <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Nuvem de Sentimentos</h3>
                   <i class="pi pi-cloud text-slate-300"></i>
               </div>
 
-              <div class="flex flex-wrap items-center justify-center gap-3">
+              <div class="flex flex-wrap items-center justify-center gap-3 min-h-[100px]">
                   <div v-for="item in nuvemPalavras" :key="item.palavra" 
                       :style="calcularEstiloBolha(item.quantidade)"
                       class="transition-all duration-300 hover:scale-110 cursor-default
                               bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50
                               rounded-full flex items-center gap-2 group shadow-sm hover:shadow-orange-500/10 hover:border-orange-500/30">
-                      
                       <span class="font-bold text-slate-600 dark:text-slate-300 group-hover:text-orange-600 transition-colors">
                           {{ item.palavra }}
                       </span>
-                      
                       <span class="text-[9px] opacity-40 group-hover:opacity-100 font-black px-1.5 py-0.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-500 transition-all">
                           {{ item.quantidade }}
                       </span>
                   </div>
               </div>
-
-              <div v-if="nuvemPalavras.length === 0" class="py-12 text-center opacity-30 italic text-xs">
+              <div v-if="nuvemPalavras.length === 0" class="py-12 text-center opacity-40 italic text-xs text-slate-500 font-medium">
                   Aguardando dados de comentários...
               </div>
           </div>
@@ -528,8 +503,8 @@ onMounted(carregarDashboard);
 
       </div>
     </div>
+
     <Dialog v-model:visible="dialogAI" :modal="true" :style="{width: '650px'}" :closable="false" class="rounded-[2.5rem] overflow-hidden p-0 shadow-2xl bg-slate-900 border border-indigo-500/20 custom-dialog-no-header">
-      
       <div class="relative bg-slate-900 p-8 overflow-hidden">
         <div class="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px]"></div>
         <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-purple-500/20 rounded-full blur-[80px]"></div>
@@ -555,25 +530,22 @@ onMounted(carregarDashboard);
         <p class="text-slate-500 text-[10px] uppercase tracking-widest font-bold">A correlacionar Detratores e Promotores</p>
       </div>
 
-      <div v-else-if="resultadoAI" class="p-8 space-y-4 bg-slate-900/90 relative z-10">
-        
-        <div class="p-6 bg-rose-500/10 border border-rose-500/20 rounded-[2rem] flex gap-5 items-start group hover:bg-rose-500/20 transition-colors">
+      <div v-else-if="resultadoAI" class="p-8 space-y-4 bg-slate-900/90 relative z-10 max-h-[60vh] overflow-y-auto">
+        <div class="p-6 bg-rose-500/10 border border-rose-500/20 rounded-[2rem] flex flex-col sm:flex-row gap-5 items-start group hover:bg-rose-500/20 transition-colors">
           <div class="w-12 h-12 rounded-[1.2rem] bg-rose-500 flex items-center justify-center shrink-0 shadow-lg shadow-rose-500/30 group-hover:scale-110 transition-transform"><i class="pi pi-fire text-white text-lg"></i></div>
           <div>
             <h4 class="text-[10px] font-black uppercase tracking-widest text-rose-400 mb-2">O Que Está a Falhar</h4>
             <p class="text-sm text-slate-300 font-medium leading-relaxed">{{ resultadoAI.arder }}</p>
           </div>
         </div>
-
-        <div class="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] flex gap-5 items-start group hover:bg-emerald-500/20 transition-colors">
+        <div class="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] flex flex-col sm:flex-row gap-5 items-start group hover:bg-emerald-500/20 transition-colors">
           <div class="w-12 h-12 rounded-[1.2rem] bg-emerald-500 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform"><i class="pi pi-heart-fill text-white text-lg"></i></div>
           <div>
             <h4 class="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2">O Que Está a Funcionar</h4>
             <p class="text-sm text-slate-300 font-medium leading-relaxed">{{ resultadoAI.amar }}</p>
           </div>
         </div>
-
-        <div class="p-6 bg-indigo-500/10 border border-indigo-500/20 rounded-[2rem] flex gap-5 items-start group hover:bg-indigo-500/20 transition-colors">
+        <div class="p-6 bg-indigo-500/10 border border-indigo-500/20 rounded-[2rem] flex flex-col sm:flex-row gap-5 items-start group hover:bg-indigo-500/20 transition-colors">
           <div class="w-12 h-12 rounded-[1.2rem] bg-indigo-500 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/30 group-hover:scale-110 transition-transform"><i class="pi pi-compass text-white text-lg"></i></div>
           <div>
             <h4 class="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2">Plano de Ação Sugerido</h4>
@@ -594,7 +566,6 @@ onMounted(carregarDashboard);
 .animate-ping { animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
 @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
 
-/* Customização Premium do Slider do PrimeVue para combinar com o Dark Mode */
 :deep(.custom-slider.p-slider) {
   @apply bg-white/10 h-1.5 border-none;
 }
@@ -617,7 +588,8 @@ onMounted(carregarDashboard);
   padding: 0.5rem 0.5rem; 
   outline: none; 
   box-shadow: none; 
-  color: inherit; }
+  color: inherit; 
+}
 
 ::-webkit-scrollbar { display: none; }
 </style>
