@@ -1,7 +1,5 @@
 import axios from 'axios';
 
-console.log("Conectando em:", import.meta.env.VITE_API_BASE_URL);
-
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL + '/api'
 });
@@ -13,5 +11,19 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// INTERCETOR DE RESPOSTA
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.clear();
+      
+      window.location.href = '/login'; 
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

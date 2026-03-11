@@ -36,9 +36,13 @@ onMounted(() => {
 });
 
 const fazerLogin = async () => {
-  // ✅ Usando 'credenciais.value.email' como no seu original
   if (!credenciais.value.email || !credenciais.value.password) {
-    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha os campos.', life: 3000 });
+    toast.add({ 
+      severity: 'warn', 
+      summary: 'Atenção', 
+      detail: 'Preencha o e-mail e a palavra-passe.', 
+      life: 3000 
+    });
     return;
   }
 
@@ -46,54 +50,69 @@ const fazerLogin = async () => {
   temErro.value = false;
   
   try {
-    // 1. Tenta o login
-    const response = await api.post('/login', { // Confirme se a sua rota é /login ou /api/login
+    const response = await api.post('/login', {
       email: credenciais.value.email,
       password: credenciais.value.password,
       remember: lembrarDeMim.value
     }); 
     
+    console.log("Dados do Servidor:", response.data);
+
     const token = response.data.access_token;
 
     if (token) {
-      // 2. 🚀 SALVAMENTO IMEDIATO
-      if (lembrarDeMim.value) {
-        localStorage.setItem('nps_remember_email', credenciais.value.email);
-      } else {
-        localStorage.removeItem('nps_remember_email');
-      }
 
-      // 3. Guarda o restante dos dados
+      const emailSalvo = credenciais.value.email;
+
+      localStorage.clear(); 
+
       localStorage.setItem('token', token);
       localStorage.setItem('usuario_id', response.data.usuario_id);
       localStorage.setItem('usuario_nome', response.data.nome);
-      localStorage.setItem('usuario_cargo', response.data.cargo || 'Analista');
-      localStorage.setItem('usuario_tipo', response.data.tipo); 
+      localStorage.setItem('usuario_tipo', response.data.tipo); // Perfil (Admin/User)
+      localStorage.setItem('usuario_cargo', response.data.cargo || 'Analista'); // Cargo na Sidebar
+
+      if (lembrarDeMim.value) {
+        localStorage.setItem('nps_remember_email', emailSalvo);
+      }
+
+      toast.add({ 
+        severity: 'success', 
+        summary: 'Acesso Autorizado', 
+        detail: `Bem-vindo, ${response.data.nome}!`, 
+        life: 2000 
+      });
       
-      toast.add({ severity: 'success', summary: 'Conectado!', detail: `Bem-vindo!`, life: 3000 });
-      
-      // 4. Redirecionamento
       setTimeout(() => {
-        window.location.href = '/';
-      }, 800); 
+        window.location.href = '/'; 
+      }, 700); 
+
+    } else {
+      throw new Error("O servidor não devolveu um token de acesso.");
     }
+
   } catch (error) {
     temErro.value = true;
+    console.error("Erro no processo de login:", error);
+
+    const msgErro = error.response?.data?.detail || 'Não foi possível conectar ao servidor.';
     
-    // 🛡️ LÓGICA DE CAPTURA DO ERRO DO BACKEND 
-    const msgErro = error.response?.data?.detail || 'Falha no login. Verifique as suas credenciais.';
+    const erroNormalizado = msgErro.toLowerCase();
     
-    // Verifica se a mensagem devolvida pelo Python contém "inativa" ou "aprovação"
-    if (msgErro.toLowerCase().includes('inativa') || msgErro.toLowerCase().includes('aprovação')) {
+    if (erroNormalizado.includes('inativa') || erroNormalizado.includes('aprovação')) {
       toast.add({ 
         severity: 'warn', 
-        summary: 'Acesso Restrito', 
-        detail: msgErro, // Mostra a mensagem exata que você escreveu no Python
+        summary: 'Acesso Pendente', 
+        detail: msgErro, 
         life: 6000 
       });
     } else {
-      // Erros genéricos ou senha incorreta
-      toast.add({ severity: 'error', summary: 'Erro no Login', detail: msgErro, life: 4000 });
+      toast.add({ 
+        severity: 'error', 
+        summary: 'Erro de Autenticação', 
+        detail: msgErro, 
+        life: 4000 
+      });
     }
   } finally {
     loading.value = false;

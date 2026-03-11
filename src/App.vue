@@ -35,7 +35,6 @@ onMounted(() => {
   
   const perfil = localStorage.getItem('usuario_tipo'); 
   isAdmin.value = (perfil || '').toLowerCase() === 'admin';
-  // 🕵️‍♂️ O DETETIVE: Vai imprimir a verdade na consola
   console.log("---- DEBUG MENU ----");
   console.log("Valor bruto que está no storage:", perfil);
   console.log("É Admin?", isAdmin.value);
