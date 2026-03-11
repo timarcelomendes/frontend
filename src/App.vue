@@ -232,48 +232,38 @@ const logout = () => {
   </div>
 </template>
 
-<style scoped>
-/* 💡 REFERÊNCIA TAILWIND v4 */
-@reference "tailwindcss";
+<style scoped lang="postcss">
+@reference "tailwindcss"; /* 👈 ESTA É A CHAVE NO TAILWIND V4! */
 
-.animate-fadein {
-  animation: fadeIn 0.3s ease-in-out;
+/* Transições suaves do menu */
+.animate-fadein { 
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+}
+@keyframes fadeIn { 
+  from { opacity: 0; transform: translateX(-10px); } 
+  to { opacity: 1; transform: translateX(0); } 
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateX(-8px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-/* Estilos de Navegação */
+/* Formatação base dos botões do menu */
 .nav-item {
-  @apply flex items-center gap-4 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 
-         hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-orange-500 transition-all duration-200;
+  @apply flex items-center gap-4 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 font-bold text-sm transition-all duration-300 w-full mb-1;
 }
 
+/* Efeito ao passar o rato (Hover) */
+.nav-item:hover {
+  @apply bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200;
+}
+
+/* Estado Ativo (Página atual selecionada) */
+.router-link-active.nav-item {
+  @apply bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 shadow-sm border border-orange-100 dark:border-orange-500/20;
+}
+
+/* Ícones do menu */
 .nav-item i {
-  @apply text-lg w-6 text-center;
+  @apply text-lg transition-colors duration-300;
 }
-
-.nav-item span {
-  @apply text-xs font-bold uppercase tracking-widest;
-}
-
-/* Link Ativo */
-.router-link-active {
-  @apply bg-orange-500/10 text-orange-600 !font-black;
-}
-
-.router-link-active i {
-  @apply text-orange-600;
-}
-
-/* Transição de Página */
-.page-enter-active, .page-leave-active {
-  transition: opacity 0.2s, transform 0.2s;
-}
-.page-enter-from, .page-leave-to {
-  opacity: 0;
-  transform: translateY(5px);
+.router-link-active.nav-item i {
+  @apply text-orange-500 dark:text-orange-400;
 }
 </style>

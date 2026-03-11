@@ -557,7 +557,7 @@ onMounted(carregarDashboard);
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="postcss">
 @reference "tailwindcss";
 
 .animate-fadein { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }

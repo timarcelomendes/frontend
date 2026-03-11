@@ -99,7 +99,7 @@ const recuperarSenha = async () => {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="postcss">
 /* Animação de entrada e saída suave */
 .fade-slide-enter-active, .fade-slide-leave-active {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);

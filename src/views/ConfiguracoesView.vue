@@ -59,6 +59,20 @@ const submetendoUser = ref(false);
 
 const opcoesTipo = ['Admin', 'Manager', 'Viewer'];
 
+// Função para formatar a data de último acesso
+const formatarDataHora = (dataString) => {
+  if (!dataString) return 'Nunca acedeu';
+  
+  const data = new Date(dataString);
+  return data.toLocaleString('pt-PT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).replace(',', ' às');
+};
+
 // 🎲 MOTOR DE GERAÇÃO DE SENHA
 const gerarSenhaAleatoria = () => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
@@ -583,6 +597,17 @@ onMounted(() => {
                 </template>
                 </Column>
 
+                <Column field="ultimo_acesso" header="Último Acesso" sortable>
+                  <template #body="{ data }">
+                    <div class="flex items-center gap-2">
+                      <i class="pi pi-clock text-slate-400 text-[10px]"></i>
+                      <span :class="data.ultimo_acesso ? 'text-slate-600 dark:text-slate-300 font-medium' : 'text-slate-400 italic'">
+                        {{ formatarDataHora(data.ultimo_acesso) }}
+                      </span>
+                    </div>
+                  </template>
+                </Column>
+
                 <Column alignFrozen="right" style="width: 100px">
                   <template #body="s">
                     <div class="flex gap-2 justify-end">
@@ -785,7 +810,7 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="postcss">
 @reference "tailwindcss";
 
 .animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }

@@ -7,3 +7,33 @@ html, body {
   padding: 0;
   height: 100%;
 }
+
+/* --- FORMATAÇÃO DO MENU (NAV-ITEMS) --- */
+.animate-fadein { 
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+}
+
+@keyframes fadeIn { 
+  from { opacity: 0; transform: translateX(-10px); } 
+  to { opacity: 1; transform: translateX(0); } 
+}
+
+.nav-item {
+  @apply flex items-center gap-4 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 font-bold text-sm transition-all duration-300 w-full mb-1;
+}
+
+.nav-item:hover {
+  @apply bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200;
+}
+
+.router-link-active.nav-item {
+  @apply bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 shadow-sm border border-orange-100 dark:border-orange-500/20;
+}
+
+.nav-item i {
+  @apply text-lg transition-colors duration-300;
+}
+
+.router-link-active.nav-item i {
+  @apply text-orange-500 dark:text-orange-400;
+}
