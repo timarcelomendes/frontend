@@ -4,6 +4,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import api from '../services/api';
 
+import Button from 'primevue/button';
+import Toast from 'primevue/toast';
+
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
@@ -41,41 +44,69 @@ const salvarNovaSenha = async () => {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-500">
+  <div class="flex min-h-screen bg-slate-50 dark:bg-slate-950 items-center justify-center p-4">
     <Toast />
     
-    <div class="w-full max-w-md bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 animate-fadein">
+    <div class="relative w-full max-w-md bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 transition-all duration-500">
+      
+      <div v-if="loading" class="absolute top-0 left-0 w-full h-1 bg-orange-500/20 overflow-hidden rounded-t-[2rem]">
+        <div class="h-full bg-orange-500 animate-progress"></div>
+      </div>
+
       <div class="text-center mb-8">
-        <div class="w-20 h-20 bg-orange-100 dark:bg-orange-500/10 text-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-6 rotate-3">
-          <i class="pi pi-lock text-3xl"></i>
+        <div class="flex items-center justify-center gap-3 mb-8">
+          <img src="/nps.svg" alt="Ícone NPS" class="h-10 w-auto drop-shadow-sm" />
+          <div class="flex flex-col justify-center text-left">
+            <span class="text-3xl font-black tracking-tighter uppercase italic leading-none text-slate-900 dark:text-white">
+              NPS PRO
+            </span>
+            <span class="text-[10px] font-black tracking-[0.2em] uppercase text-orange-500 mt-1">
+              INTELLIGENCE
+            </span>
+          </div>
         </div>
-        <h2 class="text-3xl font-black text-slate-900 dark:text-white mb-2 italic tracking-tight">Nova Senha</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">Crie uma credencial forte para a sua conta.</p>
+
+        <div class="w-16 h-16 bg-orange-50 dark:bg-orange-500/5 text-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-6 rotate-3 hover:rotate-0 transition-transform duration-300">
+          <i class="pi pi-key text-2xl"></i>
+        </div>
+        
+        <h2 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Nova Senha</h2>
+        <p class="mt-3 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+          Crie uma credencial forte e segura para a sua conta.
+        </p>
       </div>
       
       <form @submit.prevent="salvarNovaSenha" class="space-y-6">
         <div class="space-y-2">
           <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nova Palavra-Passe</label>
-          <div class="relative">
-            <i class="pi pi-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          
+          <div class="relative flex items-center group">
+            <i class="pi pi-lock absolute left-4 z-20 text-slate-400 group-focus-within:text-orange-500 transition-colors"></i>
             <input 
               v-model="novaSenha" 
               type="password" 
               placeholder="••••••••" 
-              class="custom-input" 
+              class="custom-auth-input" 
             />
           </div>
         </div>
 
-        <button 
+        <Button 
           type="submit" 
-          :disabled="loading"
-          class="w-full p-4 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-2xl font-bold shadow-lg shadow-orange-500/30 transition-all flex justify-center items-center gap-3 hover:scale-[1.02] active:scale-[0.98]"
+          :loading="loading"
+          class="w-full p-4 !bg-slate-900 dark:!bg-orange-500 hover:scale-[1.02] active:scale-[0.98] border-none !text-white !rounded-[1.5rem] font-bold shadow-xl transition-all flex items-center justify-center gap-2"
         >
-          <i v-if="loading" class="pi pi-spin pi-spinner"></i>
-          <span>{{ loading ? 'A processar...' : 'Confirmar Alteração' }}</span>
-        </button>
+          <template #loadingIcon><i class="pi pi-spin pi-spinner mr-2"></i></template>
+          <span>Confirmar Alteração</span>
+        </Button>
       </form>
+
+      <div class="mt-8 text-center border-t border-slate-100 dark:border-slate-800/60 pt-6">
+        <button @click="router.push('/login')" class="group text-sm font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center justify-center gap-2 mx-auto">
+          <i class="pi pi-arrow-left group-hover:-translate-x-1 transition-transform"></i> Voltar ao Login
+        </button>
+      </div>
+
     </div>
   </div>
 </template>
@@ -83,25 +114,49 @@ const salvarNovaSenha = async () => {
 <style scoped lang="postcss">
 @reference "tailwindcss";
 
-.animate-fadein { 
-  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); 
+@keyframes progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.animate-progress {
+  animation: progress 1.5s infinite linear;
 }
 
-@keyframes fadeIn { 
-  from { opacity: 0; transform: translateY(20px); } 
-  to { opacity: 1; transform: translateY(0); } 
+/* --- INPUT PADRONIZADO (Anti-Saga Blue) --- */
+.custom-auth-input {
+  border-radius: 1.5rem !important; 
+  padding-left: 3.2rem !important; 
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+  padding-right: 1rem !important;
+  width: 100% !important;
+  border: 1.5px solid #e2e8f0 !important;
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  font-weight: 500 !important;
+  outline: none !important;
+  transition: all 0.3s ease !important;
 }
 
-/* Padronização do Input com o resto do sistema */
-.custom-input {
-  @apply w-full py-4 pr-4 pl-12 bg-slate-50 dark:bg-slate-800/50 
-         border border-slate-200 dark:border-slate-700 
-         rounded-2xl outline-none transition-all duration-300
-         text-slate-800 dark:text-white font-medium
-         focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10;
+.custom-auth-input:focus {
+  border-color: #f97316 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1) !important;
 }
 
-.custom-input::placeholder {
-  @apply text-slate-300 dark:text-slate-600;
+:global(.dark) .custom-auth-input {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+:global(.dark) .custom-auth-input:focus {
+  background-color: #0f172a !important;
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.2) !important;
+}
+
+:global(.dark) .custom-auth-input::placeholder {
+  color: #64748b !important;
 }
 </style>

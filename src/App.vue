@@ -87,7 +87,7 @@ const logout = () => {
         
         <div class="flex flex-col justify-center">
           <h1 class="text-sm font-black tracking-tighter uppercase italic leading-none text-slate-800 dark:text-white">
-            NPS GAUGE
+            NPS PRO
           </h1>
           <span class="text-[9px] font-black tracking-widest uppercase text-orange-500 mt-0.5">
             INTELLIGENCE
@@ -157,7 +157,7 @@ const logout = () => {
         
         <div class="flex flex-col justify-center mt-1">
           <h1 class="text-lg font-black tracking-tighter uppercase italic leading-none text-slate-800 dark:text-white">
-            NPS GAUGE
+            NPS PRO
           </h1>
           <span class="text-[10px] font-black tracking-[0.2em] uppercase text-orange-500 mt-0.5">
             INTELLIGENCE

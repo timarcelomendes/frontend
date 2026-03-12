@@ -49,7 +49,14 @@ const recuperarSenha = async () => {
             
             <div class="flex items-center justify-center gap-3 mb-8">
               <img src="/nps.svg" alt="Ícone NPS" class="h-10 w-auto drop-shadow-sm" />
-              <span class="text-3xl font-black tracking-tighter text-slate-900 dark:text-white">NPS PRO</span>
+              <div class="flex flex-col justify-center text-left">
+                <span class="text-3xl font-black tracking-tighter uppercase italic leading-none text-slate-900 dark:text-white">
+                  NPS PRO
+                </span>
+                <span class="text-[10px] font-black tracking-[0.2em] uppercase text-orange-500 mt-1">
+                  INTELLIGENCE
+                </span>
+              </div>
             </div>
             <div class="w-16 h-16 bg-orange-50 dark:bg-orange-500/5 text-orange-500 rounded-3xl flex items-center justify-center mx-auto mb-6 rotate-3 hover:rotate-0 transition-transform duration-300">
               <i class="pi pi-lock-open text-2xl"></i>
@@ -92,9 +99,16 @@ const recuperarSenha = async () => {
 
         <div v-else key="success" class="text-center py-4">
           
-          <div class="flex items-center justify-center gap-2 mb-8 opacity-40 grayscale">
+          <div class="flex items-center justify-center gap-3 mb-8 opacity-40 grayscale">
             <img src="/nps.svg" alt="Ícone NPS" class="h-8 w-auto" />
-            <span class="text-xl font-black tracking-tighter text-slate-900 dark:text-white">NPS PRO</span>
+            <div class="flex flex-col justify-center text-left">
+              <span class="text-xl font-black tracking-tighter uppercase italic leading-none text-slate-900 dark:text-white">
+                NPS PRO
+              </span>
+              <span class="text-[8px] font-black tracking-[0.2em] uppercase text-orange-500 mt-0.5">
+                INTELLIGENCE
+              </span>
+            </div>
           </div>
           
           <div class="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">

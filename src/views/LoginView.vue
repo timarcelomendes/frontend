@@ -160,10 +160,18 @@ const handleSubmit = () => {
       <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
       
       <div class="relative z-10 p-12 text-left max-w-lg">
-        <h1 class="text-5xl font-black text-white leading-tight">
-          NPS<span class="text-orange-500">PRO</span><br/>
-          <span class="text-slate-400 font-light">Intelligence</span>
-        </h1>
+        
+        <div class="flex items-center gap-4 mb-8">
+          <img src="/nps.svg" alt="Ícone NPS" class="h-14 w-auto drop-shadow-lg" />
+          <div class="flex flex-col justify-center text-left">
+            <h1 class="text-5xl font-black uppercase italic leading-none text-white tracking-tighter">
+              NPS PRO
+            </h1>
+            <span class="text-sm font-black tracking-[0.3em] uppercase text-orange-500 mt-1.5">
+              INTELLIGENCE
+            </span>
+          </div>
+        </div>
         <p class="mt-6 text-lg text-slate-300">
           Transforme feedbacks em estratégias de crescimento com nossa análise inteligente de satisfação de clientes.
         </p>
@@ -180,18 +188,28 @@ const handleSubmit = () => {
         </div>
       </div>
 
-      <div class="absolute bottom-10 left-12 z-10 flex items-center gap-3 opacity-60 hover:opacity-100 transition-opacity">
-        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">A Product By</span>
-        <img src="/logo-gauge.png" alt="Gauge Logo" class="h-4 w-auto object-contain" />
-      </div>
+    <div class="absolute bottom-10 left-12 z-10 flex items-baseline gap-2 opacity-50 hover:opacity-100 transition-all duration-300">
+      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">A Product By</span>
+      <span class="text-sm font-black text-white tracking-[0.15em] uppercase">GAUGE</span>
+
+    </div>
     </div>
 
     <div class="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-slate-50 dark:bg-slate-950">
       <div class="w-full max-w-md space-y-8 animate-fadein">
         
         <div class="text-center lg:text-left">
-          <div class="lg:hidden mb-8 inline-flex items-center justify-center">
-             <h1 class="text-3xl font-black text-slate-900 dark:text-white">NPS<span class="text-orange-500">PRO</span></h1>
+          
+          <div class="lg:hidden mb-8 flex items-center justify-center lg:justify-start gap-3">
+            <img src="/nps.svg" alt="Ícone NPS" class="h-10 w-auto drop-shadow-sm" />
+            <div class="flex flex-col justify-center text-left">
+              <span class="text-3xl font-black tracking-tighter uppercase italic leading-none text-slate-900 dark:text-white">
+                NPS PRO
+              </span>
+              <span class="text-[10px] font-black tracking-[0.2em] uppercase text-orange-500 mt-1">
+                INTELLIGENCE
+              </span>
+            </div>
           </div>
           <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             {{ isLoginMode ? 'Acesse a plataforma' : 'Crie sua conta grátis' }}
@@ -257,7 +275,6 @@ const handleSubmit = () => {
 <style scoped lang="postcss">
 @reference "tailwindcss";
 
-/* Mantemos a sua animação de entrada */
 .animate-fadein { 
   animation: fadeIn 0.4s ease-out; 
 }
@@ -267,24 +284,45 @@ const handleSubmit = () => {
   to { opacity: 1; transform: translateY(0); } 
 }
 
-/* --- Input Customizado Resiliente --- */
+/* --- INPUT DO LOGIN PADRONIZADO (Alinhado com as outras telas) --- */
 :deep(.custom-input) {
-  /* No modo claro usamos slate-50 (o cinza azulado muito claro) */
-  @apply bg-slate-50 dark:bg-slate-800 
-         border border-slate-200 dark:border-slate-700 
-         p-4 rounded-2xl outline-none 
-         transition-all duration-200 w-full 
-         text-slate-700 dark:text-white font-medium;
+  border-radius: 1.5rem !important; 
+  padding: 1rem !important; 
+  width: 100% !important;
+  border: 1.5px solid #e2e8f0 !important;
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  font-weight: 500 !important;
+  outline: none !important;
+  transition: all 0.3s ease !important;
 }
 
+/* Foco no Input */
 :deep(.custom-input:focus) {
-  /* Foco com a cor laranja da sua marca */
-  @apply border-orange-500 bg-white dark:bg-slate-900 
-         ring-4 ring-orange-500/10 dark:ring-orange-500/20;
+  border-color: #f97316 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1) !important;
 }
 
-/* Garante que o placeholder também mude no dark mode */
-:deep(.custom-input::placeholder) {
-  @apply text-slate-400 dark:text-slate-500;
+/* Dark Mode para os Inputs do Login */
+:global(.dark) :deep(.custom-input) {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+:global(.dark) :deep(.custom-input:focus) {
+  background-color: #0f172a !important;
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.2) !important;
+}
+
+:global(.dark) :deep(.custom-input::placeholder) {
+  color: #64748b !important;
+}
+
+/* Ajuste específico para o PrimeVue Password (para não quebrar o ícone do olho) */
+:deep(.p-password input) {
+  border-radius: 1.5rem !important;
 }
 </style>
