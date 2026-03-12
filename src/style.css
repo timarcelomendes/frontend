@@ -37,3 +37,55 @@ html, body {
 .router-link-active.nav-item i {
   @apply text-orange-500 dark:text-orange-400;
 }
+
+/* --- CORREÇÃO GLOBAL PARA COMPONENTES PRIMEVUE (MODO ESCURO) --- */
+
+/* Força o fundo das tabelas quando o MacBook mudar para Dark */
+.dark .p-datatable {
+  background-color: #0f172a !important; /* bg-slate-900 */
+  color: #f1f5f9 !important;
+  border-color: #1e293b !important;
+}
+
+/* Ajusta o cabeçalho da tabela */
+.dark .p-datatable .p-datatable-thead > tr > th {
+  background-color: #1e293b !important; /* bg-slate-800 */
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+
+/* Ajusta as células e linhas */
+.dark .p-datatable .p-datatable-tbody > tr {
+  background-color: #0f172a !important;
+  color: #cbd5e1 !important;
+  border-color: #1e293b !important;
+}
+
+/* --- CORREÇÃO DE FILTROS E JANELAS FLUTUANTES (OVERLAYS) --- */
+/* Isso resolve o problema dos filtros e calendários ficarem brancos */
+.dark .p-column-filter-overlay,
+.dark .p-dropdown-panel,
+.dark .p-datepicker,
+.dark .p-overlaypanel,
+.dark .p-confirm-dialog {
+  background-color: #1e293b !important; /* bg-slate-800 */
+  border: 1px solid #334155 !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Ajusta os itens dentro dos dropdowns de filtro */
+.dark .p-dropdown-items .p-dropdown-item {
+  color: #cbd5e1 !important;
+}
+
+.dark .p-dropdown-items .p-dropdown-item:hover {
+  background-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+/* Ajusta os inputs dentro dos filtros */
+.dark .p-column-filter-row-items .p-column-filter-element input,
+.dark .p-inputtext {
+  @apply bg-slate-900 border-slate-700 text-slate-200;
+}

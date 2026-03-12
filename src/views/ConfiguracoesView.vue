@@ -816,62 +816,70 @@ onMounted(() => {
 .animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+/* Navegação por Abas (Tabs) */
 :deep(.p-tabview-nav) {
-    /* Removemos o no-scrollbar do apply */
     @apply flex overflow-x-auto flex-nowrap mb-6 border-none bg-transparent;
-    
-    /* Esconde a barra no Firefox e IE */
     scrollbar-width: none; 
     -ms-overflow-style: none;
 }
 
-/* Esconde a barra no Chrome, Safari e Edge */
-:deep(.p-tabview-nav)::-webkit-scrollbar {
-    display: none;
-}
+:deep(.p-tabview-nav)::-webkit-scrollbar { display: none; }
 
 :deep(.p-tabview-nav-link) {
-    @apply whitespace-nowrap !px-4 !py-3;
+    @apply whitespace-nowrap !px-4 !py-3 rounded-xl transition-all;
 }
-:deep(.p-tabview-selected .p-tabview-nav-link) { @apply !bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 shadow-xl; }
-:deep(.custom-input) { @apply bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 p-4 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium; }
 
-/* Customização dos Modais (Dialog) */
+/* Cor das abas selecionadas */
+:deep(.p-tabview-selected .p-tabview-nav-link) { 
+    @apply !bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 shadow-xl; 
+}
+
+/* Inputs e Dropdowns customizados */
+:deep(.custom-input) { 
+    @apply bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 p-4 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-slate-800 dark:text-white; 
+}
+
+/* Modais (Dialog) */
 :deep(.custom-dialog .p-dialog-header) {
   @apply bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 sm:px-6 md:px-8 py-6;
+}
+:deep(.custom-dialog .p-dialog-content) {
+  @apply dark:bg-slate-900; /* Garante que o interior do modal fique escuro */
 }
 :deep(.custom-dialog .p-dialog-title) {
   @apply text-lg font-black italic tracking-tight text-slate-800 dark:text-white;
 }
 
 /* ==========================================
-   Customização da Tabela - Forçar Transparência 
+   Customização da Tabela - Cores Sólidas Anti-Saga 
    ========================================== */
 :deep(.custom-table),
-:deep(.custom-table .p-datatable-wrapper),
-:deep(.custom-table table) {
-  @apply !bg-transparent;
+:deep(.custom-table .p-datatable-wrapper) {
+  /* Trocamos transparência por cor sólida no Dark Mode */
+  @apply bg-white dark:bg-slate-900;
 }
 
 :deep(.custom-table .p-datatable-thead > tr > th) {
-  @apply !bg-transparent border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4;
+  /* O header precisa de uma cor para não herdar o branco do tema Saga */
+  @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4;
 }
 
 :deep(.custom-table .p-datatable-tbody > tr) {
-  @apply !bg-transparent text-slate-700 dark:text-slate-300 transition-colors duration-200;
+  /* Forçamos a cor do texto e do fundo no Dark Mode */
+  @apply bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors duration-200;
 }
 
 :deep(.custom-table .p-datatable-tbody > tr > td) {
-  @apply !bg-transparent border-b border-slate-50 dark:border-slate-800/70 py-3;
+  @apply border-b border-slate-50 dark:border-slate-800/70 py-3;
 }
 
 /* Efeito de Hover nas linhas */
 :deep(.custom-table.p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):hover) {
-  @apply !bg-slate-50/50 dark:!bg-slate-800/40;
+  @apply bg-slate-50/50 dark:bg-slate-800/40 !important;
 }
 
 /* Quando não há resultados */
 :deep(.custom-table .p-datatable-emptymessage td) {
-  @apply !bg-transparent text-center text-slate-400 py-8 text-sm font-medium;
+  @apply bg-white dark:bg-slate-900 text-center text-slate-400 py-8 text-sm font-medium;
 }
 </style>

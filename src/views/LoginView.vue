@@ -254,36 +254,37 @@ const handleSubmit = () => {
   </div>
 </template>
 
-<style scoped>
-.animate-fadein {
-  animation: fadeIn 0.4s ease-out;
+<style scoped lang="postcss">
+@reference "tailwindcss";
+
+/* Mantemos a sua animação de entrada */
+.animate-fadein { 
+  animation: fadeIn 0.4s ease-out; 
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes fadeIn { 
+  from { opacity: 0; transform: translateY(10px); } 
+  to { opacity: 1; transform: translateY(0); } 
 }
 
-/* Substitui o @apply por CSS normal que qualquer navegador e editor entende */
+/* --- Input Customizado Resiliente --- */
 :deep(.custom-input) {
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  padding: 1rem;
-  border-radius: 1rem;
-  outline: none;
-  transition: all 0.2s ease-in-out;
-  width: 100%;
+  /* No modo claro usamos slate-50 (o cinza azulado muito claro) */
+  @apply bg-slate-50 dark:bg-slate-800 
+         border border-slate-200 dark:border-slate-700 
+         p-4 rounded-2xl outline-none 
+         transition-all duration-200 w-full 
+         text-slate-700 dark:text-white font-medium;
 }
 
 :deep(.custom-input:focus) {
-  border-color: #f97316;
-  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+  /* Foco com a cor laranja da sua marca */
+  @apply border-orange-500 bg-white dark:bg-slate-900 
+         ring-4 ring-orange-500/10 dark:ring-orange-500/20;
 }
 
-/* Modo Escuro (Dark Mode) */
-.dark :deep(.custom-input) {
-  background-color: #1e293b;
-  border-color: #334155;
-  color: white;
+/* Garante que o placeholder também mude no dark mode */
+:deep(.custom-input::placeholder) {
+  @apply text-slate-400 dark:text-slate-500;
 }
 </style>

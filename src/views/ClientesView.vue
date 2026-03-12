@@ -504,34 +504,36 @@ onMounted(carregarTudo);
 }
 
 /* ==========================================
-   Customização da Tabela - Forçar Transparência 
+   Customização da Tabela - Cores Explícitas para Dark Mode 
    ========================================== */
 :deep(.custom-table),
-:deep(.custom-table .p-datatable-wrapper),
-:deep(.custom-table table) {
-  @apply !bg-transparent;
+:deep(.custom-table .p-datatable-wrapper) {
+  /* No modo claro é branco, no escuro é o azul muito escuro */
+  @apply bg-white dark:bg-slate-900;
 }
 
 :deep(.custom-table .p-datatable-thead > tr > th) {
-  @apply !bg-transparent border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4;
+  /* Forçamos uma cor sólida no header para o Dark Mode */
+  @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4;
 }
 
 :deep(.custom-table .p-datatable-tbody > tr) {
-  @apply !bg-transparent text-slate-700 dark:text-slate-300 transition-colors duration-200;
+  /* Evitamos transparência total para não "vazar" o branco do tema original */
+  @apply bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors duration-200;
 }
 
 :deep(.custom-table .p-datatable-tbody > tr > td) {
-  @apply !bg-transparent border-b border-slate-50 dark:border-slate-800/70 py-3;
+  @apply border-b border-slate-50 dark:border-slate-800/70 py-3;
 }
 
 /* Efeito de Hover nas linhas */
 :deep(.custom-table.p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):hover) {
-  @apply !bg-slate-50/50 dark:!bg-slate-800/40;
+  @apply bg-slate-50/80 dark:bg-slate-800/60 !important;
 }
 
 /* Quando não há resultados */
 :deep(.custom-table .p-datatable-emptymessage td) {
-  @apply !bg-transparent text-center text-slate-400 py-8 text-sm font-medium;
+  @apply bg-white dark:bg-slate-900 text-center text-slate-400 py-8 text-sm font-medium;
 }
 
 /* ========================================== */
@@ -540,24 +542,21 @@ onMounted(carregarTudo);
 :deep(.custom-dialog .p-dialog-header) {
   @apply bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-8 py-6;
 }
+:deep(.custom-dialog .p-dialog-content) {
+  @apply dark:bg-slate-900; /* Garante que o corpo do modal também escureça */
+}
 :deep(.custom-dialog .p-dialog-title) {
   @apply text-lg font-black italic tracking-tight text-slate-800 dark:text-white;
 }
 
-/* Customização das Abas (PrimeVue) */
+/* Customização das Abas (Tabview) */
 :deep(.custom-tabview .p-tabview-nav) {
   @apply bg-transparent border-none flex flex-wrap gap-2 mb-4 p-2;
-}
-:deep(.custom-tabview .p-tabview-nav li) {
-  @apply mr-0;
 }
 :deep(.custom-tabview .p-tabview-nav li .p-tabview-nav-link) {
   @apply bg-slate-50 dark:bg-slate-800/50 text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-3 transition-all hover:bg-slate-100 dark:hover:bg-slate-800 outline-none shadow-sm;
 }
 :deep(.custom-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link) {
   @apply bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-md transform scale-[1.02];
-}
-:deep(.custom-tabview .p-tabview-panels) {
-  @apply bg-transparent p-0;
 }
 </style>

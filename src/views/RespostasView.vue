@@ -387,27 +387,56 @@ onMounted(carregarRespostas);
 .animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
+/* --- Inputs e Dropdowns (Resilientes) --- */
 :deep(.custom-input), :deep(.custom-dropdown) {
-  @apply border-slate-200 dark:border-slate-700 p-4 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium;
+  /* Trocamos transparência por cores sólidas */
+  @apply bg-white dark:bg-slate-800 
+         border-slate-200 dark:border-slate-700 
+         p-4 rounded-xl outline-none 
+         focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 
+         transition-all font-medium text-slate-700 dark:text-slate-200;
 }
 
 :deep(.p-dropdown-label) { @apply py-1; }
 
+/* ==========================================
+   Customização da Tabela - Anti-Saga (Cores Sólidas)
+   ========================================== */
+
 :deep(.p-datatable .p-datatable-thead > tr > th) {
-  @apply bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 py-6 px-4;
+  /* No modo escuro, pintamos o cabeçalho de Slate-900 para cobrir o branco do tema Saga */
+  @apply bg-slate-50 dark:bg-slate-900 
+         text-[10px] font-black uppercase tracking-widest text-slate-400 
+         border-b border-slate-100 dark:border-slate-800 py-6 px-4;
 }
+
 :deep(.p-datatable .p-datatable-tbody > tr) {
-  @apply bg-transparent hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors border-b border-slate-50 dark:border-slate-800/50;
+  /* Cada linha agora tem cor sólida no Dark Mode */
+  @apply bg-white dark:bg-slate-900 
+         text-slate-600 dark:text-slate-300
+         transition-colors border-b border-slate-50 dark:border-slate-800/50;
 }
+
+/* Efeito de Hover nas linhas */
+:deep(.p-datatable .p-datatable-tbody > tr:hover) {
+  @apply bg-slate-50/80 dark:bg-slate-800/40 !important;
+}
+
 :deep(.p-datatable .p-datatable-tbody > tr > td) {
   @apply py-5 px-4;
 }
 
-/* Remove padding padrão do Dialog para podermos customizar o header e footer totalmente */
+/* ==========================================
+   Customização do Dialog (Modais)
+   ========================================== */
+
 :deep(.custom-dialog-no-header .p-dialog-header) {
   display: none !important;
 }
+
 :deep(.custom-dialog-no-header .p-dialog-content) {
   padding: 0 !important;
+  /* Garante que o conteúdo do modal também fique escuro */
+  @apply dark:bg-slate-900;
 }
 </style>

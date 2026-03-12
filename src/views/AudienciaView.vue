@@ -565,12 +565,16 @@ onMounted(carregarClientes);
 
 :deep(.p-dropdown-label) { @apply py-0 text-xs; }
 
+/* AJUSTE NA TABELA: Trocamos bg-transparent por cores sólidas no Dark Mode */
 :deep(.p-datatable .p-datatable-thead > tr > th) {
-  @apply bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 py-6 px-4;
+  @apply bg-slate-50 dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 py-6 px-4;
 }
+
 :deep(.p-datatable .p-datatable-tbody > tr) {
-  @apply bg-transparent hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-50 dark:border-slate-800/50;
+  /* Forçamos o fundo escuro aqui para evitar que o tema Saga pinte de branco */
+  @apply bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800/50 text-slate-700 dark:text-slate-300;
 }
+
 :deep(.p-datatable .p-datatable-tbody > tr > td) { @apply py-4 px-4; }
 
 :deep(.p-checkbox .p-checkbox-box) { @apply border-slate-300 dark:border-slate-600 rounded-md transition-colors; }

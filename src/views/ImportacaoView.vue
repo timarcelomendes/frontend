@@ -295,14 +295,41 @@ const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).
 
 <style scoped lang="postcss">
 @reference "tailwindcss";
+
+/* Mantemos a sua animação original */
 .animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Mantemos a cor da barra de progresso */
 :deep(.p-progressbar-value) { @apply bg-orange-500 transition-all duration-300; }
 
+/* ==========================================
+   Customização da Tabela - Anti-Fundo Branco 
+   ========================================== */
+
+/* Em vez de !bg-transparent, usamos cores sólidas para "esconder" o tema Saga */
 :deep(.custom-table),
-:deep(.custom-table .p-datatable-wrapper),
-:deep(.custom-table table) { @apply !bg-transparent; }
-:deep(.custom-table .p-datatable-thead > tr > th) { @apply !bg-transparent border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4; }
-:deep(.custom-table .p-datatable-tbody > tr) { @apply !bg-transparent text-slate-700 dark:text-slate-300 transition-colors duration-200; }
-:deep(.custom-table .p-datatable-tbody > tr > td) { @apply !bg-transparent border-b border-slate-50 dark:border-slate-800/70 py-3; }
+:deep(.custom-table .p-datatable-wrapper) {
+  @apply bg-white dark:bg-slate-900;
+}
+
+:deep(.custom-table .p-datatable-thead > tr > th) {
+  /* No modo escuro, o header precisa de uma cor sólida para não herdar o branco */
+  @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4;
+}
+
+:deep(.custom-table .p-datatable-tbody > tr) {
+  /* Forçamos o fundo escuro nas linhas */
+  @apply bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors duration-200;
+}
+
+:deep(.custom-table .p-datatable-tbody > tr > td) {
+  /* A transparência aqui é segura pois a linha (tr) já tem cor sólida */
+  @apply !bg-transparent border-b border-slate-50 dark:border-slate-800/70 py-3;
+}
+
+/* Efeito de Hover nas linhas */
+:deep(.custom-table.p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):hover) {
+  @apply bg-slate-50/50 dark:bg-slate-800/40 !important;
+}
 </style>

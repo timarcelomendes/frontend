@@ -566,30 +566,35 @@ onMounted(carregarDashboard);
 .animate-ping { animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
 @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
 
+/* --- Slider Customizado (Resiliente ao Dark Mode) --- */
 :deep(.custom-slider.p-slider) {
-  @apply bg-white/10 h-1.5 border-none;
+  /* Em vez de apenas white/10, usamos slate no modo claro e white/20 no escuro */
+  @apply bg-slate-200 dark:bg-white/20 h-1.5 border-none;
 }
 :deep(.custom-slider.p-slider .p-slider-range) {
   @apply bg-indigo-500 shadow-[0_0_10px_#6366f1];
 }
 :deep(.custom-slider.p-slider .p-slider-handle) {
-  @apply bg-white border-2 border-indigo-500 w-4 h-4 shadow-lg hover:bg-indigo-50 transition-colors focus:ring-4 focus:ring-indigo-500/30;
+  @apply bg-white dark:bg-slate-100 border-2 border-indigo-500 w-4 h-4 shadow-lg hover:bg-indigo-50 transition-colors focus:ring-4 focus:ring-indigo-500/30;
 }
+
+/* --- Dialog Sem Cabeçalho (Evita o fundo branco fantasma) --- */
 :deep(.custom-dialog-no-header .p-dialog-header) {
   display: none;
 }
 :deep(.custom-dialog-no-header .p-dialog-content) {
   padding: 0;
-  background-color: transparent;
-}
-:deep(.custom-calendar .p-inputtext) { 
-  border: none; 
-  background: transparent; 
-  padding: 0.5rem 0.5rem; 
-  outline: none; 
-  box-shadow: none; 
-  color: inherit; 
+  /* Se for totalmente transparente, o tema Saga pode forçar branco por trás */
+  @apply bg-white dark:bg-slate-900 transition-colors duration-300;
 }
 
+/* --- Calendário Customizado --- */
+:deep(.custom-calendar .p-inputtext) { 
+  border: none; 
+  /* Garante que o texto seja legível em ambos os modos */
+  @apply bg-transparent p-2 outline-none shadow-none text-slate-700 dark:text-slate-100 font-medium;
+}
+
+/* Esconder Scrollbars */
 ::-webkit-scrollbar { display: none; }
 </style>

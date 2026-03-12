@@ -5,7 +5,7 @@ import router from './router';
 // 1. Estilos globais (Tailwind)
 import './style.css'; 
 
-// 2. Estilos do PrimeVue e Ícones
+// 2. Estilos do PrimeVue 3 (Saga é o padrão claro)
 import 'primevue/resources/themes/saga-blue/theme.css';
 import 'primevue/resources/primevue.min.css';
 import 'primeicons/primeicons.css';
@@ -14,16 +14,16 @@ import 'primeicons/primeicons.css';
 import PrimeVue from 'primevue/config';
 import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
-import Tooltip from 'primevue/tooltip'; // 👈 ADICIONE ESTA LINHA AQUI!
+import Tooltip from 'primevue/tooltip';
 
 const app = createApp(App);
 
 app.use(router);
+// No PrimeVue 3, usamos apenas a configuração simples
 app.use(PrimeVue, { ripple: true });
 app.use(ToastService);
 app.use(ConfirmationService);
 
-// Registo da diretiva global
 app.directive('tooltip', Tooltip);
 
 app.mount('#app');
