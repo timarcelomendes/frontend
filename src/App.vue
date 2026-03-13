@@ -83,7 +83,7 @@ const logout = () => {
     <header v-if="exibirLayout" 
             class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30">
       <div class="flex items-center gap-2">
-        <img src="/nps.svg" alt="Logo" class="w-8 h-8 object-contain shrink-0" />
+        <img src="/nps.png" alt="Logo" class="w-8 h-8 object-contain shrink-0" />
         
         <div class="flex flex-col justify-center">
           <h1 class="text-sm font-black tracking-tighter uppercase italic leading-none text-slate-800 dark:text-white">
@@ -153,7 +153,7 @@ const logout = () => {
     >
       <div class="p-6 flex items-center justify-between h-20">
       <div v-if="sidebarExpandida" class="flex items-center gap-3 animate-fadein">
-        <img src="/nps.svg" alt="Logo" class="w-8 h-8 object-contain shrink-0" />
+        <img src="/nps.png" alt="Logo" class="w-12 h-12 object-contain shrink-0" />
         
         <div class="flex flex-col justify-center mt-1">
           <h1 class="text-lg font-black tracking-tighter uppercase italic leading-none text-slate-800 dark:text-white">

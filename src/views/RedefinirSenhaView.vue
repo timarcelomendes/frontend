@@ -55,7 +55,7 @@ const salvarNovaSenha = async () => {
 
       <div class="text-center mb-8">
         <div class="flex items-center justify-center gap-3 mb-8">
-          <img src="/nps.svg" alt="Ícone NPS" class="h-10 w-auto drop-shadow-sm" />
+          <img src="/nps.png" alt="Ícone NPS" class="h-10 w-auto drop-shadow-sm" />
           <div class="flex flex-col justify-center text-left">
             <span class="text-3xl font-black tracking-tighter uppercase italic leading-none text-slate-900 dark:text-white">
               NPS PRO

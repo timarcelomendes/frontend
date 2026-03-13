@@ -162,7 +162,7 @@ const handleSubmit = () => {
       <div class="relative z-10 p-12 text-left max-w-lg">
         
         <div class="flex items-center gap-4 mb-8">
-          <img src="/nps.svg" alt="Ícone NPS" class="h-14 w-auto drop-shadow-lg" />
+          <img src="/nps.png" alt="Ícone NPS" class="h-14 w-auto drop-shadow-lg" />
           <div class="flex flex-col justify-center text-left">
             <h1 class="text-5xl font-black uppercase italic leading-none text-white tracking-tighter">
               NPS PRO
@@ -201,7 +201,7 @@ const handleSubmit = () => {
         <div class="text-center lg:text-left">
           
           <div class="lg:hidden mb-8 flex items-center justify-center lg:justify-start gap-3">
-            <img src="/nps.svg" alt="Ícone NPS" class="h-10 w-auto drop-shadow-sm" />
+            <img src="/nps.png" alt="Ícone NPS" class="h-10 w-auto drop-shadow-sm" />
             <div class="flex flex-col justify-center text-left">
               <span class="text-3xl font-black tracking-tighter uppercase italic leading-none text-slate-900 dark:text-white">
                 NPS PRO
