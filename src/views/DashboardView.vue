@@ -428,9 +428,13 @@ onMounted(carregarDashboard);
             <h3 class="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] w-full text-left mb-6">Polaridade</h3>
             <div class="relative w-48 h-48 flex items-center justify-center mx-auto">
               <Chart v-if="chartDataPie" type="doughnut" :data="chartDataPie" :options="chartOptionsPie" class="w-full h-full relative z-10 drop-shadow-md" />
-              <div class="absolute inset-0 flex flex-col items-center justify-center z-0 pointer-events-none">
-                <span class="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{{ kpis.total_respostas }}</span>
-                <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Respostas</span>
+              <div class="absolute inset-0 flex flex-col items-center justify-center z-0 pointer-events-none mt-2">
+                <span class="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">{{ kpis.total_respostas }}</span>
+                <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Respostas</span>
+                
+                <span class="text-[9px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full mt-2 border border-indigo-100 dark:border-indigo-500/20 shadow-sm">
+                  {{ taxaResposta }}% de adesão
+                </span>
               </div>
             </div>
             <div class="flex gap-4 mt-8 w-full justify-center">

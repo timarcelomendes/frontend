@@ -23,6 +23,7 @@ const clientes = ref([]);
 const empresas = ref([]);
 const segmentos = ref([]);
 const perfis = ref([]);
+const cargos = ref([]); 
 const loading = ref(true);
 
 // --- OPÇÕES DOS DROPDOWNS ---
@@ -34,12 +35,22 @@ const opcoesPerfil = ['Decisor', 'Influenciador', 'Usuário Final', 'Técnico'];
 // ==========================================
 const dialogVisivel = ref(false);
 const editando = ref(false);
+
+// ==========================================
+// 🗑️ ESTADOS: EXCLUSÃO
+// ==========================================
+const dialogExclusao = ref(false);
+const idParaExcluir = ref(null);
+const excluindo = ref(false);
+
 const cliente = ref({
   cliente_id: null,
   nome: '',
   email: '',
+  telefone: '',
   empresa: '',
-  perfil: null
+  perfil_decisor: null, 
+  cargo: null
 });
 
 // ==========================================
@@ -69,22 +80,31 @@ const editandoPerfil = ref(false);
 const perfilForm = ref({ id: null, nome: '' });
 
 // ==========================================
+// 💼 ESTADOS: CARGOS
+// ==========================================
+const dialogCargo = ref(false);
+const editandoCargo = ref(false);
+const cargoForm = ref({ id: null, nome: '' });
+
+// ==========================================
 // 🚀 FUNÇÃO MESTRE: CARREGAR TUDO
 // ==========================================
 const carregarTudo = async () => {
   loading.value = true;
   try {
-    const [resCli, resEmp, resSeg, resPerf] = await Promise.all([
+    const [resCli, resEmp, resSeg, resPerf, resCargos] = await Promise.all([
       api.get('/clientes'),
       api.get('/cadastros/empresas'),
       api.get('/cadastros/segmentos'),
-      api.get('/cadastros/perfis')
+      api.get('/cadastros/perfis'),
+      api.get('/cadastros/cargos') 
     ]);
     
     clientes.value = resCli.data;
     empresas.value = resEmp.data;
     segmentos.value = resSeg.data;
     perfis.value = resPerf.data;
+    cargos.value = resCargos.data; 
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar a base de dados.', life: 3000 });
   } finally {
@@ -95,31 +115,69 @@ const carregarTudo = async () => {
 // ==========================================
 // ⚡ CRUD: CLIENTES (PESSOAS)
 // ==========================================
-const abrirNovo = () => { cliente.value = { cliente_id: null, nome: '', email: '', empresa: '', perfil: null }; editando.value = false; dialogVisivel.value = true; };
-const editarCliente = (dados) => { cliente.value = { ...dados }; editando.value = true; dialogVisivel.value = true; };
+
+const abrirNovo = () => { 
+  cliente.value = { cliente_id: null, nome: '', email: '', telefone: '', empresa: '', perfil_decisor: null, cargo: null }; 
+  editando.value = false; 
+  dialogVisivel.value = true; 
+};
+
+const editarCliente = (dados) => { 
+  cliente.value = { ...dados }; 
+  editando.value = true; 
+  dialogVisivel.value = true; 
+};
 
 const salvarCliente = async () => {
-  if (!cliente.value.nome || !cliente.value.email) {
-    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Nome e E-mail são obrigatórios.', life: 3000 });
+  if (!cliente.value.nome || !cliente.value.email || !cliente.value.cargo) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Nome, E-mail e Cargo são obrigatórios.', life: 3000 });
     return;
   }
   saving.value = true;
   try {
-    if (editando.value) await api.put(`/clientes/${cliente.value.cliente_id}`, cliente.value);
+    const id = cliente.value.cliente_id || cliente.value.id;
+    if (editando.value) await api.put(`/clientes/${id}`, cliente.value);
     else await api.post('/clientes', cliente.value);
     dialogVisivel.value = false; 
     carregarTudo();
     toast.add({ severity: 'success', summary: 'Atualizado', detail: 'Ficha da pessoa atualizada com sucesso.' });
-  } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar os dados.' }); } 
-  finally { saving.value = false; }
+  } catch (error) { 
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar os dados.' }); 
+  } finally { 
+    saving.value = false; 
+  }
+};
+
+// Abre o modal e guarda o ID da pessoa que foi clicada
+const confirmarExclusao = (id) => {
+  idParaExcluir.value = id;
+  dialogExclusao.value = true;
+};
+
+// Executa a exclusão após o clique no "Sim, confirmo!"
+const executarExclusao = async () => {
+  if (!idParaExcluir.value) return;
+  excluindo.value = true;
+  
+  try { 
+    await api.delete(`/clientes/${idParaExcluir.value}`); 
+    toast.add({ severity: 'success', summary: 'Removido', detail: 'Pessoa excluída com sucesso.', life: 3000 }); 
+    dialogExclusao.value = false;
+    carregarTudo(); 
+  } catch (error) { 
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao excluir a pessoa.', life: 3000 }); 
+  } finally {
+    excluindo.value = false;
+    idParaExcluir.value = null;
+  }
 };
 
 // ==========================================
 // ⚡ CRUD: EMPRESAS (CONTAS)
 // ==========================================
+
 const abrirNovaEmpresa = () => { empresaForm.value = { id: null, nome: '', segmento: null, valor_contrato: 0 }; editandoEmpresa.value = false; dialogEmpresa.value = true; };
 const editarFichaEmpresa = (dados) => { 
-  // O backend envia 'arr_total', precisamos mapear para 'valor_contrato' no form
   empresaForm.value = { id: dados.id, nome: dados.nome, segmento: dados.segmento, valor_contrato: dados.arr_total || 0 }; 
   editandoEmpresa.value = true; 
   dialogEmpresa.value = true; 
@@ -144,6 +202,7 @@ const salvarEmpresa = async () => {
 // ==========================================
 // ⚡ CRUD: SEGMENTOS
 // ==========================================
+
 const abrirNovoSegmento = () => { segmentoForm.value = { id: null, nome: '' }; editandoSegmento.value = false; dialogSegmento.value = true; };
 const editarFichaSegmento = (dados) => { segmentoForm.value = { ...dados }; editandoSegmento.value = true; dialogSegmento.value = true; };
 
@@ -163,6 +222,7 @@ const salvarSegmento = async () => {
 // ==========================================
 // ⚡ CRUD: PERFIS
 // ==========================================
+
 const abrirNovoPerfil = () => { perfilForm.value = { id: null, nome: '' }; editandoPerfil.value = false; dialogPerfil.value = true; };
 const editarFichaPerfil = (dados) => { perfilForm.value = { ...dados }; editandoPerfil.value = true; dialogPerfil.value = true; };
 
@@ -180,8 +240,29 @@ const salvarPerfil = async () => {
 };
 
 // ==========================================
+// ⚡ CRUD: CARGOS (NOVO)
+// ==========================================
+
+const abrirNovoCargo = () => { cargoForm.value = { id: null, nome: '' }; editandoCargo.value = false; dialogCargo.value = true; };
+const editarFichaCargo = (dados) => { cargoForm.value = { ...dados }; editandoCargo.value = true; dialogCargo.value = true; };
+
+const salvarCargo = async () => {
+  if (!cargoForm.value.nome) return;
+  saving.value = true;
+  try {
+    if (editandoCargo.value) await api.put(`/cadastros/cargos/${cargoForm.value.id}`, cargoForm.value);
+    else await api.post('/cadastros/cargos', cargoForm.value);
+    dialogCargo.value = false; 
+    carregarTudo();
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Cargo salvo com sucesso.' });
+  } catch (e) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao salvar cargo.' }); } 
+  finally { saving.value = false; }
+};
+
+// ==========================================
 // 🛠️ FUNÇÕES UTILITÁRIAS
 // ==========================================
+
 const formatarMoeda = (valor) => {
   if (!valor) return '€ 0,00';
   return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(valor);
@@ -259,9 +340,13 @@ onMounted(carregarTudo);
                   </template>
                 </Column>
 
-                <Column alignFrozen="right" style="width: 80px">
-                  <template #body="{ data }">
-                    <Button icon="pi pi-pencil" @click="editarCliente(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" />
+                <Column header="Ações" alignFrozen="right" style="width: 100px">
+                  <template #body="slotProps">
+                    <div class="flex gap-1.5 justify-end">
+                      <Button icon="pi pi-pencil" v-tooltip.top="'Editar'" @click="editarCliente(slotProps.data)" class="w-7 h-7 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none hover:!text-slate-700 rounded-lg transition-colors !text-xs" />
+                      
+                      <Button icon="pi pi-trash" v-tooltip.top="'Excluir'" @click="confirmarExclusao(slotProps.data.cliente_id || slotProps.data.id)" class="w-7 h-7 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-400 !border-none hover:!bg-rose-100 rounded-lg transition-colors !text-xs" />
+                    </div>
                   </template>
                 </Column>
               </DataTable>
@@ -373,6 +458,36 @@ onMounted(carregarTudo);
             </div>
           </TabPanel>
 
+          <TabPanel>
+            <template #header>
+              <div class="flex items-center gap-2 px-2">
+                <i class="pi pi-briefcase text-purple-500"></i>
+                <span class="font-black tracking-widest uppercase text-[10px]">Cargos</span>
+              </div>
+            </template>
+            <div class="pt-4">
+              <div class="flex justify-end mb-4">
+                 <Button label="Novo Cargo" icon="pi pi-plus" @click="abrirNovoCargo" class="!bg-purple-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105 transition-transform" />
+              </div>
+
+              <DataTable :value="cargos" :paginator="true" :rows="10" class="p-datatable-sm custom-table" emptyMessage="Nenhum cargo registado.">
+                <Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column>
+                <Column field="nome" header="Cargo / Função" sortable>
+                  <template #body="{ data }">
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                      <i class="pi pi-briefcase text-purple-500"></i> {{ data.nome }}
+                    </span>
+                  </template>
+                </Column>
+                <Column alignFrozen="right" style="width: 80px">
+                  <template #body="{ data }">
+                    <Button icon="pi pi-pencil" @click="editarFichaCargo(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-purple-50 hover:!text-purple-500 transition-colors" />
+                  </template>
+                </Column>
+              </DataTable>
+            </div>
+          </TabPanel>
+
         </TabView>
       </div>
 
@@ -390,61 +505,72 @@ onMounted(carregarTudo);
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Conta (Empresa) *</label>
-            <Dropdown 
-              v-model="cliente.empresa" 
-              :options="empresas" 
-              optionLabel="nome" 
-              optionValue="nome" 
-              filter 
-              placeholder="Selecione a empresa" 
-              class="custom-dropdown w-full" 
-              emptyFilterMessage="Nenhuma empresa encontrada"
-              emptyMessage="Nenhuma empresa cadastrada"
-            />
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Telefone</label>
+            <InputText v-model="cliente.telefone" class="custom-input w-full" placeholder="+351 900 000 000" />
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Perfil na Conta</label>
-            <Dropdown 
-              v-model="cliente.perfil" 
-              :options="perfis" 
-              optionLabel="nome" 
-              optionValue="nome" 
-              placeholder="Selecione o perfil" 
-              class="custom-dropdown w-full" 
-              emptyMessage="Nenhum perfil cadastrado"
-            />
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Conta (Empresa)</label>
+            <Dropdown v-model="cliente.empresa" :options="empresas" optionLabel="nome" optionValue="nome" editable filter placeholder="Selecione ou digite" class="custom-dropdown w-full" />
           </div>
+          
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Perfil</label>
+            <Dropdown v-model="cliente.perfil_decisor" :options="perfis" optionLabel="nome" optionValue="nome" editable placeholder="Selecione ou digite" class="custom-dropdown w-full" />
+          </div>
+          
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Cargo *</label>
+            <Dropdown v-model="cliente.cargo" :options="cargos" optionLabel="nome" optionValue="nome" editable filter placeholder="Selecione ou digite" class="custom-dropdown w-full" />
+          </div>
+        </div>
+        <template #footer>
+          <div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900 flex gap-3 w-full">
+            <Button label="Cancelar" text class="flex-1 font-bold text-[11px] text-slate-400" @click="dialogVisivel = false" />
+            <Button :label="editando ? 'Guardar' : 'Adicionar'" :loading="saving" class="flex-1 !bg-indigo-500 !text-white !rounded-xl font-bold text-[11px] shadow-lg hover:scale-[1.02] transition-transform border-none py-3" @click="salvarCliente" />
+          </div>
+        </template>
+      </Dialog>
+
+      <Dialog v-model:visible="dialogExclusao" header="Confirmar Exclusão" modal :style="{width: '400px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
+        <div class="p-6 md:p-8 bg-slate-50/50 dark:bg-slate-900 text-center flex flex-col items-center">
+          
+          <div class="w-16 h-16 rounded-full bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center mb-4">
+            <i class="pi pi-exclamation-triangle text-rose-500 text-3xl"></i>
+          </div>
+          
+          <p class="text-slate-700 dark:text-slate-300 font-bold text-sm">
+            Tem a certeza absoluta que deseja excluir esta pessoa?
+          </p>
+          <p class="text-slate-500 dark:text-slate-400 text-xs mt-2 font-medium">
+            Esta ação não poderá ser desfeita.
+          </p>
 
         </div>
         <template #footer>
-          <div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900">
-            <Button :label="editando ? 'Atualizar Pessoa' : 'Salvar Pessoa'" @click="salvarCliente" :loading="saving" class="w-full !bg-indigo-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-transform" />
+          <div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900 flex gap-3 w-full">
+            <Button label="Cancelar" text class="flex-1 font-bold text-[11px] text-slate-400" @click="dialogExclusao = false" />
+            <Button label="Sim, confirmo!" :loading="excluindo" @click="executarExclusao" class="flex-1 !bg-rose-500 !text-white !rounded-xl font-bold text-[11px] shadow-lg shadow-rose-500/30 hover:scale-[1.02] transition-transform border-none py-3" />
           </div>
         </template>
       </Dialog>
 
       <Dialog v-model:visible="dialogEmpresa" :header="editandoEmpresa ? 'Editar Conta' : 'Nova Conta'" modal :style="{width: '450px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
         <div class="p-6 md:p-8 space-y-4 bg-slate-50/50 dark:bg-slate-900">
-          
           <div class="flex flex-col gap-1.5">
             <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome da Empresa *</label>
             <InputText v-model="empresaForm.nome" class="custom-input w-full" placeholder="Ex: Microsoft Portugal" />
           </div>
-
           <div class="flex flex-col gap-1.5">
             <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Segmento de Mercado</label>
             <Dropdown v-model="empresaForm.segmento" :options="opcoesSegmento" placeholder="Selecione" class="custom-dropdown w-full" />
           </div>
-
           <div class="flex flex-col gap-1.5 pt-2">
             <label class="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 ml-1 flex items-center gap-1">
               <i class="pi pi-euro"></i> Valor Anual do Contrato (ARR)
             </label>
             <InputNumber v-model="empresaForm.valor_contrato" mode="currency" currency="EUR" locale="pt-PT" class="w-full" inputClass="custom-input w-full !text-lg !font-black !text-emerald-600 dark:!text-emerald-400 !bg-emerald-50 dark:!bg-emerald-900/10" />
           </div>
-
         </div>
         <template #footer>
           <div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900">
@@ -481,6 +607,20 @@ onMounted(carregarTudo);
         </template>
       </Dialog>
 
+      <Dialog v-model:visible="dialogCargo" :header="editandoCargo ? 'Editar Cargo' : 'Novo Cargo'" modal :style="{width: '400px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
+        <div class="p-6 md:p-8 space-y-4 bg-slate-50/50 dark:bg-slate-900">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome do Cargo *</label>
+            <InputText v-model="cargoForm.nome" class="custom-input w-full" placeholder="Ex: Diretor de Vendas" />
+          </div>
+        </div>
+        <template #footer>
+          <div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900">
+            <Button :label="editandoCargo ? 'Atualizar Cargo' : 'Criar Cargo'" @click="salvarCargo" :loading="saving" class="w-full !bg-purple-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-transform" />
+          </div>
+        </template>
+      </Dialog>
+
     </div>
   </div>
 </template>
@@ -490,73 +630,62 @@ onMounted(carregarTudo);
 .animate-fadein { animation: fadeIn 0.4s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Estilização Premium para os Inputs */
-:deep(.custom-input) {
-  @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-sm text-slate-800 dark:text-white;
-}
-
-:deep(.custom-dropdown) {
-  @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-sm flex items-center;
-}
-
-:deep(.custom-dropdown .p-dropdown-label) {
-  @apply p-3 text-slate-800 dark:text-white;
+/* ==========================================
+   🌟 O SEGREDO: Abas Transparentes
+   Isto impede que o branco das abas fure a tabela, sem forçar cores nas linhas!
+   ========================================== */
+:deep(.p-tabview-panels), :deep(.p-tabview-panel) {
+  @apply bg-transparent !important;
+  padding: 0 !important;
 }
 
 /* ==========================================
-   Customização da Tabela - Cores Explícitas para Dark Mode 
+   🌟 Tabela PrimeVue (IDÊNTICO À AUDIÊNCIA)
+   Usa apenas o "dark:bg-slate-900" (Azul escuro do Tailwind)
    ========================================== */
-:deep(.custom-table),
-:deep(.custom-table .p-datatable-wrapper) {
-  /* No modo claro é branco, no escuro é o azul muito escuro */
-  @apply bg-white dark:bg-slate-900;
+:deep(.p-datatable .p-datatable-thead > tr > th) { 
+  @apply bg-slate-50 dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 py-6 px-4; 
 }
 
-:deep(.custom-table .p-datatable-thead > tr > th) {
-  /* Forçamos uma cor sólida no header para o Dark Mode */
-  @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4;
+:deep(.p-datatable .p-datatable-tbody > tr) { 
+  @apply bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800/50 text-slate-700 dark:text-slate-300; 
 }
 
-:deep(.custom-table .p-datatable-tbody > tr) {
-  /* Evitamos transparência total para não "vazar" o branco do tema original */
-  @apply bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors duration-200;
+:deep(.p-datatable .p-datatable-tbody > tr > td) { 
+  @apply py-4 px-4; 
 }
 
-:deep(.custom-table .p-datatable-tbody > tr > td) {
-  @apply border-b border-slate-50 dark:border-slate-800/70 py-3;
-}
-
-/* Efeito de Hover nas linhas */
-:deep(.custom-table.p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):hover) {
-  @apply bg-slate-50/80 dark:bg-slate-800/60 !important;
-}
-
-/* Quando não há resultados */
-:deep(.custom-table .p-datatable-emptymessage td) {
+:deep(.p-datatable .p-datatable-emptymessage > td) {
   @apply bg-white dark:bg-slate-900 text-center text-slate-400 py-8 text-sm font-medium;
 }
 
-/* ========================================== */
+/* ==========================================
+   🌟 Inputs, Dropdowns e Modais (IDÊNTICO À AUDIÊNCIA)
+   ========================================== */
+:deep(.custom-input), :deep(.p-dropdown.custom-dropdown) { 
+  @apply bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium !important; 
+}
+:deep(.p-dropdown.custom-dropdown .p-dropdown-trigger),
+:deep(.p-dropdown.custom-dropdown .p-dropdown-trigger-icon),
+:deep(.p-dropdown.custom-dropdown .p-dropdown-trigger svg) { 
+  @apply text-slate-400 dark:text-slate-400 !important; 
+}
+:deep(.p-dropdown.custom-dropdown .p-dropdown-label) { 
+  @apply bg-transparent py-0 text-xs text-slate-700 dark:text-slate-200 !important; 
+}
+:deep(.custom-dropdown.w-full) { @apply flex items-center px-1; }
+:deep(.p-dropdown-panel) { @apply dark:bg-slate-800 dark:border-slate-700 !important; }
+:deep(.p-dropdown-panel .p-dropdown-item) { @apply dark:text-slate-300 hover:dark:bg-slate-700 !important; }
+:deep(.p-dropdown-panel .p-dropdown-item.p-highlight) { @apply dark:bg-orange-500/20 dark:text-orange-500 !important; }
 
-/* Customização dos Modais (Dialog) */
-:deep(.custom-dialog .p-dialog-header) {
-  @apply bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-8 py-6;
-}
-:deep(.custom-dialog .p-dialog-content) {
-  @apply dark:bg-slate-900; /* Garante que o corpo do modal também escureça */
-}
-:deep(.custom-dialog .p-dialog-title) {
-  @apply text-lg font-black italic tracking-tight text-slate-800 dark:text-white;
-}
+/* ==========================================
+   🌟 Customização dos Modais (Dialog) e Tabs Header
+   ========================================== */
+:deep(.custom-dialog .p-dialog-header) { @apply bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-8 py-6; }
+:deep(.custom-dialog .p-dialog-content) { @apply dark:bg-slate-900; }
+:deep(.custom-dialog .p-dialog-title) { @apply text-lg font-black italic tracking-tight text-slate-800 dark:text-white; }
 
-/* Customização das Abas (Tabview) */
-:deep(.custom-tabview .p-tabview-nav) {
-  @apply bg-transparent border-none flex flex-wrap gap-2 mb-4 p-2;
-}
-:deep(.custom-tabview .p-tabview-nav li .p-tabview-nav-link) {
-  @apply bg-slate-50 dark:bg-slate-800/50 text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-3 transition-all hover:bg-slate-100 dark:hover:bg-slate-800 outline-none shadow-sm;
-}
-:deep(.custom-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link) {
-  @apply bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-md transform scale-[1.02];
-}
+:deep(.custom-tabview .p-tabview-nav) { @apply bg-transparent border-none flex flex-wrap gap-2 mb-4 p-2; }
+:deep(.custom-tabview .p-tabview-nav li .p-tabview-nav-link) { @apply bg-slate-50 dark:bg-slate-800/50 text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-3 transition-all hover:bg-slate-100 dark:hover:bg-slate-800 outline-none shadow-sm; }
+:deep(.custom-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link) { @apply bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-md transform scale-[1.02]; }
 </style>

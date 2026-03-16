@@ -69,8 +69,8 @@ const fazerLogin = async () => {
       localStorage.setItem('token', token);
       localStorage.setItem('usuario_id', response.data.usuario_id);
       localStorage.setItem('usuario_nome', response.data.nome);
-      localStorage.setItem('usuario_tipo', response.data.tipo); // Perfil (Admin/User)
-      localStorage.setItem('usuario_cargo', response.data.cargo || 'Analista'); // Cargo na Sidebar
+      localStorage.setItem('usuario_tipo', response.data.tipo);
+      localStorage.setItem('usuario_cargo', response.data.cargo || 'Analista');
 
       if (lembrarDeMim.value) {
         localStorage.setItem('nps_remember_email', emailSalvo);
