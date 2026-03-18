@@ -188,6 +188,9 @@ const salvarEmpresa = async () => {
     toast.add({ severity: 'warn', summary: 'Atenção', detail: 'O nome da conta é obrigatório.', life: 3000 });
     return;
   }
+
+  empresaForm.value.valor_contrato = empresaForm.value.valor_contrato || 0;
+
   saving.value = true;
   try {
     if (editandoEmpresa.value) await api.put(`/cadastros/empresas/${empresaForm.value.id}`, empresaForm.value);
@@ -195,8 +198,11 @@ const salvarEmpresa = async () => {
     dialogEmpresa.value = false; 
     carregarTudo();
     toast.add({ severity: 'success', summary: 'Conta Salva', detail: 'Empresa atualizada com sucesso.' });
-  } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao salvar a empresa.' }); } 
-  finally { saving.value = false; }
+  } catch (error) { 
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao salvar a empresa.' }); 
+  } finally { 
+    saving.value = false; 
+  }
 };
 
 // ==========================================
@@ -569,7 +575,15 @@ onMounted(carregarTudo);
             <label class="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 ml-1 flex items-center gap-1">
               <i class="pi pi-euro"></i> Valor Anual do Contrato (ARR)
             </label>
-            <InputNumber v-model="empresaForm.valor_contrato" mode="currency" currency="EUR" locale="pt-PT" class="w-full" inputClass="custom-input w-full !text-lg !font-black !text-emerald-600 dark:!text-emerald-400 !bg-emerald-50 dark:!bg-emerald-900/10" />
+            <InputNumber 
+              v-model="empresaForm.valor_contrato" 
+              mode="currency" 
+              currency="EUR" 
+              locale="pt-PT" 
+              class="w-full" 
+              inputClass="custom-input w-full !text-lg !font-black !text-emerald-600 dark:!text-emerald-400 !bg-emerald-50 dark:!bg-emerald-900/10" 
+              @blur="empresaForm.valor_contrato = empresaForm.valor_contrato || 0"
+            />
           </div>
         </div>
         <template #footer>
