@@ -13,8 +13,9 @@
         </div>
         
         <div class="flex gap-3">
-          <Button label="Exportar PDF" icon="pi pi-file-pdf" class="!bg-white dark:!bg-slate-900 !text-rose-500 !border-slate-200 dark:!border-slate-700 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-sm hover:scale-105 transition-transform" />
-          <Button label="Imprimir" icon="pi pi-print" @click="imprimirRelatorio" class="!bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105 transition-transform" />
+          <Button label="Exportar PDF" icon="pi pi-file-pdf" @click="exportarPDF" class="!bg-white dark:!bg-slate-900 !text-rose-500 !border-slate-200 dark:!border-slate-700 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-sm hover:scale-105 transition-transform" />
+          
+          <Button label="Enviar E-mail" icon="pi pi-envelope" @click="abrirModalEmail" class="!bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105 transition-transform" />
         </div>
       </div>
 
@@ -119,17 +120,63 @@
 
       </div>
     </div>
+
+    <Dialog v-model:visible="modalEmailOpen" modal header="Compartilhar Relatório Estratégico" :style="{ width: '400px' }" class="custom-dialog">
+        <div class="space-y-6 pt-2">
+          
+          <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
+            <h4 class="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2">Preview da Mensagem (IA)</h4>
+            <p class="text-xs text-slate-600 dark:text-slate-300 italic line-clamp-3">
+              "{{ resumoIA || 'Aguardando processamento da Gauge AI...' }}"
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-[10px] font-black uppercase tracking-widest text-slate-500">Enviar para:</label>
+            <MultiSelect 
+              v-model="gestoresSelecionados" 
+              :options="listaGestores" 
+              optionLabel="nome" 
+              placeholder="Selecione os Gestores" 
+              :maxSelectedLabels="3" 
+              class="w-full !bg-slate-50 dark:!bg-slate-800 !border-slate-200 dark:!border-slate-700 !rounded-xl" 
+            />
+          </div>
+
+          <div class="pt-2">
+            <Button 
+              :label="enviandoEmail ? 'A enviar...' : 'Disparar E-mail'" 
+              icon="pi pi-send" 
+              @click="confirmarEnvioEmail" 
+              :loading="enviandoEmail"
+              class="w-full !bg-indigo-500 !text-white !border-none !rounded-xl !text-xs !font-black !uppercase !tracking-widest !py-3 shadow-lg shadow-indigo-500/30" 
+            />
+          </div>
+        </div>
+      </Dialog>
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import api from '../services/api';
+import { useToast } from 'primevue/usetoast'; // 👈 IMPORTANTE: Para as notificações
 import Dropdown from 'primevue/dropdown';
 import Button from 'primevue/button';
 import Chart from 'primevue/chart';
+import Dialog from 'primevue/dialog';
+import MultiSelect from 'primevue/multiselect';
 
-// ESTADOS
+const toast = useToast();
+
+// --- ESTADOS DE E-MAIL ---
+const modalEmailOpen = ref(false);
+const enviandoEmail = ref(false);
+const listaGestores = ref([]);
+const gestoresSelecionados = ref([]);
+
+// ESTADOS GERAIS
 const loadingDados = ref(true);
 const loadingIA = ref(false);
 const periodoSelecionado = ref('Últimos 6 Meses');
@@ -154,13 +201,13 @@ const optionsBarChart = ref({
   }
 });
 
-// --- DETETOR DE MUDANÇA ---
+// --- DETETOR DE MUDANÇA DE FILTRO ---
 watch(periodoSelecionado, () => {
   fetchGraficos();
-  gerarAnaliseIA(false); // False = Tenta usar o Cache primeiro
+  gerarAnaliseIA(false);
 });
 
-// --- FUNÇÃO 1: CARREGA SÓ OS GRÁFICOS (SUPER RÁPIDO) ---
+// --- FUNÇÃO 1: CARREGA OS GRÁFICOS ---
 const fetchGraficos = async () => {
   loadingDados.value = true;
   try {
@@ -182,16 +229,14 @@ const fetchGraficos = async () => {
   }
 };
 
-// --- FUNÇÃO 2: A MÁGICA DA GAUGE AI (CACHE + MANUAL) ---
+// --- FUNÇÃO 2: GAUGE AI ---
 const gerarAnaliseIA = async (forcarNova = false) => {
   loadingIA.value = true;
   fromCache.value = false;
   
-  // Cria uma chave única por DIA e por PERÍODO. Ex: gauge_ia_Últimos 6 Meses_2023-10-25
   const dataHoje = new Date().toISOString().split('T')[0];
   const cacheKey = `gauge_ia_${periodoSelecionado.value}_${dataHoje}`;
 
-  // Se não foi clicado o botão "Refazer" e existe cache hoje, poupamos dinheiro!
   if (!forcarNova) {
     const cachedData = localStorage.getItem(cacheKey);
     if (cachedData) {
@@ -199,23 +244,18 @@ const gerarAnaliseIA = async (forcarNova = false) => {
       resumoIA.value = data.texto;
       focoIA.value = data.foco;
       prioridadeIA.value = data.prioridade;
-      fromCache.value = true; // Mostra a etiqueta verde "Cached"
+      fromCache.value = true; 
       loadingIA.value = false;
       return;
     }
   }
 
-  // Se forçou nova ou não tem cache, chama a API
   try {
     const resIA = await api.get('/reports/resumo-ia', { params: { periodo: periodoSelecionado.value } });
-    
     resumoIA.value = resIA.data.texto;
     focoIA.value = resIA.data.foco;
     prioridadeIA.value = resIA.data.prioridade;
-
-    // Guarda no LocalStorage para o resto do dia!
     localStorage.setItem(cacheKey, JSON.stringify(resIA.data));
-
   } catch (error) {
     console.error("Erro na IA:", error);
     resumoIA.value = "Não foi possível gerar a análise executiva. Tente novamente.";
@@ -224,11 +264,62 @@ const gerarAnaliseIA = async (forcarNova = false) => {
   }
 };
 
-const imprimirRelatorio = () => window.print();
+// --- FUNÇÕES DE EXPORTAÇÃO E E-MAIL (QUE ESTAVAM EM FALTA) ---
+
+// Chama o motor nativo para gerar PDF
+const exportarPDF = () => {
+  window.print(); 
+};
+
+// Abre a janela de enviar e carrega os gestores do Python
+const abrirModalEmail = async () => {
+  modalEmailOpen.value = true;
+  if (listaGestores.value.length === 0) {
+    try {
+      // Ajuste o endpoint caso necessário ('/api/gestores' ou apenas '/gestores' dependendo da sua config do Axios)
+      const res = await api.get('/gestores'); 
+      listaGestores.value = res.data;
+    } catch (error) {
+      console.error("Erro ao carregar lista de gestores", error);
+    }
+  }
+};
+
+// Dispara os dados para o Python enviar o email
+const confirmarEnvioEmail = async () => {
+  if (gestoresSelecionados.value.length === 0) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione pelo menos um gestor para enviar.', life: 3000 });
+    return;
+  }
+
+  enviandoEmail.value = true;
+  try {
+    // Pega só os emails (strings) da seleção
+    const emailsArray = gestoresSelecionados.value.map(g => g.email);
+    
+    await api.post('/reports/enviar-email', {
+      emails: emailsArray,
+      periodo: periodoSelecionado.value,
+      resumo_ia: resumoIA.value,
+      foco: focoIA.value,
+      prioridade: prioridadeIA.value
+    });
+
+    toast.add({ severity: 'success', summary: 'Sucesso!', detail: 'O relatório foi enviado para os gestores selecionados.', life: 4000 });
+    modalEmailOpen.value = false;
+    gestoresSelecionados.value = []; // Limpa a seleção após envio
+
+  } catch (error) {
+    console.error("Erro no envio do e-mail:", error);
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível enviar o relatório. Verifique os logs.', life: 4000 });
+  } finally {
+    enviandoEmail.value = false;
+  }
+};
 
 onMounted(() => {
   fetchGraficos();
-  gerarAnaliseIA(false); // Inicia tentando puxar do cache
+  gerarAnaliseIA(false);
 });
 </script>
 
@@ -242,6 +333,7 @@ onMounted(() => {
 .custom-scrollbar::-webkit-scrollbar-track { @apply bg-transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-slate-200 dark:bg-slate-700 rounded-full; }
 
+/* O PDF perfeito! Esconde tudo o que é botões durante o "Exportar PDF" ou Impressão */
 @media print {
   .pi-filter, .custom-dropdown-minimal, button { display: none !important; }
   body { background-color: white !important; }
