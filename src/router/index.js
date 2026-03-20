@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import ClientesView from '../views/ClientesView.vue';
+import RelatoriosView from '../views/RelatoriosView.vue';
 
 const routes = [
   {
@@ -58,6 +59,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/relatorios',
+    name: 'Relatorios',
+    component: RelatoriosView,
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/'
   }
@@ -69,7 +76,7 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('token'); // ou a chave que você usa
+  const isAuthenticated = localStorage.getItem('token');
 
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login');

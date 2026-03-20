@@ -448,6 +448,24 @@ const salvarSeguranca = async () => {
   }
 };
 
+// ==========================================
+// 🧹 LIMPEZA DE CACHE
+// ==========================================
+const limparCacheNavegador = () => {
+  localStorage.removeItem('nps_ver_arquivados');
+  
+  toast.add({ 
+    severity: 'success', 
+    summary: 'Cache Limpo', 
+    detail: 'A recarregar o sistema com dados frescos...', 
+    life: 2000 
+  });
+
+  setTimeout(() => {
+    window.location.reload(true);
+  }, 1500);
+};
+
 onMounted(() => {
   carregarDadosConfig();
   carregarConfiguracoesAI();
@@ -477,15 +495,39 @@ onMounted(() => {
     <TabView class="custom-tabview">
       
       <TabPanel header="Geral">
-        <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-6 shadow-sm">
-          <div class="flex flex-col gap-2">
-            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">URL Base do Frontend</label>
-            <InputText v-model="config.base_url_frontend" class="custom-input !text-[12px]" placeholder="http://localhost:5173" />
-            <div v-if="config.base_url_frontend" class="text-[10px] text-emerald-500 font-bold ml-1">
-              <i class="pi pi-check"></i> Valor guardado: <span class="underline">{{ config.base_url_frontend }}</span>
+        <div class="flex flex-col gap-6">
+          
+          <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-6 shadow-sm">
+            <div class="flex flex-col gap-2">
+              <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">URL Base do Frontend</label>
+              <InputText v-model="config.base_url_frontend" class="custom-input !text-[12px]" placeholder="http://localhost:5173" />
+              <div v-if="config.base_url_frontend" class="text-[10px] text-emerald-500 font-bold ml-1">
+                <i class="pi pi-check"></i> Valor guardado: <span class="underline">{{ config.base_url_frontend }}</span>
+              </div>
             </div>
+            <Button label="Guardar Geral" icon="pi pi-save" @click="salvarConfiguracoes" :loading="loading" class="w-full md:w-auto !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-8 !py-3 shadow-xl hover:scale-105 transition-transform" />
           </div>
-          <Button label="Guardar Geral" icon="pi pi-save" @click="salvarConfiguracoes" :loading="loading" class="w-full md:w-auto !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-8 !py-3 shadow-xl hover:scale-105 transition-transform" />
+
+          <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6 group transition-all hover:border-orange-200 dark:hover:border-orange-500/30">
+            <div class="flex items-center gap-5">
+              <div class="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center border border-orange-100 dark:border-orange-500/20 shrink-0 group-hover:scale-105 transition-transform duration-300">
+                <i class="pi pi-eraser text-orange-500 text-2xl group-hover:rotate-12 transition-transform"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-[0.1em]">Limpar Cache Local</h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 leading-relaxed max-w-2xl">
+                  Força a atualização de imagens (como o logotipo), limpa filtros antigos guardados em memória e restaura o desempenho do navegador.
+                </p>
+              </div>
+            </div>
+            <Button 
+              label="Limpar Agora" 
+              icon="pi pi-refresh" 
+              @click="limparCacheNavegador" 
+              class="!bg-white dark:!bg-slate-800 !text-orange-600 dark:!text-orange-400 !border-orange-200 dark:!border-orange-500/30 hover:!bg-orange-50 dark:hover:!bg-orange-500/20 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 w-full md:w-auto shrink-0 shadow-sm transition-all"
+            />
+          </div>
+          
         </div>
       </TabPanel>
 
@@ -548,13 +590,20 @@ onMounted(() => {
         <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
           
           <div class="flex justify-between items-start lg:items-center mb-8 pb-6 border-b border-slate-50 dark:border-slate-800 flex-col lg:flex-row gap-4">
-            <div class="flex gap-4 items-center">
-              <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center border border-indigo-100 dark:border-indigo-500/20">
-                <i class="pi pi-sparkles text-indigo-500 text-xl"></i>
+            <div class="flex items-center gap-4 group">
+              <div class="w-12 h-12 rounded-[1.2rem] bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20 shadow-sm group-hover:scale-105 group-hover:bg-emerald-500 group-hover:border-emerald-500 transition-all duration-300">
+                <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400 group-hover:text-white transition-colors" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                  <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A6.0651 6.0651 0 0 0 19.02 19.818a5.9847 5.9847 0 0 0 3.9977-2.9001 6.051 6.051 0 0 0-.7358-7.0967zm-14.5358 1.15l8.6046-4.9658a.4735.4735 0 0 0 .2368-.4114v-1.6384a4.4335 4.4335 0 0 1 2.3023 2.1264 4.3854 4.3854 0 0 1 .4943 2.91 4.4287 4.4287 0 0 1-1.7828 2.5029l-7.3732 4.2526a.4735.4735 0 0 1-.4736 0L1.75 11.23a4.4431 4.4431 0 0 1-.7864-3.1413 4.4093 4.4093 0 0 1 2.0124-2.671 4.4383 4.4383 0 0 1 3.2384-.3676v5.4855a1.6521 1.6521 0 0 0 .8258 1.429zm3.5042-7.394l8.6046 4.9658a.4735.4735 0 0 1 .2368.4114v6.864a4.4335 4.4335 0 0 0-1.808-2.4839 4.3854 4.3854 0 0 0-3.0487-.7146 4.4287 4.4287 0 0 0-2.4347 1.4552l-3.6866 6.386a.4735.4735 0 0 1-.4114.2368H2.174a4.4431 4.4431 0 0 0 2.4578-2.108 4.4093 4.4093 0 0 0 .1786-3.3243 4.4383 4.4383 0 0 0-2.228-2.383L10.05 4.5025a1.6521 1.6521 0 0 1 1.2003-.9256zm-1.8217 12.0031l-8.6046 4.9658a.4735.4735 0 0 0-.2368.4114v1.6384a4.4335 4.4335 0 0 1-2.3023-2.1264 4.3854 4.3854 0 0 1-.4943-2.91 4.4287 4.4287 0 0 1 1.7828-2.5029l7.3732-4.2526a.4735.4735 0 0 1 .4736 0l8.0044 4.6235a4.4431 4.4431 0 0 1 .7864 3.1413 4.4093 4.4093 0 0 1-2.0124 2.671 4.4383 4.4383 0 0 1-3.2384.3676v-5.4855a1.6521 1.6521 0 0 0-.8258-1.429zM12 15.1768a3.1768 3.1768 0 1 1 0-6.3536 3.1768 3.1768 0 0 1 0 6.3536z"/>
+                </svg>
               </div>
-              <div>
-                <h3 class="text-sm font-black uppercase text-slate-800 dark:text-white">Integração OpenAI</h3>
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Motor Preditivo do Magic AI Dashboard</p>
+              
+              <div class="flex flex-col justify-center">
+                <h2 class="text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">
+                  Integração OpenAI
+                </h2>
+                <p class="text-[10px] md:text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest mt-0.5">
+                  Motor Preditivo do Magic AI Dashboard
+                </p>
               </div>
             </div>
             <Button label="Guardar Configurações" icon="pi pi-save" @click="salvarConfiguracoesAI" :loading="savingAIConfig" class="w-full lg:w-auto !bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform" />

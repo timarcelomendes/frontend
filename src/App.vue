@@ -104,7 +104,7 @@ const logout = () => {
       
       <nav class="flex flex-col h-full gap-1 mt-4">
         <router-link to="/" class="nav-item" @click="mobileMenuAberto = false">
-          <i class="pi pi-chart-bar"></i> <span>Dashboard</span>
+          <i class="pi pi-chart-bar"></i> <span>Visão geral</span>
         </router-link>
         
         <router-link to="/clientes" class="nav-item" @click="mobileMenuAberto = false">
@@ -170,8 +170,18 @@ const logout = () => {
       </div>
 
       <nav class="flex-1 px-3 space-y-1 mt-4">
-        <router-link to="/" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Dashboard' : null">
-          <i class="pi pi-chart-bar"></i> <span v-if="sidebarExpandida" class="animate-fadein">Dashboard</span>
+        <router-link to="/" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Visão geral' : null">
+          <i class="pi pi-chart-bar"></i> <span v-if="sidebarExpandida" class="animate-fadein">Visão geral</span>
+        </router-link>
+
+        <router-link to="/relatorios" class="nav-item group" v-tooltip.right="!sidebarExpandida ? 'Relatorios Inteligentes' : null">
+          <i class="pi pi-chart-line"></i> 
+          <div v-if="sidebarExpandida" class="flex items-center justify-between flex-1 animate-fadein">
+            <span>Relatorios</span>
+            <span class="bg-indigo-500 text-[7px] text-white px-1.5 py-0.5 rounded-md font-black tracking-tighter animate-pulse shadow-sm shadow-indigo-500/50">
+              AI
+            </span>
+          </div>
         </router-link>
 
         <router-link to="/clientes" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Contas' : null">

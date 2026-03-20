@@ -313,21 +313,50 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
       </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-4 items-end">
-        <div class="xl:col-span-2">
-          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Pesquisar</label>
-          <span class="p-input-icon-left w-full"><i class="pi pi-search text-slate-400 text-xs" /><InputText v-model="pesquisa" @input="atualizarFiltro" placeholder="Nome, email..." class="w-full custom-input !py-2.5 !text-xs" /></span>
+    <div class="bg-white dark:bg-slate-900/80 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none mb-8">
+      <div class="flex flex-wrap items-end gap-4 lg:gap-6">
+        
+        <div class="flex-1 min-w-[200px] space-y-2">
+          <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Pesquisar</label>
+          <div class="relative group">
+            <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors text-xs"></i>
+            <InputText placeholder="Nome, email ou empresa..." class="w-full !pl-11 !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[11px] !font-bold focus:!ring-2 focus:!ring-orange-500/20 !transition-all !h-11" />
+          </div>
         </div>
-        <div class="xl:col-span-2">
-          <label class="text-[9px] font-black uppercase tracking-widest text-sky-500 mb-1.5 block ml-1"><i class="pi pi-briefcase text-[8px]"></i> Gestor</label>
-          <Dropdown v-model="filtroGestor" :options="gestores" optionLabel="label" optionValue="value" placeholder="Todos" class="w-full custom-dropdown !h-[42px] border-sky-100 bg-sky-50/50 dark:border-sky-500/20 dark:bg-sky-500/5" />
+
+        <div class="w-full md:w-48 space-y-2">
+          <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Gestor</label>
+          <Dropdown placeholder="Todos" class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[11px] !font-bold !h-11 flex items-center" />
         </div>
-        <div class="xl:col-span-2"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Status</label><Dropdown v-model="filtroStatus" :options="opcoesStatus" optionLabel="label" optionValue="value" placeholder="Todos" class="w-full custom-dropdown !h-[42px]" /></div>
-        <div class="xl:col-span-2"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Referência</label><Dropdown v-model="filtroTipoData" :options="opcoesTipoData" optionLabel="label" optionValue="value" class="w-full custom-dropdown !h-[42px]" /></div>
-        <div class="xl:col-span-1"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">A partir</label><input type="date" v-model="filtroDataInicio" class="w-full custom-input !py-2.5 !px-2 !text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl outline-none" /></div>
-        <div class="xl:col-span-1"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Até</label><input type="date" v-model="filtroDataFim" class="w-full custom-input !py-2.5 !px-2 !text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl outline-none" /></div>
-        <div class="xl:col-span-2 flex justify-end xl:justify-start"><Button icon="pi pi-filter-slash" label="Limpar" @click="limparFiltros" class="w-full h-[42px] shrink-0 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 !border-none hover:!bg-rose-100 transition-colors rounded-xl text-xs font-bold uppercase tracking-widest" /></div>
+
+        <div class="w-full md:w-40 space-y-2">
+          <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Status</label>
+          <Dropdown placeholder="Todos" class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[11px] !font-bold !h-11 flex items-center" />
+        </div>
+
+        <div class="w-full md:w-48 space-y-2">
+          <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Referência</label>
+          <Dropdown placeholder="Próximo Envio" class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[11px] !font-bold !h-11 flex items-center" />
+        </div>
+
+        <div class="flex items-center gap-2 space-y-2">
+          <div class="space-y-2">
+            <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">A partir</label>
+            <Calendar placeholder="Início" class="!w-32 !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[10px] !font-bold !h-11 custom-calendar" />
+          </div>
+          <div class="pt-6 text-slate-300 dark:text-slate-600">—</div>
+          <div class="space-y-2">
+            <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Até</label>
+            <Calendar placeholder="Fim" class="!w-32 !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[10px] !font-bold !h-11 custom-calendar" />
+          </div>
+        </div>
+
+        <div class="pb-0.5">
+          <Button icon="pi pi-filter-slash" v-tooltip.top="'Limpar Filtros'" class="!w-11 !h-11 !bg-white dark:!bg-slate-800 !text-slate-400 hover:!text-rose-500 !border-slate-200 dark:!border-slate-700 !rounded-xl transition-all shadow-sm" />
+        </div>
+
       </div>
+    </div>
 
     <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-6 pt-2">
       <DataTable :value="clientesFiltrados" v-model:selection="clientesSelecionados" :paginator="true" :rows="10" :loading="loading" dataKey="cliente_id" class="p-datatable-sm p-datatable-custom" :globalFilterFields="['nome', 'email', 'empresa']" v-model:filters="filtrosTabela" rowHover>
