@@ -260,10 +260,31 @@ onMounted(carregarRespostas);
           </div>
         </template>
 
-        <Column field="nota" header="Score" style="width: 80px">
+        <Column field="nota" header="Score" style="width: 140px">
           <template #body="s">
-            <div :class="['w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shadow-lg', obterCorNPS(s.data.nota)]">
-              {{ s.data.nota }}
+            <div class="flex items-center">
+              
+              <div :class="['w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shadow-lg z-10 relative shrink-0', obterCorNPS(s.data.nota)]">
+                {{ s.data.nota }}
+              </div>
+              
+              <div v-if="s.data.nota_anterior !== null && s.data.nota_anterior !== undefined && s.data.nota_anterior !== ''" 
+                   class="flex items-center gap-1 bg-slate-50 dark:bg-slate-800 px-2 py-1.5 rounded-r-lg border border-l-0 border-slate-100 dark:border-slate-700 -ml-2 pl-4"
+                   v-tooltip.top="'Nota Anterior'">
+                   
+                <i v-if="s.data.nota > s.data.nota_anterior" class="pi pi-arrow-up text-emerald-500 text-[9px] font-black"></i>
+                <i v-else-if="s.data.nota < s.data.nota_anterior" class="pi pi-arrow-down text-rose-500 text-[9px] font-black"></i>
+                <i v-else class="pi pi-minus text-slate-400 text-[9px] font-black"></i>
+                
+                <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                  {{ s.data.nota_anterior }}
+                </span>
+              </div>
+              
+              <div v-else class="flex items-center bg-sky-50 dark:bg-sky-500/10 px-2 py-1.5 rounded-r-lg border border-l-0 border-sky-100 dark:border-sky-500/20 -ml-2 pl-4" v-tooltip.top="'Primeira avaliação deste cliente'">
+                <span class="text-[8px] font-black text-sky-500 uppercase tracking-widest">New</span>
+              </div>
+
             </div>
           </template>
         </Column>

@@ -8,7 +8,6 @@ const routes = [
     component: () => import('../views/LoginView.vue'),
     meta: { requiresAuth: false } 
   },
-  // 👇 ROTA RESTAURADA AQUI 👇
   {
     path: '/forgot-password',
     name: 'ForgotPassword',
@@ -69,12 +68,11 @@ const router = createRouter({
   routes
 });
 
-// 🛡️ GUARDA DE ROTAS (Navegação Segura)
 router.beforeEach((to, from, next) => {
   const isAuthenticated = localStorage.getItem('token'); // ou a chave que você usa
 
   if (to.meta.requiresAuth && !isAuthenticated) {
-    next('/login'); // Manda para o login
+    next('/login');
   } else {
     next();
   }

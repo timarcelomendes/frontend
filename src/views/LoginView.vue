@@ -165,7 +165,7 @@ const handleSubmit = () => {
           <img src="/nps.png" alt="Ícone NPS" class="h-14 w-auto drop-shadow-lg" />
           <div class="flex flex-col justify-center text-left">
             <h1 class="text-5xl font-black uppercase italic leading-none text-white tracking-tighter">
-              NPS PRO
+              NPS
             </h1>
             <span class="text-sm font-black tracking-[0.3em] uppercase text-orange-500 mt-1.5">
               INTELLIGENCE
@@ -189,7 +189,7 @@ const handleSubmit = () => {
       </div>
 
     <div class="absolute bottom-10 left-12 z-10 flex items-baseline gap-2 opacity-50 hover:opacity-100 transition-all duration-300">
-      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">A Product By</span>
+      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">By</span>
       <span class="text-sm font-black text-white tracking-[0.15em] uppercase">GAUGE</span>
 
     </div>
@@ -204,7 +204,7 @@ const handleSubmit = () => {
             <img src="/nps.png" alt="Ícone NPS" class="h-10 w-auto drop-shadow-sm" />
             <div class="flex flex-col justify-center text-left">
               <span class="text-3xl font-black tracking-tighter uppercase italic leading-none text-slate-900 dark:text-white">
-                NPS PRO
+                NPS
               </span>
               <span class="text-[10px] font-black tracking-[0.2em] uppercase text-orange-500 mt-1">
                 INTELLIGENCE

@@ -16,6 +16,7 @@ import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import InputSwitch from 'primevue/inputswitch';
 import Skeleton from 'primevue/skeleton';
+import InputNumber from 'primevue/inputnumber';
 
 const toast = useToast();
 
@@ -321,7 +322,7 @@ const usuario = ref({
   password: '' 
 });
 
-// 🚀 FUNÇÃO UNIFICADA: Carregar e Ordenar Utilizadores
+// 🚀 Carregar e Ordenar Utilizadores
 const carregarUtilizadores = async () => {
   carregandoUtilizadores.value = true;
   try {
@@ -406,12 +407,54 @@ const abrirNovoUser = () => {
 
 const iniciais = (nome) => nome ? nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U';
 
+// ==========================================
+// 🔒 ESTADOS: SEGURANÇA (Sessão)
+// ==========================================
+const configSeguranca = ref({ tempo_minutos: 60 });
+const salvandoSeguranca = ref(false);
+
+const carregarSeguranca = async () => {
+  try {
+    const response = await api.get('/config/seguranca');
+    if (response.data && response.data.tempo_minutos) {
+      configSeguranca.value.tempo_minutos = response.data.tempo_minutos;
+    }
+  } catch (error) {
+    console.error("Erro ao carregar configurações de segurança:", error);
+  }
+};
+
+const salvarSeguranca = async () => {
+  salvandoSeguranca.value = true;
+  try {
+    await api.put('/config/seguranca', { 
+      tempo_minutos: configSeguranca.value.tempo_minutos 
+    });
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Segurança Atualizada', 
+      detail: 'O tempo de expiração da sessão foi alterado com sucesso!', 
+      life: 3000 
+    });
+  } catch (error) {
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Erro', 
+      detail: 'Falha ao salvar a configuração de segurança.', 
+      life: 3000 
+    });
+  } finally {
+    salvandoSeguranca.value = false;
+  }
+};
+
 onMounted(() => {
   carregarDadosConfig();
   carregarConfiguracoesAI();
   carregarUtilizadores();
   carregarSessoesReais();
   processarCallbackMicrosoft();
+  carregarSeguranca(); 
 });
 
 </script>
@@ -646,97 +689,132 @@ onMounted(() => {
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             <div class="lg:col-span-4 space-y-6">
-            <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                <h3 class="text-[11px] font-black uppercase text-slate-800 dark:text-white tracking-widest mb-6 flex items-center gap-2">
-                <i class="pi pi-key text-orange-500"></i> Alterar Senha
-                </h3>
+              <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
+                  <h3 class="text-[11px] font-black uppercase text-slate-800 dark:text-white tracking-widest mb-6 flex items-center gap-2">
+                  <i class="pi pi-key text-orange-500"></i> Alterar Senha
+                  </h3>
 
-                <div class="space-y-4">
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Senha Atual</label>
-                    <Password v-model="formSenha.atual" toggleMask :feedback="false" inputClass="custom-input !text-[12px] w-full" class="w-full" />
-                </div>
+                  <div class="space-y-4">
+                  <div class="flex flex-col gap-1.5">
+                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Senha Atual</label>
+                      <Password v-model="formSenha.atual" toggleMask :feedback="false" inputClass="custom-input !text-[12px] w-full" class="w-full" />
+                  </div>
 
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nova Senha</label>
-                    <Password v-model="formSenha.nova" toggleMask inputClass="custom-input !text-[12px] w-full" class="w-full" />
-                </div>
+                  <div class="flex flex-col gap-1.5">
+                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nova Senha</label>
+                      <Password v-model="formSenha.nova" toggleMask inputClass="custom-input !text-[12px] w-full" class="w-full" />
+                  </div>
 
-                <div class="flex flex-col gap-1.5 pb-4">
-                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirmar Nova Senha</label>
-                    <Password v-model="formSenha.confirmacao" toggleMask :feedback="false" inputClass="custom-input !text-[12px] w-full" class="w-full" />
-                </div>
+                  <div class="flex flex-col gap-1.5 pb-4">
+                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirmar Nova Senha</label>
+                      <Password v-model="formSenha.confirmacao" toggleMask :feedback="false" inputClass="custom-input !text-[12px] w-full" class="w-full" />
+                  </div>
 
-                <Button label="Atualizar Senha" @click="alterarMinhaSenha" :loading="loadingSenha"
-                    class="w-full !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 shadow-xl hover:scale-[1.02] transition-transform" />
-                </div>
+                  <Button label="Atualizar Senha" @click="alterarMinhaSenha" :loading="loadingSenha"
+                      class="w-full !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 shadow-xl hover:scale-[1.02] transition-transform" />
+                  </div>
+              </div>
+              
+              <div class="bg-slate-900 rounded-[2rem] p-6 md:p-8 text-white overflow-hidden relative shadow-xl">
+                  <i class="pi pi-shield absolute -right-4 -bottom-4 text-8xl opacity-10"></i>
+                  <h4 class="text-[12px] font-black uppercase tracking-widest mb-3 text-orange-400">Autenticação 2FA</h4>
+                  <p class="text-[11px] text-slate-400 mb-6 font-medium leading-relaxed">Adicione uma camada extra de proteção via Authenticator.</p>
+                  <Button label="Configurar MFA" class="!bg-white !text-slate-900 !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 !rounded-xl !border-none shadow-lg hover:scale-105 transition-transform" />
+              </div>
             </div>
-            
-            <div class="bg-slate-900 rounded-[2rem] p-6 md:p-8 text-white overflow-hidden relative shadow-xl">
-                <i class="pi pi-shield absolute -right-4 -bottom-4 text-8xl opacity-10"></i>
-                <h4 class="text-[12px] font-black uppercase tracking-widest mb-3 text-orange-400">Autenticação 2FA</h4>
-                <p class="text-[11px] text-slate-400 mb-6 font-medium leading-relaxed">Adicione uma camada extra de proteção via Authenticator.</p>
-                <Button label="Configurar MFA" class="!bg-white !text-slate-900 !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 !rounded-xl !border-none shadow-lg hover:scale-105 transition-transform" />
-            </div>
+
+            <div class="lg:col-span-8 space-y-6">
+              
+              <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
+                  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                      <div>
+                          <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Regras de Acesso</h3>
+                          <p class="text-[9px] text-slate-400 font-bold italic mt-1">Tempo limite de inatividade</p>
+                      </div>
+                  </div>
+
+                  <div class="flex flex-col gap-2 max-w-xl">
+                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Tempo de Expiração da Sessão</label>
+                      <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                          <InputNumber 
+                              v-model="configSeguranca.tempo_minutos" 
+                              inputId="tempo_sessao" 
+                              :min="5" 
+                              :max="1440" 
+                              suffix=" minutos" 
+                              class="w-full sm:w-48"
+                              inputClass="custom-input !text-[12px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10" 
+                          />
+                          <Button 
+                              label="Guardar Regra" 
+                              icon="pi pi-save" 
+                              class="w-full sm:w-auto !bg-indigo-600 !border-none hover:!bg-indigo-700 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform px-6 py-4 sm:py-3" 
+                              @click="salvarSeguranca" 
+                              :loading="salvandoSeguranca"
+                          />
+                      </div>
+                      <p class="text-[10px] text-slate-400 font-medium mt-2 leading-relaxed">
+                          <i class="pi pi-info-circle mr-1"></i> Desconecta automaticamente utilizadores inativos. Máximo permitido: 1440 min (24 horas).
+                      </p>
+                  </div>
+              </div>
+
+              <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm h-full">
+                  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                  <div>
+                      <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Controlo de Dispositivos</h3>
+                      <p class="text-[9px] text-slate-400 font-bold italic mt-1">Sessões ativas no momento</p>
+                  </div>
+                  <Button 
+                      v-if="sessoesAtivas.length > 1"
+                      label="Encerrar Outras Sessões" 
+                      icon="pi pi-bolt" 
+                      @click="encerrarTodasAsSessoes"
+                      :loading="loadingSessoes"
+                      class="w-full md:w-auto !bg-rose-50 dark:!bg-rose-500/10 !text-rose-600 dark:!text-rose-400 !border-none !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 !rounded-xl hover:!bg-rose-600 hover:!text-white transition-all shadow-sm hover:scale-105" 
+                  />
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div v-for="sessao in sessoesAtivas" :key="sessao.id" 
+                      class="p-5 rounded-[2rem] border border-slate-50 dark:border-slate-800 flex flex-col gap-4 relative transition-all"
+                      :class="sessao.atual ? 'bg-orange-50/30 border-orange-100 shadow-inner' : 'bg-white dark:bg-slate-900 shadow-sm'">
+                      
+                      <div class="flex items-center gap-4">
+                      <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm shrink-0"
+                          :class="sessao.atual ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'">
+                          <i :class="[sessao.dispositivo.includes('iPhone') ? 'pi pi-mobile' : 'pi pi-desktop']"></i>
+                      </div>
+                      <div class="overflow-hidden">
+                          <div class="flex items-center gap-2 flex-wrap">
+                          <h4 class="text-[11px] font-bold text-slate-800 dark:text-white truncate">{{ sessao.dispositivo }}</h4>
+                          <Tag v-if="sessao.atual" value="Este Dispositivo" severity="warning" class="!text-[8px] !px-2 !font-black !uppercase !tracking-widest" />
+                          </div>
+                          <p class="text-[9px] text-slate-400 font-medium tracking-tight truncate">{{ sessao.local }} • {{ sessao.ip }}</p>
+                      </div>
+                      </div>
+
+                      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-3 border-t border-slate-100 dark:border-slate-800 gap-2">
+                      <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">{{ sessao.data }}</span>
+                      <Button v-if="!sessao.atual" 
+                              icon="pi pi-sign-out" 
+                              label="Revogar"
+                              @click="encerrarSessao(sessao.id)"
+                              class="!text-[9px] !font-black !p-0 !text-rose-400 !bg-transparent !border-none hover:!text-rose-600 uppercase tracking-widest" />
+                      </div>
+                  </div>
+                  </div>
+
+                  <div class="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                  <p class="text-[9px] text-slate-400 font-medium text-center uppercase tracking-widest">
+                      <i class="pi pi-info-circle mr-1"></i> Se encontrar um dispositivo que não reconhece, altere a senha imediatamente.
+                  </p>
+                  </div>
+              </div>
             </div>
 
-            <div class="lg:col-span-8">
-            <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm h-full">
-                
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div>
-                    <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Controlo de Dispositivos</h3>
-                    <p class="text-[9px] text-slate-400 font-bold italic mt-1">Sessões ativas no momento</p>
-                </div>
-                <Button 
-                    v-if="sessoesAtivas.length > 1"
-                    label="Encerrar Outras Sessões" 
-                    icon="pi pi-bolt" 
-                    @click="encerrarTodasAsSessoes"
-                    :loading="loadingSessoes"
-                    class="w-full md:w-auto !bg-rose-50 dark:!bg-rose-500/10 !text-rose-600 dark:!text-rose-400 !border-none !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 !rounded-xl hover:!bg-rose-600 hover:!text-white transition-all shadow-sm hover:scale-105" 
-                />
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div v-for="sessao in sessoesAtivas" :key="sessao.id" 
-                    class="p-5 rounded-[2rem] border border-slate-50 dark:border-slate-800 flex flex-col gap-4 relative transition-all"
-                    :class="sessao.atual ? 'bg-orange-50/30 border-orange-100 shadow-inner' : 'bg-white dark:bg-slate-900 shadow-sm'">
-                    
-                    <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm shrink-0"
-                        :class="sessao.atual ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'">
-                        <i :class="[sessao.dispositivo.includes('iPhone') ? 'pi pi-mobile' : 'pi pi-desktop']"></i>
-                    </div>
-                    <div class="overflow-hidden">
-                        <div class="flex items-center gap-2 flex-wrap">
-                        <h4 class="text-[11px] font-bold text-slate-800 dark:text-white truncate">{{ sessao.dispositivo }}</h4>
-                        <Tag v-if="sessao.atual" value="Este Dispositivo" severity="warning" class="!text-[8px] !px-2 !font-black !uppercase !tracking-widest" />
-                        </div>
-                        <p class="text-[9px] text-slate-400 font-medium tracking-tight truncate">{{ sessao.local }} • {{ sessao.ip }}</p>
-                    </div>
-                    </div>
-
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-3 border-t border-slate-100 dark:border-slate-800 gap-2">
-                    <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">{{ sessao.data }}</span>
-                    <Button v-if="!sessao.atual" 
-                            icon="pi pi-sign-out" 
-                            label="Revogar"
-                            @click="encerrarSessao(sessao.id)"
-                            class="!text-[9px] !font-black !p-0 !text-rose-400 !bg-transparent !border-none hover:!text-rose-600 uppercase tracking-widest" />
-                    </div>
-                </div>
-                </div>
-
-                <div class="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                <p class="text-[9px] text-slate-400 font-medium text-center uppercase tracking-widest">
-                    <i class="pi pi-info-circle mr-1"></i> Se encontrar um dispositivo que não reconhece, altere a senha imediatamente.
-                </p>
-                </div>
-            </div>
-            </div>
         </div>
-        </TabPanel>
+      </TabPanel>
 
     </TabView>
 
@@ -816,70 +894,62 @@ onMounted(() => {
 .animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Navegação por Abas (Tabs) */
+/* ==========================================
+   🌟 TABS: REMOÇÃO DE MARGENS E FUNDOS
+   ========================================== */
+
+/* 1. Neutraliza os fundos (Antigo) */
+:deep(.p-tabview), 
+:deep(.p-tabview-nav-container), 
+:deep(.p-tabview-nav-content), 
 :deep(.p-tabview-nav) {
-    @apply flex overflow-x-auto flex-nowrap mb-6 border-none bg-transparent;
-    scrollbar-width: none; 
-    -ms-overflow-style: none;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
 }
 
-:deep(.p-tabview-nav)::-webkit-scrollbar { display: none; }
-
-:deep(.p-tabview-nav-link) {
-    @apply whitespace-nowrap !px-4 !py-3 rounded-xl transition-all;
+:deep(.p-tabview-panels) {
+    background: transparent !important;
+    padding: 0 !important;   /* 👈 Remove a margem interna que empurra a tabela */
+    margin-top: -10px !important; /* 👈 Ajuste fino para "colar" a tabela nas abas */
 }
 
-/* Cor das abas selecionadas */
-:deep(.p-tabview-selected .p-tabview-nav-link) { 
-    @apply !bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 shadow-xl; 
+/* 3. Ajuste das Abas (Botões) */
+:deep(.p-tabview-nav li) {
+    background: transparent !important;
+    border: none !important;
+    margin-right: 6px !important;
+    margin-bottom: 0 !important; /* Garante que a lista não empurre o conteúdo */
 }
 
-/* Inputs e Dropdowns customizados */
+:deep(.p-tabview-nav li .p-tabview-nav-link) {
+    @apply bg-slate-100 dark:bg-slate-800 text-slate-500 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 10px 18px !important; /* Abas um pouco mais compactas */
+    transition: all 0.2s ease !important;
+}
+
+/* Aba Ativa */
+:deep(.p-tabview-nav li.p-highlight .p-tabview-nav-link) {
+    @apply bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md !important;
+}
+
+/* 4. Remove a linha de borda inferior do cabeçalho das abas */
+:deep(.p-tabview .p-tabview-nav) {
+    border-bottom: none !important;
+}
+
+/* Customização dos Inputs e Modais (Mantido) */
 :deep(.custom-input) { 
     @apply bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 p-4 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-slate-800 dark:text-white; 
 }
 
-/* Modais (Dialog) */
-:deep(.custom-dialog .p-dialog-header) {
-  @apply bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 sm:px-6 md:px-8 py-6;
-}
-:deep(.custom-dialog .p-dialog-content) {
-  @apply dark:bg-slate-900; /* Garante que o interior do modal fique escuro */
-}
-:deep(.custom-dialog .p-dialog-title) {
-  @apply text-lg font-black italic tracking-tight text-slate-800 dark:text-white;
-}
+:deep(.custom-dialog .p-dialog-header) { @apply bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-8 py-6; }
+:deep(.custom-dialog .p-dialog-content) { @apply dark:bg-slate-900; }
+:deep(.custom-dialog .p-dialog-title) { @apply text-lg font-black italic tracking-tight text-slate-800 dark:text-white; }
 
-/* ==========================================
-   Customização da Tabela - Cores Sólidas Anti-Saga 
-   ========================================== */
-:deep(.custom-table),
-:deep(.custom-table .p-datatable-wrapper) {
-  /* Trocamos transparência por cor sólida no Dark Mode */
-  @apply bg-white dark:bg-slate-900;
-}
-
-:deep(.custom-table .p-datatable-thead > tr > th) {
-  /* O header precisa de uma cor para não herdar o branco do tema Saga */
-  @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4;
-}
-
-:deep(.custom-table .p-datatable-tbody > tr) {
-  /* Forçamos a cor do texto e do fundo no Dark Mode */
-  @apply bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors duration-200;
-}
-
-:deep(.custom-table .p-datatable-tbody > tr > td) {
-  @apply border-b border-slate-50 dark:border-slate-800/70 py-3;
-}
-
-/* Efeito de Hover nas linhas */
-:deep(.custom-table.p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):hover) {
-  @apply bg-slate-50/50 dark:bg-slate-800/40 !important;
-}
-
-/* Quando não há resultados */
-:deep(.custom-table .p-datatable-emptymessage td) {
-  @apply bg-white dark:bg-slate-900 text-center text-slate-400 py-8 text-sm font-medium;
-}
+:deep(.custom-table), :deep(.custom-table .p-datatable-wrapper) { @apply bg-white dark:bg-slate-900; }
+:deep(.custom-table .p-datatable-thead > tr > th) { @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4; }
+:deep(.custom-table .p-datatable-tbody > tr) { @apply bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300; }
 </style>

@@ -23,6 +23,9 @@ const perfis = ref([{ nome: 'Decisor' }, { nome: 'Influenciador' }, { nome: 'Usu
 const cargos = ref([]);   
 const loading = ref(true);
 
+const gestores = ref([{ label: 'Todos', value: null }]);
+const filtroGestor = ref(null);
+
 const enviandoEmail = ref(false);
 const idsEnviando = ref([]); 
 const clientesSelecionados = ref([]);
@@ -67,6 +70,7 @@ const limparFiltros = () => {
   pesquisa.value = '';
   filtrosTabela.value.global.value = null;
   filtroStatus.value = null;
+  filtroGestor.value = null;
   filtroDataInicio.value = null;
   filtroDataFim.value = null;
   filtroTipoData.value = 'proximo_envio';
@@ -80,6 +84,11 @@ const clientesFiltrados = computed(() => {
       matchesStatus = st === filtroStatus.value.toLowerCase();
     }
 
+    let matchesGestor = true;
+    if (filtroGestor.value) {
+      matchesGestor = c.gestor === filtroGestor.value;
+    }
+
     let matchesDate = true;
     if (filtroDataInicio.value || filtroDataFim.value) {
       const dataAlvo = c[filtroTipoData.value];
@@ -91,7 +100,8 @@ const clientesFiltrados = computed(() => {
         if (filtroDataFim.value && dataLimpa > filtroDataFim.value) matchesDate = false;
       }
     }
-    return matchesStatus && matchesDate;
+    
+    return matchesStatus && matchesDate && matchesGestor; 
   });
 });
 
@@ -128,6 +138,13 @@ const carregarClientes = async () => {
   try { const resEmp = await api.get('/cadastros/empresas'); if(resEmp.data) empresas.value = resEmp.data; } catch (e) {}
   try { const resPerf = await api.get('/cadastros/perfis'); if(resPerf.data) perfis.value = resPerf.data; } catch (e) {}
   try { const resCargos = await api.get('/cadastros/cargos'); if(resCargos.data) cargos.value = resCargos.data; } catch (e) {}
+  
+  try { 
+    const resGest = await api.get('/cadastros/gestores'); 
+    if(resGest.data) {
+      gestores.value = [{ label: 'Todos', value: null }, ...resGest.data.map(g => ({ label: g.nome, value: g.nome }))];
+    }
+  } catch (e) {}
   
   loading.value = false;
 };
@@ -201,7 +218,7 @@ const dispararIndividual = async (row_data) => {
   idsEnviando.value.push(id); 
   try {
     const response = await api.post(`/clientes/${id}/forcar-envio`);
-    toast.add({ severity: 'success', summary: 'Gatilho Acionado', detail: response.data.message || 'Envio iniciado', life: 4000 });
+    toast.add({ severity: 'success', summary: 'Gatilho Acionado', detail: response.data.message || 'Envio concluído', life: 4000 });
     setTimeout(sincronizarStatusRealTime, 1000); 
   } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao disparar n8n.', life: 5000 }); } 
   finally { idsEnviando.value = idsEnviando.value.filter(i => i !== id); }
@@ -296,19 +313,21 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
       </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm mb-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-end">
-        <div class="lg:col-span-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-4 items-end">
+        <div class="xl:col-span-2">
           <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Pesquisar</label>
-          <span class="p-input-icon-left w-full"><i class="pi pi-search text-slate-400 text-xs" /><InputText v-model="pesquisa" @input="atualizarFiltro" placeholder="Nome, email ou empresa..." class="w-full custom-input !py-2.5 !text-xs" /></span>
+          <span class="p-input-icon-left w-full"><i class="pi pi-search text-slate-400 text-xs" /><InputText v-model="pesquisa" @input="atualizarFiltro" placeholder="Nome, email..." class="w-full custom-input !py-2.5 !text-xs" /></span>
         </div>
-        <div class="lg:col-span-2"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Status</label><Dropdown v-model="filtroStatus" :options="opcoesStatus" optionLabel="label" optionValue="value" placeholder="Todos" class="w-full custom-dropdown !h-[42px]" /></div>
-        <div class="lg:col-span-2"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Referência</label><Dropdown v-model="filtroTipoData" :options="opcoesTipoData" optionLabel="label" optionValue="value" class="w-full custom-dropdown !h-[42px]" /></div>
-        <div class="lg:col-span-2"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">A partir de</label><input type="date" v-model="filtroDataInicio" class="w-full custom-input !py-2.5 !px-3 !text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 text-slate-700 dark:text-slate-300" /></div>
-        <div class="lg:col-span-2"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Até</label><input type="date" v-model="filtroDataFim" class="w-full custom-input !py-2.5 !px-3 !text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 text-slate-700 dark:text-slate-300" /></div>
-        <div class="lg:col-span-1 flex justify-end lg:justify-start"><Button icon="pi pi-filter-slash" @click="limparFiltros" v-tooltip.top="'Limpar Filtros'" class="w-full lg:w-[42px] h-[42px] shrink-0 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 !border-none hover:!bg-rose-100 transition-colors rounded-xl" /></div>
+        <div class="xl:col-span-2">
+          <label class="text-[9px] font-black uppercase tracking-widest text-sky-500 mb-1.5 block ml-1"><i class="pi pi-briefcase text-[8px]"></i> Gestor</label>
+          <Dropdown v-model="filtroGestor" :options="gestores" optionLabel="label" optionValue="value" placeholder="Todos" class="w-full custom-dropdown !h-[42px] border-sky-100 bg-sky-50/50 dark:border-sky-500/20 dark:bg-sky-500/5" />
+        </div>
+        <div class="xl:col-span-2"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Status</label><Dropdown v-model="filtroStatus" :options="opcoesStatus" optionLabel="label" optionValue="value" placeholder="Todos" class="w-full custom-dropdown !h-[42px]" /></div>
+        <div class="xl:col-span-2"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Referência</label><Dropdown v-model="filtroTipoData" :options="opcoesTipoData" optionLabel="label" optionValue="value" class="w-full custom-dropdown !h-[42px]" /></div>
+        <div class="xl:col-span-1"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">A partir</label><input type="date" v-model="filtroDataInicio" class="w-full custom-input !py-2.5 !px-2 !text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl outline-none" /></div>
+        <div class="xl:col-span-1"><label class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Até</label><input type="date" v-model="filtroDataFim" class="w-full custom-input !py-2.5 !px-2 !text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl outline-none" /></div>
+        <div class="xl:col-span-2 flex justify-end xl:justify-start"><Button icon="pi pi-filter-slash" label="Limpar" @click="limparFiltros" class="w-full h-[42px] shrink-0 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 !border-none hover:!bg-rose-100 transition-colors rounded-xl text-xs font-bold uppercase tracking-widest" /></div>
       </div>
-    </div>
 
     <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-6 pt-2">
       <DataTable :value="clientesFiltrados" v-model:selection="clientesSelecionados" :paginator="true" :rows="10" :loading="loading" dataKey="cliente_id" class="p-datatable-sm p-datatable-custom" :globalFilterFields="['nome', 'email', 'empresa']" v-model:filters="filtrosTabela" rowHover>
@@ -334,6 +353,15 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
                 <span class="text-[9px] text-slate-400 font-bold ml-1 truncate max-w-[100px]">{{ slotProps.data.cargo || '' }}</span>
               </div>
             </div>
+          </template>
+        </Column>
+
+        <Column field="gestor" header="Gestor da Conta" sortable style="min-width: 140px">
+          <template #body="slotProps">
+              <span v-if="slotProps.data.gestor" class="text-[9px] font-black text-sky-500 uppercase tracking-widest bg-sky-50 dark:bg-sky-500/10 px-2 py-1 rounded-md border border-sky-100 dark:border-sky-500/20 whitespace-nowrap">
+                <i class="pi pi-briefcase mr-1"></i>{{ slotProps.data.gestor }}
+              </span>
+              <span v-else class="text-[9px] text-slate-400 italic">Sem Gestor</span>
           </template>
         </Column>
 
@@ -440,29 +468,43 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
 .animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-/* 🌟 Input e Dropdown - Cores e Bordas */
-:deep(.custom-input), :deep(.p-dropdown.custom-dropdown) { 
-  @apply !bg-slate-50 dark:!bg-slate-800 !border-slate-100 dark:!border-slate-700 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-medium; 
+/* 🌟 CORREÇÃO DOS DROPDOWNS (SELECTORS) */
+
+/* 1. Garante que o texto e a seta fiquem escuros no Light Mode e claros no Dark Mode */
+:deep(.p-dropdown.custom-dropdown) {
+    @apply bg-slate-100/50 dark:bg-slate-800 border-none rounded-lg transition-all !important;
 }
 
-/* 🌟 Setinha do Dropdown (Visível no Claro e no Escuro) */
-:deep(.p-dropdown.custom-dropdown .p-dropdown-trigger),
-:deep(.p-dropdown.custom-dropdown .p-dropdown-trigger-icon),
-:deep(.p-dropdown.custom-dropdown .p-dropdown-trigger svg) { 
-  @apply !text-slate-400 dark:!text-slate-400; 
+/* 2. ESTA É A CHAVE: Altera a cor da seta (ícone) do seletor */
+:deep(.p-dropdown.custom-dropdown .p-dropdown-trigger) {
+    @apply text-slate-600 dark:text-slate-400 !important;
+    width: 2.5rem !important;
 }
 
-/* 🌟 Fundo Transparente para o Texto do Dropdown */
-:deep(.p-dropdown.custom-dropdown .p-dropdown-label) { 
-  @apply !bg-transparent py-0 text-xs text-slate-700 dark:text-slate-200; 
+/* 3. Garante que o label (texto selecionado) também acompanhe a cor */
+:deep(.p-dropdown.custom-dropdown .p-dropdown-label) {
+    @apply text-slate-700 dark:text-slate-200 font-semibold text-xs !important;
+    padding: 0.5rem 0.75rem !important;
 }
 
-:deep(.custom-dropdown.w-full) { @apply flex items-center px-1; }
+/* 4. Remove o contorno azul/laranja ao clicar */
+:deep(.p-dropdown:not(.p-disabled).p-focus) {
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important; /* Um leve glow laranja */
+    border-color: transparent !important;
+}
 
-/* 🌟 Menu Aberto do Dropdown (Dark Mode) */
-:deep(.p-dropdown-panel) { @apply dark:!bg-slate-800 dark:!border-slate-700; }
-:deep(.p-dropdown-panel .p-dropdown-item) { @apply dark:!text-slate-300 hover:dark:!bg-slate-700; }
-:deep(.p-dropdown-panel .p-dropdown-item.p-highlight) { @apply dark:!bg-orange-500/20 dark:!text-orange-500; }
+/* 5. Ajuste do Painel que abre (Lista de Opções) */
+:deep(.p-dropdown-panel) {
+    @apply dark:bg-slate-800 dark:border-slate-700 shadow-xl !important;
+}
+
+:deep(.p-dropdown-panel .p-dropdown-item) {
+    @apply text-xs font-medium text-slate-600 dark:text-slate-300 !important;
+}
+
+:deep(.p-dropdown-panel .p-dropdown-item.p-highlight) {
+    @apply bg-orange-500/10 text-orange-600 dark:text-orange-400 !important;
+}
 
 /* 🌟 Tabela PrimeVue */
 :deep(.p-datatable .p-datatable-thead > tr > th) { @apply bg-slate-50 dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 py-6 px-4; }
