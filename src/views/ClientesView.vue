@@ -100,19 +100,47 @@ const executarExclusao = async () => {
 };
 
 const abrirNovaEmpresa = () => { empresaForm.value = { id: null, nome: '', segmento: null, valor_contrato: 0, gestor: null }; editandoEmpresa.value = false; dialogEmpresa.value = true; };
-const editarFichaEmpresa = (dados) => { empresaForm.value = { id: dados.id, nome: dados.nome, segmento: dados.segmento, valor_contrato: dados.arr_total || 0, gestor: dados.gestor }; editandoEmpresa.value = true; dialogEmpresa.value = true; };
+const editarFichaEmpresa = (dados) => { 
+  empresaForm.value = { 
+    id: dados.id, 
+    nome: dados.nome, 
+    segmento: dados.segmento, 
+    valor_contrato: dados.arr_total || 0, 
+    gestor: gestores.value.find(g => g.nome === dados.gestor) || null
+  }; 
+  editandoEmpresa.value = true; 
+  dialogEmpresa.value = true; 
+};
 
 const salvarEmpresa = async () => {
-  if (!empresaForm.value.nome) return;
-  empresaForm.value.valor_contrato = empresaForm.value.valor_contrato || 0;
   saving.value = true;
+
+  const payload = {
+    nome: empresaForm.value.nome,
+    segmento: empresaForm.value.segmento,
+    valor_contrato: empresaForm.value.valor_contrato,
+    gestor: empresaForm.value.gestor ? empresaForm.value.gestor.nome : null,
+    gestor_id: empresaForm.value.gestor ? empresaForm.value.gestor.id : null
+  };
+
   try {
-    if (editandoEmpresa.value) await api.put(`/cadastros/empresas/${empresaForm.value.id}`, empresaForm.value);
-    else await api.post('/cadastros/empresas', empresaForm.value);
-    dialogEmpresa.value = false; carregarTudo();
-    toast.add({ severity: 'success', summary: 'Conta Salva', detail: 'Empresa atualizada.' });
-  } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha.' }); } 
-  finally { saving.value = false; }
+    const url = editandoEmpresa.value 
+      ? `/cadastros/empresas/${empresaForm.value.id}` 
+      : '/cadastros/empresas';
+    
+    const metodo = editandoEmpresa.value ? 'put' : 'post';
+    
+    await api[metodo](url, payload);
+    
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Conta salva com sucesso!' });
+    dialogEmpresa.value = false;
+    carregarTudo(); // Recarrega a tabela para ver o nome do gestor aparecer
+  } catch (error) {
+    console.error("Erro ao salvar:", error);
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao comunicar com o servidor.' });
+  } finally {
+    saving.value = false;
+  }
 };
 
 const abrirNovoSegmento = () => { segmentoForm.value = { id: null, nome: '' }; editandoSegmento.value = false; dialogSegmento.value = true; };
@@ -197,10 +225,20 @@ onMounted(carregarTudo);
                 <Column header="Conta (Empresa)" sortable field="empresa">
                   <template #body="{ data }"><span class="text-[12px] font-bold text-slate-600 dark:text-slate-300">{{ data.empresa || '-' }}</span></template>
                 </Column>
-                <Column header="Gestor">
-                  <template #body="{ data }">
-                      <span v-if="data.gestor" class="text-[9px] font-black text-sky-500 uppercase tracking-widest bg-sky-50 dark:bg-sky-500/10 px-2 py-1 rounded-md border border-sky-100 dark:border-sky-500/20"><i class="pi pi-briefcase mr-1"></i>{{ data.gestor }}</span>
-                      <span v-else class="text-[9px] text-slate-400 italic">Sem Gestor</span>
+                <Column field="gestor" header="Gestor">
+                  <template #body="slotProps">
+                    <div class="flex flex-col">
+                      <span v-if="slotProps.data.gestor" class="font-bold text-slate-700 dark:text-slate-200">
+                        {{ slotProps.data.gestor }}
+                      </span>
+                      <span v-else class="text-[10px] font-black uppercase text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-md w-fit">
+                        Não associado
+                      </span>
+                      
+                      <span v-if="slotProps.data.gestor_id" class="text-[9px] text-slate-400">
+                        ID: #{{ slotProps.data.gestor_id }}
+                      </span>
+                    </div>
                   </template>
                 </Column>
                 <Column header="Perfil">
@@ -298,9 +336,24 @@ onMounted(carregarTudo);
             <Dropdown v-model="empresaForm.segmento" :options="segmentos" optionLabel="nome" optionValue="nome" editable filter placeholder="Selecione ou digite" class="custom-dropdown w-full" />
           </div>
           
-          <div class="flex flex-col gap-1.5 pt-2"><label class="text-[10px] font-black uppercase text-sky-500 ml-1"><i class="pi pi-star-fill text-[8px]"></i> Gestor de Conta</label><Dropdown v-model="empresaForm.gestor" :options="gestores" optionLabel="nome" optionValue="nome" editable filter class="custom-dropdown w-full border-sky-100 bg-sky-50/50 dark:border-sky-500/20 dark:bg-sky-500/5" /></div>
+          <div class="flex flex-col gap-1.5 pt-2">
+            <label class="text-[10px] font-black uppercase text-sky-500 ml-1">
+              <i class="pi pi-star-fill text-[8px]"></i> Pessoa de Contacto (Gestor)
+            </label>
+            <Dropdown 
+              v-model="empresaForm.gestor" 
+              :options="gestores" 
+              optionLabel="nome" 
+              placeholder="Selecione o Gestor" 
+              filter
+              class="custom-dropdown w-full" 
+            />
+          </div>
 
-          <div class="flex flex-col gap-1.5 pt-2"><label class="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 ml-1 flex items-center gap-1"><i class="pi pi-euro"></i> Valor Anual do Contrato (ARR)</label><InputNumber v-model="empresaForm.valor_contrato" mode="currency" currency="EUR" locale="pt-PT" class="w-full" inputClass="custom-input w-full !text-lg !font-black !text-emerald-600 dark:!text-emerald-400 !bg-emerald-50 dark:!bg-emerald-900/10" /></div>
+          <div class="flex flex-col gap-1.5 pt-2">
+            <label class="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 ml-1 flex items-center gap-1"><i class="pi pi-euro"></i> Valor Anual do Contrato (ARR)</label>
+            <InputNumber v-model="empresaForm.valor_contrato" mode="currency" currency="EUR" locale="pt-PT" class="w-full" inputClass="custom-input w-full !text-lg !font-black !text-emerald-600 dark:!text-emerald-400 !bg-emerald-50 dark:!bg-emerald-900/10" />
+          </div>
         </div>
         <template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900"><Button :label="editandoEmpresa ? 'Atualizar Conta' : 'Criar Conta'" @click="salvarEmpresa" :loading="saving" class="w-full !bg-orange-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl" /></div></template>
       </Dialog>
@@ -326,7 +379,6 @@ onMounted(carregarTudo);
       <Dialog v-model:visible="dialogSegmento" :header="editandoSegmento ? 'Editar Segmento' : 'Novo Segmento'" modal :style="{width: '400px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog"><div class="p-6 md:p-8 space-y-4 bg-slate-50/50 dark:bg-slate-900"><div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome do Segmento *</label><InputText v-model="segmentoForm.nome" class="custom-input w-full" /></div></div><template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900"><Button :label="editandoSegmento ? 'Atualizar Segmento' : 'Criar Segmento'" @click="salvarSegmento" :loading="saving" class="w-full !bg-emerald-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-transform" /></div></template></Dialog>
       <Dialog v-model:visible="dialogPerfil" :header="editandoPerfil ? 'Editar Perfil' : 'Novo Perfil'" modal :style="{width: '400px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog"><div class="p-6 md:p-8 space-y-4 bg-slate-50/50 dark:bg-slate-900"><div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome do Perfil *</label><InputText v-model="perfilForm.nome" class="custom-input w-full" /></div></div><template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900"><Button :label="editandoPerfil ? 'Atualizar Perfil' : 'Criar Perfil'" @click="salvarPerfil" :loading="saving" class="w-full !bg-rose-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-transform" /></div></template></Dialog>
       <Dialog v-model:visible="dialogCargo" :header="editandoCargo ? 'Editar Cargo' : 'Novo Cargo'" modal :style="{width: '400px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog"><div class="p-6 md:p-8 space-y-4 bg-slate-50/50 dark:bg-slate-900"><div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome do Cargo *</label><InputText v-model="cargoForm.nome" class="custom-input w-full" /></div></div><template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900"><Button :label="editandoCargo ? 'Atualizar Cargo' : 'Criar Cargo'" @click="salvarCargo" :loading="saving" class="w-full !bg-purple-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-transform" /></div></template></Dialog>
-
     </div>
   </div>
 </template>

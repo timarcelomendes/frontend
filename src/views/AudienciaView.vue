@@ -11,6 +11,7 @@ import InputText from 'primevue/inputtext';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import Tag from 'primevue/tag';
+import Calendar from 'primevue/calendar';
 
 const toast = useToast();
 
@@ -91,13 +92,24 @@ const clientesFiltrados = computed(() => {
 
     let matchesDate = true;
     if (filtroDataInicio.value || filtroDataFim.value) {
-      const dataAlvo = c[filtroTipoData.value];
-      if (!dataAlvo || dataAlvo === 'None' || dataAlvo === 'null') {
+      const dataAlvoStr = c[filtroTipoData.value];
+      
+      if (!dataAlvoStr || dataAlvoStr === 'None' || dataAlvoStr === 'null') {
         matchesDate = false;
       } else {
-        const dataLimpa = dataAlvo.slice(0, 10);
-        if (filtroDataInicio.value && dataLimpa < filtroDataInicio.value) matchesDate = false;
-        if (filtroDataFim.value && dataLimpa > filtroDataFim.value) matchesDate = false;
+        const dataCliente = new Date(dataAlvoStr.slice(0, 10) + 'T00:00:00');
+        
+        if (filtroDataInicio.value) {
+          const dtInicio = new Date(filtroDataInicio.value);
+          dtInicio.setHours(0, 0, 0, 0);
+          if (dataCliente < dtInicio) matchesDate = false;
+        }
+        
+        if (filtroDataFim.value) {
+          const dtFim = new Date(filtroDataFim.value);
+          dtFim.setHours(23, 59, 59, 999);
+          if (dataCliente > dtFim) matchesDate = false;
+        }
       }
     }
     
@@ -314,45 +326,93 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
     </div>
 
     <div class="bg-white dark:bg-slate-900/80 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none mb-8">
+      
       <div class="flex flex-wrap items-end gap-4 lg:gap-6">
         
         <div class="flex-1 min-w-[200px] space-y-2">
           <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Pesquisar</label>
           <div class="relative group">
             <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors text-xs"></i>
-            <InputText placeholder="Nome, email ou empresa..." class="w-full !pl-11 !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[11px] !font-bold focus:!ring-2 focus:!ring-orange-500/20 !transition-all !h-11" />
+            <InputText 
+              v-model="pesquisa" 
+              @input="atualizarFiltro" 
+              placeholder="Nome, email ou empresa..." 
+              class="w-full !pl-11 !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl focus:!ring-2 focus:!ring-orange-500/20 !transition-all !h-11 custom-filter-text" 
+            />
           </div>
         </div>
 
         <div class="w-full md:w-48 space-y-2">
           <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Gestor</label>
-          <Dropdown placeholder="Todos" class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[11px] !font-bold !h-11 flex items-center" />
+          <Dropdown 
+            v-model="filtroGestor" 
+            :options="gestores" 
+            optionLabel="label" 
+            optionValue="value" 
+            placeholder="Todos"
+            class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !h-11 flex items-center custom-filter-text" 
+          />
         </div>
 
         <div class="w-full md:w-40 space-y-2">
           <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Status</label>
-          <Dropdown placeholder="Todos" class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[11px] !font-bold !h-11 flex items-center" />
+          <Dropdown 
+            v-model="filtroStatus" 
+            :options="opcoesStatus" 
+            optionLabel="label" 
+            optionValue="value" 
+            placeholder="Todos" 
+            class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !h-11 flex items-center custom-filter-text" 
+          />
         </div>
 
         <div class="w-full md:w-48 space-y-2">
           <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Referência</label>
-          <Dropdown placeholder="Próximo Envio" class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[11px] !font-bold !h-11 flex items-center" />
+          <Dropdown 
+            v-model="filtroTipoData" 
+            :options="opcoesTipoData" 
+            optionLabel="label" 
+            optionValue="value" 
+            placeholder="Próximo Envio" 
+            class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !h-11 flex items-center custom-filter-text" 
+          />
         </div>
 
-        <div class="flex items-center gap-2 space-y-2">
-          <div class="space-y-2">
+        <div class="flex items-end gap-3">
+          <div class="w-full md:w-36 space-y-2">
             <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">A partir</label>
-            <Calendar placeholder="Início" class="!w-32 !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[10px] !font-bold !h-11 custom-calendar" />
+            <Calendar 
+              v-model="filtroDataInicio" 
+              dateFormat="dd/mm/yy" 
+              placeholder="Início" 
+              class="w-full" 
+              inputClass="!w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !h-11 custom-filter-text"
+            />
           </div>
-          <div class="pt-6 text-slate-300 dark:text-slate-600">—</div>
-          <div class="space-y-2">
+          
+          <div class="h-11 flex items-center text-slate-300 dark:text-slate-600 font-bold">
+            —
+          </div>
+          
+          <div class="w-full md:w-36 space-y-2">
             <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Até</label>
-            <Calendar placeholder="Fim" class="!w-32 !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !text-[10px] !font-bold !h-11 custom-calendar" />
+            <Calendar 
+              v-model="filtroDataFim" 
+              dateFormat="dd/mm/yy" 
+              placeholder="Fim" 
+              class="w-full" 
+              inputClass="!w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !h-11 custom-filter-text"
+            />
           </div>
         </div>
 
         <div class="pb-0.5">
-          <Button icon="pi pi-filter-slash" v-tooltip.top="'Limpar Filtros'" class="!w-11 !h-11 !bg-white dark:!bg-slate-800 !text-slate-400 hover:!text-rose-500 !border-slate-200 dark:!border-slate-700 !rounded-xl transition-all shadow-sm" />
+          <Button 
+            @click="limparFiltros" 
+            icon="pi pi-filter-slash" 
+            v-tooltip.top="'Limpar Filtros'" 
+            class="!w-11 !h-11 !bg-white dark:!bg-slate-800 !text-slate-400 hover:!text-rose-500 !border-slate-200 dark:!border-slate-700 !rounded-xl transition-all shadow-sm" 
+          />
         </div>
 
       </div>

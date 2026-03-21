@@ -1,16 +1,16 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
 
 import Chart from 'primevue/chart';
-import Tag from 'primevue/tag';
 import Button from 'primevue/button';
 import Skeleton from 'primevue/skeleton';
 import Slider from 'primevue/slider';
-import Dialog from 'primevue/dialog';
 import Calendar from 'primevue/calendar';
+import Tooltip from 'primevue/tooltip';
 
+const vTooltip = Tooltip;
 const toast = useToast();
 const loading = ref(true);
 const nomeUsuario = ref('');
@@ -32,14 +32,21 @@ const kpis = ref({
   revenue_at_risk: 0,
 });
 
-const feedbacks = ref([]);
 const ranking = ref([]);
 const nuvemPalavras = ref([]);
 const taxaResposta = ref(0);
 
+// --- TÓPICOS CRÍTICOS (Substituiu Última Voz) ---
+const topicosCriticos = ref([
+  { tema: 'Lentidão no Atendimento', mencoes: 14, notaMedia: 3.2 },
+  { tema: 'Bugs no Sistema', mencoes: 8, notaMedia: 5.5 },
+  { tema: 'Falta de Funcionalidades', mencoes: 5, notaMedia: 7.0 },
+  { tema: 'Preço/Valor Injusto', mencoes: 3, notaMedia: 4.0 }
+]);
+
 // --- INTELIGÊNCIA PREDITIVA ---
 const smartInsights = ref({
-  valor_em_risco: "R$ 0",
+  valor_em_risco: "€ 0",
   nivel_alerta: "Baixo"
 });
 
@@ -103,20 +110,77 @@ const chartDataPie = ref(null);
 const chartOptionsPie = ref(null);
 
 // ==========================================
+// 🤖 MAGIC AI: SÍNTESE EXECUTIVA (AGORA INLINE)
+// ==========================================
+const loadingAI = ref(false);
+const resultadoAI = ref(null);
+const fromCacheAI = ref(false);
+const cooldownTimerAI = ref(0);
+let intervalAI = null;
+
+const iniciarCooldownAI = () => {
+  cooldownTimerAI.value = 30;
+  if (intervalAI) clearInterval(intervalAI);
+  intervalAI = setInterval(() => {
+    cooldownTimerAI.value--;
+    if (cooldownTimerAI.value <= 0) clearInterval(intervalAI);
+  }, 1000);
+};
+
+onUnmounted(() => {
+  if (intervalAI) clearInterval(intervalAI);
+});
+
+const gerarInsightIA = async (forcarNova = false) => {
+  loadingAI.value = true;
+  fromCacheAI.value = false;
+  
+  try {
+    const queryParams = obterParametrosFiltro();
+    const dataHoje = new Date().toISOString().split('T')[0];
+    const cacheKey = `dashboard_ia_${queryParams}_${dataHoje}`;
+    
+    if (!forcarNova) {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+          resultadoAI.value = JSON.parse(cached);
+          fromCacheAI.value = true;
+          loadingAI.value = false;
+          return;
+      }
+    }
+
+    const response = await api.get(`/dashboard/magic-ai${queryParams}`);
+    
+    if (response.data.status === 'success' && response.data.insights.arder) {
+      resultadoAI.value = response.data.insights;
+      localStorage.setItem(cacheKey, JSON.stringify(response.data.insights));
+      if (forcarNova) iniciarCooldownAI();
+    } else {
+      toast.add({ severity: 'warn', summary: 'Atenção', detail: response.data.insights?.recomendacao || 'Não foi possível gerar a análise.', life: 5000 });
+    }
+  } catch (error) {
+    console.error("Erro IA:", error);
+    toast.add({ severity: 'error', summary: 'Erro de IA', detail: 'O modelo demorou a responder ou falhou.', life: 5000 });
+  } finally {
+    loadingAI.value = false;
+  }
+};
+
+// ==========================================
 // 📅 VIGILANTE DO FILTRO DE DATAS
 // ==========================================
 watch(datasFiltro, (novasDatas) => {
   if (novasDatas && novasDatas[0] && novasDatas[1]) {
     carregarDashboard();
+    gerarInsightIA(false); // Carrega IA do Cache automaticamente
   } 
   else if (!novasDatas || novasDatas.length === 0) {
     carregarDashboard(); 
+    gerarInsightIA(false); // Carrega IA do Cache automaticamente
   }
 });
 
-// ==========================================
-// 📅 CENTRAL DE FILTROS
-// ==========================================
 const obterParametrosFiltro = () => {
   if (datasFiltro.value && datasFiltro.value[0] && datasFiltro.value[1]) {
     const formatarData = (data) => {
@@ -148,13 +212,15 @@ const carregarDashboard = async () => {
 
     if (resKpis.data.status === 'success') {
       kpis.value = { ...kpis.value, ...resKpis.data.kpis };
-      feedbacks.value = resKpis.data.feedbacks;
       nuvemPalavras.value = resKpis.data.kpis.termos_frequentes || [];
       
       const percDetratores = kpis.value.total_respostas > 0 ? (kpis.value.detratores / kpis.value.total_respostas) * 100 : 0;
       smartInsights.value.valor_em_risco = `€ ${kpis.value.revenue_at_risk.toLocaleString('pt-PT')}`; 
       smartInsights.value.nivel_alerta = percDetratores > 20 ? 'Crítico' : 'Estável';
       
+      // Se a sua API já enviar os tópicos críticos, descomente aqui:
+      // topicosCriticos.value = resKpis.data.topicos_criticos || topicosCriticos.value;
+
       montarGraficos(resTrend.data);
     }
 
@@ -266,38 +332,6 @@ const calcularEstiloBolha = (quantidade) => {
   };
 };
 
-const obterCorNPS = (nota) => nota >= 9 ? 'bg-emerald-500 shadow-emerald-500/30' : nota >= 7 ? 'bg-yellow-500 shadow-yellow-500/30' : 'bg-rose-500 shadow-rose-500/30';
-
-// ==========================================
-// 🤖 MAGIC AI: SÍNTESE EXECUTIVA
-// ==========================================
-const dialogAI = ref(false);
-const loadingAI = ref(false);
-const resultadoAI = ref(null);
-
-const gerarInsightIA = async () => {
-  dialogAI.value = true;     
-  loadingAI.value = true;    
-  resultadoAI.value = null;  
-  
-  try {
-    const queryParams = obterParametrosFiltro();
-    const response = await api.get(`/dashboard/magic-ai${queryParams}`);
-    
-    if (response.data.status === 'success' && response.data.insights.arder) {
-      resultadoAI.value = response.data.insights;
-    } else {
-      toast.add({ severity: 'warn', summary: 'Atenção', detail: response.data.insights?.recomendacao || 'Não foi possível gerar a análise.', life: 5000 });
-      dialogAI.value = false;
-    }
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro de IA', detail: 'O modelo demorou a responder ou falhou. Tente novamente.', life: 5000 });
-    dialogAI.value = false;
-  } finally {
-    loadingAI.value = false;
-  }
-};
-
 // ==========================================
 // 📥 EXPORTAR DADOS
 // ==========================================
@@ -325,17 +359,10 @@ const exportarDados = async () => {
   }
 };
 
-const totalClientes = computed(() => clientesFiltrados.value.length);
-
-const totalDecisores = computed(() => 
-  clientesFiltrados.value.filter(c => (c.perfil_decisor || '').toLowerCase().includes('decisor')).length
-);
-
-const totalInfluenciadores = computed(() => 
-  clientesFiltrados.value.filter(c => (c.perfil_decisor || '').toLowerCase().includes('influenciador')).length
-);
-
-onMounted(carregarDashboard);
+onMounted(() => {
+  carregarDashboard();
+  gerarInsightIA(false); // Inicia verificando se há cache
+});
 </script>
 
 <template>
@@ -365,7 +392,6 @@ onMounted(carregarDashboard);
           </div>
 
           <Button icon="pi pi-refresh" @click="carregarDashboard" :loading="loading" class="w-10 h-10 !bg-white dark:!bg-slate-900 !text-slate-600 dark:!text-slate-300 !border-slate-200 dark:!border-slate-700 !rounded-xl hover:!bg-slate-50 transition-colors shadow-sm" />
-          <Button label="Sintetizar com IA" icon="pi pi-sparkles" @click="gerarInsightIA" class="!bg-gradient-to-r !from-indigo-500 !to-purple-600 !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform duration-300" />
           <Button label="Exportar" icon="pi pi-cloud-download" @click="exportarDados" :loading="exportando" class="!bg-gradient-to-r !from-slate-900 !to-slate-800 dark:!from-orange-500 dark:!to-orange-600 !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105 transition-transform duration-300 hidden md:flex" />
         </div>
       </div>
@@ -536,9 +562,6 @@ onMounted(carregarDashboard);
                   <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
                   <span class="text-[10px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-widest">Atual: {{ kpis.score }} pts</span>
                 </div>
-                <div class="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-[9px] font-black text-slate-400 uppercase tracking-widest border border-slate-200 dark:border-slate-700">
-                  6 Meses
-                </div>
               </div>
             </div>
             
@@ -628,25 +651,32 @@ onMounted(carregarDashboard);
             </div>
           </div>
 
-          <div class="bg-white dark:bg-slate-900/80 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col relative overflow-hidden">
-            <i class="pi pi-comments absolute -right-6 -bottom-6 text-[150px] text-slate-50 dark:text-slate-800/30 -rotate-6 pointer-events-none"></i>
+          <div class="bg-white dark:bg-slate-900/80 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-br from-transparent to-indigo-50/50 dark:to-indigo-900/10 pointer-events-none"></div>
             
             <div class="relative z-10 flex justify-between items-center mb-6">
-              <h3 class="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Última Voz</h3>
-              <router-link to="/respostas" class="text-[9px] font-black text-slate-400 hover:text-orange-500 transition-colors uppercase tracking-widest flex items-center gap-1 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg">Ver tudo <i class="pi pi-angle-right"></i></router-link>
+              <h3 class="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                <i class="pi pi-comments"></i> Tópicos Críticos
+              </h3>
+              <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-lg">Comentários</span>
             </div>
             
-            <div class="space-y-4 flex-1 justify-center flex flex-col relative z-10">
-              <div v-for="(f, i) in feedbacks.slice(0, 2)" :key="i" class="p-4 rounded-[1.2rem] bg-white/50 dark:bg-slate-800/60 backdrop-blur-sm border border-slate-100 dark:border-slate-700/50 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group">
-                <div class="flex items-start gap-3 mb-3">
-                  <div :class="['w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0 shadow-inner', obterCorNPS(f.nota)]">{{ f.nota }}</div>
-                  <div class="flex flex-col min-w-0 flex-1">
-                    <span class="text-[11px] font-black text-slate-800 dark:text-white truncate">{{ f.cliente }}</span>
-                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight truncate">{{ f.empresa || 'Sem Empresa' }}</span>
+            <div class="space-y-3 overflow-y-auto flex-1 custom-scrollbar pr-2 relative z-10">
+               <div v-for="(prob, idx) in topicosCriticos" :key="idx" class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors">
+                  <div class="flex flex-col overflow-hidden pr-2">
+                     <span class="text-[11px] font-black text-slate-700 dark:text-slate-300 truncate" :title="prob.tema">{{ prob.tema }}</span>
+                     <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1"><i class="pi pi-hashtag text-[8px] mr-0.5"></i> {{ prob.mencoes }} menções</span>
                   </div>
-                </div>
-                <p class="text-[11px] text-slate-600 dark:text-slate-300 font-medium italic leading-relaxed pl-1 border-l-2 border-slate-200 dark:border-slate-700 line-clamp-2">"{{ f.comentario || 'Apenas nota submetida.' }}"</p>
-              </div>
+                  <div class="flex flex-col items-end shrink-0 pl-3 border-l border-slate-200 dark:border-slate-700">
+                     <span class="text-lg font-black leading-none" :class="prob.notaMedia <= 6 ? 'text-rose-500' : (prob.notaMedia <= 8 ? 'text-yellow-500' : 'text-emerald-500')">
+                       {{ prob.notaMedia.toFixed(1) }}
+                     </span>
+                     <span class="text-[8px] font-bold text-slate-400 uppercase mt-1">Nota Média</span>
+                  </div>
+               </div>
+               <div v-if="topicosCriticos.length === 0" class="text-center text-xs text-slate-400 italic py-8">
+                  Nenhum tópico mapeado no período.
+               </div>
             </div>
           </div>
         </div>
@@ -679,59 +709,76 @@ onMounted(carregarDashboard);
             </div>
         </div>
 
+        <div class="bg-gradient-to-br from-slate-900 to-indigo-950 p-8 lg:p-10 rounded-[3rem] border border-indigo-500/20 shadow-2xl relative overflow-hidden group mt-6 print-break-inside-avoid">
+            <div class="absolute right-0 top-0 p-10 opacity-10 pointer-events-none">
+                <svg class="w-32 h-32 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M22.28 9.82a6 6 0 0 0-6.51-2.9 6.07 6.07 0 0 0-10.79-2.74A6 6 0 0 0 .74 11.27a6 6 0 0 0 .51 4.91 6.05 6.05 0 0 0 6.52 2.9 6.07 6.07 0 0 0 10.79 2.74 6 6 0 0 0 3.72-11.99zM12 15.18a3.18 3.18 0 1 1 0-6.36 3.18 3.18 0 0 1 0 6.36z"/></svg>
+            </div>
+            
+            <div class="relative z-10 flex flex-col md:flex-row gap-8 items-center md:items-start">
+                <div class="w-20 h-20 rounded-3xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0 mt-2">
+                    <i class="pi pi-bolt text-indigo-400 text-3xl" :class="{'animate-pulse': loadingAI}"></i>
+                </div>
+                
+                <div class="flex-1 w-full">
+                    <div class="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
+                        <div>
+                            <h2 class="text-xl font-black text-white italic tracking-tighter">Gauge AI: Síntese Preditiva</h2>
+                            <p class="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mt-1">Processamento de Linguagem Natural</p>
+                        </div>
+                        
+                        <div class="flex items-center gap-3">
+                            <span v-if="fromCacheAI" class="text-[9px] font-black text-emerald-400/70 border border-emerald-500/20 px-3 py-2 rounded-xl uppercase tracking-widest" v-tooltip.top="'Resposta carregada da memória (Zero custo de API)'">
+                              <i class="pi pi-database text-[8px] mr-1"></i> Cached
+                            </span>
+                            
+                            <button @click="gerarInsightIA(true)" :disabled="loadingAI || cooldownTimerAI > 0" class="shrink-0 flex items-center gap-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-indigo-500/30 hover:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed">
+                               <i class="pi" :class="loadingAI ? 'pi-spin pi-spinner' : (cooldownTimerAI > 0 ? 'pi-clock' : 'pi-sparkles')"></i>
+                               {{ loadingAI ? 'A Processar...' : (cooldownTimerAI > 0 ? `Aguarde ${cooldownTimerAI}s` : 'Gerar Análise') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="loadingAI" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <Skeleton width="100%" height="180px" borderRadius="2rem" class="bg-indigo-800/50" />
+                        <Skeleton width="100%" height="180px" borderRadius="2rem" class="bg-indigo-800/50" />
+                        <Skeleton width="100%" height="180px" borderRadius="2rem" class="bg-indigo-800/50" />
+                    </div>
+                    
+                    <div v-else-if="resultadoAI" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="p-6 bg-rose-500/10 border border-rose-500/20 rounded-[2rem] flex flex-col gap-4 group hover:bg-rose-500/20 transition-colors shadow-inner shadow-rose-500/5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-[1rem] bg-rose-500 flex items-center justify-center shadow-lg shadow-rose-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="pi pi-fire text-white"></i></div>
+                                <h4 class="text-[10px] font-black uppercase tracking-widest text-rose-400">O Que Está a Falhar</h4>
+                            </div>
+                            <p class="text-[13px] text-slate-300 font-medium leading-relaxed">{{ resultadoAI.arder }}</p>
+                        </div>
+
+                        <div class="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] flex flex-col gap-4 group hover:bg-emerald-500/20 transition-colors shadow-inner shadow-emerald-500/5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-[1rem] bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="pi pi-heart-fill text-white"></i></div>
+                                <h4 class="text-[10px] font-black uppercase tracking-widest text-emerald-400">O Que Está a Funcionar</h4>
+                            </div>
+                            <p class="text-[13px] text-slate-300 font-medium leading-relaxed">{{ resultadoAI.amar }}</p>
+                        </div>
+
+                        <div class="p-6 bg-indigo-500/10 border border-indigo-500/20 rounded-[2rem] flex flex-col gap-4 group hover:bg-indigo-500/20 transition-colors shadow-inner shadow-indigo-500/5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-[1rem] bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0 group-hover:scale-110 transition-transform"><i class="pi pi-compass text-white"></i></div>
+                                <h4 class="text-[10px] font-black uppercase tracking-widest text-indigo-400">Plano de Ação Sugerido</h4>
+                            </div>
+                            <p class="text-[13px] text-indigo-200 font-medium leading-relaxed">{{ resultadoAI.recomendacao }}</p>
+                        </div>
+                    </div>
+                    
+                    <div v-else class="text-slate-400 text-sm font-medium border border-dashed border-slate-700/50 p-6 rounded-2xl text-center">
+                        Clique em "Gerar Análise" para a inteligência artificial processar os feedbacks deste período.
+                    </div>
+                </div>
+            </div>
+        </div>
+
       </div>
     </div>
-
-    <Dialog v-model:visible="dialogAI" :modal="true" :style="{width: '650px'}" :closable="false" class="rounded-[2.5rem] overflow-hidden p-0 shadow-2xl bg-slate-900 border border-indigo-500/20 custom-dialog-no-header">
-      <div class="relative bg-slate-900 p-8 overflow-hidden">
-        <div class="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px]"></div>
-        <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-purple-500/20 rounded-full blur-[80px]"></div>
-        
-        <div class="relative z-10 flex justify-between items-center">
-          <div>
-            <h2 class="text-2xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 flex items-center gap-3">
-              <i class="pi pi-sparkles text-indigo-400"></i> Síntese de IA
-            </h2>
-            <p class="text-[10px] text-slate-400 uppercase tracking-[0.2em] mt-2 font-bold">Processamento de Linguagem Natural</p>
-          </div>
-          <button @click="dialogAI = false" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full text-slate-400 transition-colors backdrop-blur-md"><i class="pi pi-times"></i></button>
-        </div>
-      </div>
-
-      <div v-if="loadingAI" class="p-12 bg-slate-900 flex flex-col items-center justify-center relative z-10 min-h-[300px]">
-        <div class="relative flex justify-center items-center w-24 h-24 mb-6">
-          <div class="absolute inset-0 rounded-full border-t-2 border-indigo-500 animate-spin"></div>
-          <div class="absolute inset-2 rounded-full border-r-2 border-purple-500 animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
-          <i class="pi pi-bolt text-indigo-400 text-3xl animate-pulse"></i>
-        </div>
-        <h3 class="text-white font-black uppercase tracking-widest text-xs mb-2">A ler feedbacks...</h3>
-        <p class="text-slate-500 text-[10px] uppercase tracking-widest font-bold">A correlacionar Detratores e Promotores</p>
-      </div>
-
-      <div v-else-if="resultadoAI" class="p-8 space-y-4 bg-slate-900/90 relative z-10 max-h-[60vh] overflow-y-auto">
-        <div class="p-6 bg-rose-500/10 border border-rose-500/20 rounded-[2rem] flex flex-col sm:flex-row gap-5 items-start group hover:bg-rose-500/20 transition-colors">
-          <div class="w-12 h-12 rounded-[1.2rem] bg-rose-500 flex items-center justify-center shrink-0 shadow-lg shadow-rose-500/30 group-hover:scale-110 transition-transform"><i class="pi pi-fire text-white text-lg"></i></div>
-          <div>
-            <h4 class="text-[10px] font-black uppercase tracking-widest text-rose-400 mb-2">O Que Está a Falhar</h4>
-            <p class="text-sm text-slate-300 font-medium leading-relaxed">{{ resultadoAI.arder }}</p>
-          </div>
-        </div>
-        <div class="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] flex flex-col sm:flex-row gap-5 items-start group hover:bg-emerald-500/20 transition-colors">
-          <div class="w-12 h-12 rounded-[1.2rem] bg-emerald-500 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform"><i class="pi pi-heart-fill text-white text-lg"></i></div>
-          <div>
-            <h4 class="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2">O Que Está a Funcionar</h4>
-            <p class="text-sm text-slate-300 font-medium leading-relaxed">{{ resultadoAI.amar }}</p>
-          </div>
-        </div>
-        <div class="p-6 bg-indigo-500/10 border border-indigo-500/20 rounded-[2rem] flex flex-col sm:flex-row gap-5 items-start group hover:bg-indigo-500/20 transition-colors">
-          <div class="w-12 h-12 rounded-[1.2rem] bg-indigo-500 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/30 group-hover:scale-110 transition-transform"><i class="pi pi-compass text-white text-lg"></i></div>
-          <div>
-            <h4 class="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2">Plano de Ação Sugerido</h4>
-            <p class="text-sm text-indigo-200 font-medium leading-relaxed">{{ resultadoAI.recomendacao }}</p>
-          </div>
-        </div>
-      </div>
-    </Dialog>
   </div>
 </template>
 
@@ -755,15 +802,6 @@ onMounted(carregarDashboard);
   @apply bg-white dark:bg-slate-100 border-2 border-indigo-500 w-4 h-4 shadow-lg hover:bg-indigo-50 transition-colors focus:ring-4 focus:ring-indigo-500/30;
 }
 
-/* --- Dialog Sem Cabeçalho (Evita o fundo branco fantasma) --- */
-:deep(.custom-dialog-no-header .p-dialog-header) {
-  display: none;
-}
-:deep(.custom-dialog-no-header .p-dialog-content) {
-  padding: 0;
-  @apply bg-white dark:bg-slate-900 transition-colors duration-300;
-}
-
 /* --- Calendário Customizado --- */
 :deep(.custom-calendar .p-inputtext) { 
   border: none; 
@@ -771,5 +809,8 @@ onMounted(carregarDashboard);
 }
 
 /* Esconder Scrollbars */
-::-webkit-scrollbar { display: none; }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { @apply bg-transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-slate-200 dark:bg-slate-700 rounded-full; }
+::-webkit-scrollbar { display: none; } /* Oculta a principal */
 </style>
