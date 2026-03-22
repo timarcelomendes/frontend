@@ -107,6 +107,16 @@ const logout = () => {
           <i class="pi pi-chart-bar"></i> <span>Visão geral</span>
         </router-link>
         
+        <router-link to="/relatorios" class="nav-item group" @click="mobileMenuAberto = false">
+          <i class="pi pi-chart-line"></i> 
+          <div class="flex items-center justify-between flex-1">
+            <span>Relatórios</span>
+            <span class="bg-indigo-500 text-[7px] text-white px-1.5 py-0.5 rounded-md font-black tracking-tighter animate-pulse shadow-sm shadow-indigo-500/50">
+              AI
+            </span>
+          </div>
+        </router-link>
+        
         <router-link to="/clientes" class="nav-item" @click="mobileMenuAberto = false">
           <i class="pi pi-building"></i> <span>Contas</span>
         </router-link>
@@ -174,10 +184,10 @@ const logout = () => {
           <i class="pi pi-chart-bar"></i> <span v-if="sidebarExpandida" class="animate-fadein">Visão geral</span>
         </router-link>
 
-        <router-link to="/relatorios" class="nav-item group" v-tooltip.right="!sidebarExpandida ? 'Relatorios Inteligentes' : null">
+        <router-link to="/relatorios" class="nav-item group" v-tooltip.right="!sidebarExpandida ? 'Relatórios Inteligentes' : null">
           <i class="pi pi-chart-line"></i> 
           <div v-if="sidebarExpandida" class="flex items-center justify-between flex-1 animate-fadein">
-            <span>Relatorios</span>
+            <span>Relatórios</span>
             <span class="bg-indigo-500 text-[7px] text-white px-1.5 py-0.5 rounded-md font-black tracking-tighter animate-pulse shadow-sm shadow-indigo-500/50">
               AI
             </span>
