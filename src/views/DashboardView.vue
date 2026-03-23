@@ -37,12 +37,7 @@ const nuvemPalavras = ref([]);
 const taxaResposta = ref(0);
 
 // --- TÓPICOS CRÍTICOS (Substituiu Última Voz) ---
-const topicosCriticos = ref([
-  { tema: 'Lentidão no Atendimento', mencoes: 14, notaMedia: 3.2 },
-  { tema: 'Bugs no Sistema', mencoes: 8, notaMedia: 5.5 },
-  { tema: 'Falta de Funcionalidades', mencoes: 5, notaMedia: 7.0 },
-  { tema: 'Preço/Valor Injusto', mencoes: 3, notaMedia: 4.0 }
-]);
+const topicosCriticos = ref([]);
 
 // --- INTELIGÊNCIA PREDITIVA ---
 const smartInsights = ref({
@@ -218,8 +213,8 @@ const carregarDashboard = async () => {
       smartInsights.value.valor_em_risco = `€ ${kpis.value.revenue_at_risk.toLocaleString('pt-PT')}`; 
       smartInsights.value.nivel_alerta = percDetratores > 20 ? 'Crítico' : 'Estável';
       
-      // Se a sua API já enviar os tópicos críticos, descomente aqui:
-      // topicosCriticos.value = resKpis.data.topicos_criticos || topicosCriticos.value;
+      // 👈 DESCOMENTADO E AJUSTADO PARA LER DA API
+      topicosCriticos.value = resKpis.data.kpis.topicos_criticos || [];
 
       montarGraficos(resTrend.data);
     }
