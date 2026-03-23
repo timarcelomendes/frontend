@@ -25,7 +25,6 @@ const cargos = ref([]);
 const gestores = ref([]); 
 const loading = ref(true);
 
-
 const dialogVisivel = ref(false);
 const editando = ref(false);
 const dialogExclusao = ref(false);
@@ -77,15 +76,27 @@ const abrirNovo = () => { cliente.value = { cliente_id: null, nome: '', email: '
 const editarCliente = (dados) => { cliente.value = { ...dados }; editando.value = true; dialogVisivel.value = true; };
 
 const salvarCliente = async () => {
-  if (!cliente.value.nome || !cliente.value.email || !cliente.value.cargo) return;
+  if (!cliente.value.nome || !cliente.value.email || !cliente.value.cargo) {
+    toast.add({ severity: 'warn', summary: 'Campos Obrigatórios', detail: 'Por favor, preencha o Nome, E-mail e Cargo.', life: 4000 });
+    return;
+  }
+  
   saving.value = true;
   try {
-    if (editando.value) await api.put(`/clientes/${cliente.value.cliente_id || cliente.value.id}`, cliente.value);
-    else await api.post('/clientes', cliente.value);
-    dialogVisivel.value = false; carregarTudo();
-    toast.add({ severity: 'success', summary: 'Atualizado', detail: 'Pessoa salva.' });
-  } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar.' }); } 
-  finally { saving.value = false; }
+    if (editando.value) {
+      await api.put(`/clientes/${cliente.value.cliente_id || cliente.value.id}`, cliente.value);
+    } else {
+      await api.post('/clientes', cliente.value);
+    }
+    
+    dialogVisivel.value = false; 
+    carregarTudo();
+    toast.add({ severity: 'success', summary: 'Atualizado', detail: 'Pessoa salva com sucesso.', life: 3000 });
+  } catch (error) { 
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar os dados.', life: 3000 }); 
+  } finally { 
+    saving.value = false; 
+  }
 };
 
 const confirmarExclusao = (id) => { idParaExcluir.value = id; dialogExclusao.value = true; };
@@ -114,7 +125,6 @@ const editarFichaEmpresa = (dados) => {
 
 const salvarEmpresa = async () => {
   saving.value = true;
-
   const payload = {
     nome: empresaForm.value.nome,
     segmento: empresaForm.value.segmento,
@@ -124,19 +134,13 @@ const salvarEmpresa = async () => {
   };
 
   try {
-    const url = editandoEmpresa.value 
-      ? `/cadastros/empresas/${empresaForm.value.id}` 
-      : '/cadastros/empresas';
-    
+    const url = editandoEmpresa.value ? `/cadastros/empresas/${empresaForm.value.id}` : '/cadastros/empresas';
     const metodo = editandoEmpresa.value ? 'put' : 'post';
-    
     await api[metodo](url, payload);
-    
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Conta salva com sucesso!' });
     dialogEmpresa.value = false;
-    carregarTudo(); // Recarrega a tabela para ver o nome do gestor aparecer
+    carregarTudo(); 
   } catch (error) {
-    console.error("Erro ao salvar:", error);
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao comunicar com o servidor.' });
   } finally {
     saving.value = false;
@@ -146,7 +150,8 @@ const salvarEmpresa = async () => {
 const abrirNovoSegmento = () => { segmentoForm.value = { id: null, nome: '' }; editandoSegmento.value = false; dialogSegmento.value = true; };
 const editarFichaSegmento = (dados) => { segmentoForm.value = { ...dados }; editandoSegmento.value = true; dialogSegmento.value = true; };
 const salvarSegmento = async () => {
-  if (!segmentoForm.value.nome) return; saving.value = true;
+  if (!segmentoForm.value.nome) return toast.add({ severity: 'warn', summary: 'Atenção', detail: 'O nome do segmento é obrigatório.', life: 3000 });
+  saving.value = true;
   try {
     if (editandoSegmento.value) await api.put(`/cadastros/segmentos/${segmentoForm.value.id}`, segmentoForm.value);
     else await api.post('/cadastros/segmentos', segmentoForm.value);
@@ -157,7 +162,8 @@ const salvarSegmento = async () => {
 const abrirNovoPerfil = () => { perfilForm.value = { id: null, nome: '' }; editandoPerfil.value = false; dialogPerfil.value = true; };
 const editarFichaPerfil = (dados) => { perfilForm.value = { ...dados }; editandoPerfil.value = true; dialogPerfil.value = true; };
 const salvarPerfil = async () => {
-  if (!perfilForm.value.nome) return; saving.value = true;
+  if (!perfilForm.value.nome) return toast.add({ severity: 'warn', summary: 'Atenção', detail: 'O nome do perfil é obrigatório.', life: 3000 });
+  saving.value = true;
   try {
     if (editandoPerfil.value) await api.put(`/cadastros/perfis/${perfilForm.value.id}`, perfilForm.value);
     else await api.post('/cadastros/perfis', perfilForm.value);
@@ -168,7 +174,8 @@ const salvarPerfil = async () => {
 const abrirNovoCargo = () => { cargoForm.value = { id: null, nome: '' }; editandoCargo.value = false; dialogCargo.value = true; };
 const editarFichaCargo = (dados) => { cargoForm.value = { ...dados }; editandoCargo.value = true; dialogCargo.value = true; };
 const salvarCargo = async () => {
-  if (!cargoForm.value.nome) return; saving.value = true;
+  if (!cargoForm.value.nome) return toast.add({ severity: 'warn', summary: 'Atenção', detail: 'O nome do cargo é obrigatório.', life: 3000 });
+  saving.value = true;
   try {
     if (editandoCargo.value) await api.put(`/cadastros/cargos/${cargoForm.value.id}`, cargoForm.value);
     else await api.post('/cadastros/cargos', cargoForm.value);
@@ -179,7 +186,8 @@ const salvarCargo = async () => {
 const abrirNovoGestor = () => { gestorForm.value = { id: null, nome: '', papel: '', email: '' }; editandoGestor.value = false; dialogGestor.value = true; };
 const editarFichaGestor = (dados) => { gestorForm.value = { ...dados }; editandoGestor.value = true; dialogGestor.value = true; };
 const salvarGestor = async () => {
-  if (!gestorForm.value.nome) return; saving.value = true;
+  if (!gestorForm.value.nome) return toast.add({ severity: 'warn', summary: 'Atenção', detail: 'O nome do gestor é obrigatório.', life: 3000 });
+  saving.value = true;
   try {
     if (editandoGestor.value) await api.put(`/cadastros/gestores/${gestorForm.value.id}`, gestorForm.value);
     else await api.post('/cadastros/gestores', gestorForm.value);
@@ -190,6 +198,16 @@ const salvarGestor = async () => {
 
 const formatarMoeda = (valor) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(valor || 0);
 const getIniciais = (nome) => nome ? nome.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'CL';
+
+// 🌟 FUNÇÃO QUE CRUZA A EMPRESA COM O GESTOR
+const getGestorPorEmpresa = (nomeEmpresa) => {
+  if (!nomeEmpresa || nomeEmpresa === '-') return 'Sem Empresa';
+  const emp = empresas.value.find(e => e.nome === nomeEmpresa);
+  if (emp && emp.gestor) {
+    return typeof emp.gestor === 'object' ? emp.gestor.nome : emp.gestor;
+  }
+  return 'Não definido';
+};
 
 onMounted(carregarTudo);
 </script>
@@ -213,7 +231,9 @@ onMounted(carregarTudo);
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-users text-indigo-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Pessoas</span></div></template>
             <div class="pt-4">
               <div class="flex justify-end mb-4"><Button label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
+              
               <DataTable :value="clientes" :paginator="true" :rows="10" dataKey="cliente_id" :loading="loading" class="p-datatable-sm custom-table" rowHover>
+                
                 <Column header="Pessoa" sortable field="nome" style="min-width: 250px">
                   <template #body="{ data }">
                     <div class="flex items-center gap-4 py-2">
@@ -222,28 +242,36 @@ onMounted(carregarTudo);
                     </div>
                   </template>
                 </Column>
+                
                 <Column header="Conta (Empresa)" sortable field="empresa">
-                  <template #body="{ data }"><span class="text-[12px] font-bold text-slate-600 dark:text-slate-300">{{ data.empresa || '-' }}</span></template>
+                  <template #body="{ data }">
+                    <div class="flex flex-col">
+                      <span class="text-[12px] font-bold text-slate-600 dark:text-slate-300">{{ data.empresa || '-' }}</span>
+                      <span v-if="data.cargo" class="text-[9px] text-slate-400 uppercase tracking-tighter mt-0.5">{{ data.cargo }}</span>
+                    </div>
+                  </template>
                 </Column>
-                <Column field="gestor" header="Gestor">
+
+                <Column header="Gestor (Responsável)">
                   <template #body="slotProps">
                     <div class="flex flex-col">
-                      <span v-if="slotProps.data.gestor" class="font-bold text-slate-700 dark:text-slate-200">
-                        {{ slotProps.data.gestor }}
-                      </span>
-                      <span v-else class="text-[10px] font-black uppercase text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-md w-fit">
-                        Não associado
-                      </span>
-                      
-                      <span v-if="slotProps.data.gestor_id" class="text-[9px] text-slate-400">
-                        ID: #{{ slotProps.data.gestor_id }}
+                      <div class="flex items-center gap-2">
+                        <i class="pi pi-shield text-slate-400 text-[10px]"></i>
+                        <span class="text-[12px] font-bold text-slate-700 dark:text-slate-200">
+                          {{ getGestorPorEmpresa(slotProps.data.empresa) }}
+                        </span>
+                      </div>
+                      <span class="text-[9px] text-slate-400 uppercase font-black tracking-tighter mt-1">
+                        Vinculado via Empresa
                       </span>
                     </div>
                   </template>
                 </Column>
+
                 <Column header="Perfil">
                   <template #body="{ data }"><div v-if="data.perfil_decisor" class="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-tight"><i :class="data.perfil_decisor === 'Decisor' ? 'pi pi-star-fill text-orange-500' : 'pi pi-user'"></i> {{ data.perfil_decisor }}</div></template>
                 </Column>
+
                 <Column header="Ações" alignFrozen="right" style="width: 100px">
                   <template #body="slotProps">
                     <div class="flex gap-1.5 justify-end">
@@ -252,6 +280,7 @@ onMounted(carregarTudo);
                     </div>
                   </template>
                 </Column>
+
               </DataTable>
             </div>
           </TabPanel>
@@ -266,7 +295,7 @@ onMounted(carregarTudo);
                 </Column>
                 <Column field="gestor" header="Gestor">
                   <template #body="{ data }">
-                    <span v-if="data.gestor" class="text-[10px] font-bold text-sky-600 dark:text-sky-400"><i class="pi pi-briefcase text-xs mr-1"></i> {{ data.gestor }}</span>
+                    <span v-if="data.gestor" class="text-[10px] font-bold text-sky-600 dark:text-sky-400"><i class="pi pi-briefcase text-xs mr-1"></i> {{ typeof data.gestor === 'object' ? data.gestor.nome : data.gestor }}</span>
                     <span v-else class="text-[10px] text-slate-400 italic">Não associado</span>
                   </template>
                 </Column>
@@ -406,11 +435,7 @@ onMounted(carregarTudo);
 :deep(.custom-dialog .p-dialog-content) { @apply dark:bg-slate-900; }
 :deep(.custom-dialog .p-dialog-title) { @apply text-lg font-black italic tracking-tight text-slate-800 dark:text-white; }
 
-/* ==========================================
-   🌟 TABS: REMOÇÃO DE MARGENS E FUNDOS
-   ========================================== */
-
-/* 1. Neutraliza os fundos (Antigo) */
+/* TABS: REMOÇÃO DE MARGENS E FUNDOS */
 :deep(.p-tabview), 
 :deep(.p-tabview-nav-container), 
 :deep(.p-tabview-nav-content), 
@@ -422,22 +447,22 @@ onMounted(carregarTudo);
 
 :deep(.p-tabview-panels) {
     background: transparent !important;
-    padding: 0 !important;   /* 👈 Remove a margem interna que empurra a tabela */
-    margin-top: -10px !important; /* 👈 Ajuste fino para "colar" a tabela nas abas */
+    padding: 0 !important;   
+    margin-top: -10px !important; 
 }
 
 :deep(.p-tabview-nav li) {
     background: transparent !important;
     border: none !important;
     margin-right: 6px !important;
-    margin-bottom: 0 !important; /* Garante que a lista não empurre o conteúdo */
+    margin-bottom: 0 !important; 
 }
 
 :deep(.p-tabview-nav li .p-tabview-nav-link) {
     @apply bg-slate-100 dark:bg-slate-800 text-slate-500 !important;
     border: none !important;
     border-radius: 12px !important;
-    padding: 10px 18px !important; /* Abas um pouco mais compactas */
+    padding: 10px 18px !important; 
     transition: all 0.2s ease !important;
 }
 

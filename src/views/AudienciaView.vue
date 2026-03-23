@@ -325,97 +325,44 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
       </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-900/80 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none mb-8">
+    <div class="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2 no-print relative overflow-hidden mb-6 items-center">
       
-      <div class="flex flex-wrap items-end gap-4 lg:gap-6">
-        
-        <div class="flex-1 min-w-[200px] space-y-2">
-          <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Pesquisar</label>
-          <div class="relative group">
-            <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors text-xs"></i>
-            <InputText 
-              v-model="pesquisa" 
-              @input="atualizarFiltro" 
-              placeholder="Nome, email ou empresa..." 
-              class="w-full !pl-11 !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl focus:!ring-2 focus:!ring-orange-500/20 !transition-all !h-11 custom-filter-text" 
-            />
-          </div>
-        </div>
-
-        <div class="w-full md:w-48 space-y-2">
-          <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Gestor</label>
-          <Dropdown 
-            v-model="filtroGestor" 
-            :options="gestores" 
-            optionLabel="label" 
-            optionValue="value" 
-            placeholder="Todos"
-            class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !h-11 flex items-center custom-filter-text" 
-          />
-        </div>
-
-        <div class="w-full md:w-40 space-y-2">
-          <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Status</label>
-          <Dropdown 
-            v-model="filtroStatus" 
-            :options="opcoesStatus" 
-            optionLabel="label" 
-            optionValue="value" 
-            placeholder="Todos" 
-            class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !h-11 flex items-center custom-filter-text" 
-          />
-        </div>
-
-        <div class="w-full md:w-48 space-y-2">
-          <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Referência</label>
-          <Dropdown 
-            v-model="filtroTipoData" 
-            :options="opcoesTipoData" 
-            optionLabel="label" 
-            optionValue="value" 
-            placeholder="Próximo Envio" 
-            class="w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !h-11 flex items-center custom-filter-text" 
-          />
-        </div>
-
-        <div class="flex items-end gap-3">
-          <div class="w-full md:w-36 space-y-2">
-            <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">A partir</label>
-            <Calendar 
-              v-model="filtroDataInicio" 
-              dateFormat="dd/mm/yy" 
-              placeholder="Início" 
-              class="w-full" 
-              inputClass="!w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !h-11 custom-filter-text"
-            />
-          </div>
-          
-          <div class="h-11 flex items-center text-slate-300 dark:text-slate-600 font-bold">
-            —
-          </div>
-          
-          <div class="w-full md:w-36 space-y-2">
-            <label class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">Até</label>
-            <Calendar 
-              v-model="filtroDataFim" 
-              dateFormat="dd/mm/yy" 
-              placeholder="Fim" 
-              class="w-full" 
-              inputClass="!w-full !bg-slate-50 dark:!bg-slate-800/50 !border-slate-100 dark:!border-slate-700 !rounded-xl !h-11 custom-filter-text"
-            />
-          </div>
-        </div>
-
-        <div class="pb-0.5">
-          <Button 
-            @click="limparFiltros" 
-            icon="pi pi-filter-slash" 
-            v-tooltip.top="'Limpar Filtros'" 
-            class="!w-11 !h-11 !bg-white dark:!bg-slate-800 !text-slate-400 hover:!text-rose-500 !border-slate-200 dark:!border-slate-700 !rounded-xl transition-all shadow-sm" 
-          />
-        </div>
-
+      <div class="absolute left-0 top-0 w-1 h-full bg-sky-500"></div>
+      
+      <div class="flex flex-col gap-1 px-2 md:px-3">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-search text-[8px]"></i> Pesquisa</span>
+        <InputText v-model="pesquisa" @input="atualizarFiltro" placeholder="Nome, email..." class="custom-input-minimal w-full" />
       </div>
+
+      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-users text-[8px]"></i> Gestor</span>
+        <Dropdown v-model="filtroGestor" :options="gestores" optionLabel="label" optionValue="value" placeholder="Todos" class="custom-dropdown-minimal w-full" />
+      </div>
+
+      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-tag text-[8px]"></i> Status</span>
+        <Dropdown v-model="filtroStatus" :options="opcoesStatus" optionLabel="label" optionValue="value" placeholder="Todos" class="custom-dropdown-minimal w-full" />
+      </div>
+
+      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-clock text-[8px]"></i> Referência</span>
+        <Dropdown v-model="filtroTipoData" :options="opcoesTipoData" optionLabel="label" optionValue="value" class="custom-dropdown-minimal w-full" />
+      </div>
+
+      <div class="flex flex-col gap-1 px-2 md:px-3 xl:border-l border-slate-100 dark:border-slate-800">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-calendar text-[8px]"></i> A partir</span>
+        <Calendar v-model="filtroDataInicio" dateFormat="dd/mm/yy" placeholder="Início" class="w-full custom-calendar-minimal" inputClass="custom-input-minimal !w-full" />
+      </div>
+
+      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-calendar text-[8px]"></i> Até</span>
+        <Calendar v-model="filtroDataFim" dateFormat="dd/mm/yy" placeholder="Fim" class="w-full custom-calendar-minimal" inputClass="custom-input-minimal !w-full" />
+      </div>
+
+      <div class="flex items-center justify-center px-2 md:px-3 border-l border-slate-100 dark:border-slate-800 h-full">
+        <Button @click="limparFiltros" label="Limpar Filtros" icon="pi pi-filter-slash" class="!bg-transparent !text-[10px] !font-black !uppercase !tracking-widest !text-slate-400 hover:!text-rose-500 !border-none transition-all p-0" />
+      </div>
+
     </div>
 
     <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-6 pt-2">
@@ -554,55 +501,75 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
 
 <style scoped lang="postcss">
 @reference "tailwindcss";
+
 .animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-/* 🌟 CORREÇÃO DOS DROPDOWNS (SELECTORS) */
+/* ==========================================
+   🌟 FILTROS ESTILO DASHBOARD (Minimalistas e Uniformes)
+   ========================================== */
 
-/* 1. Garante que o texto e a seta fiquem escuros no Light Mode e claros no Dark Mode */
-:deep(.p-dropdown.custom-dropdown) {
-    @apply bg-slate-100/50 dark:bg-slate-800 border-none rounded-lg transition-all !important;
+/* Força transparência em TODOS os elementos (Input, Dropdown, Calendário) */
+:deep(.custom-input-minimal),
+:deep(.custom-dropdown-minimal),
+:deep(.custom-calendar-minimal .p-inputtext) {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    color: inherit !important;
+    @apply text-[10px] font-black uppercase text-slate-800 dark:text-white w-full outline-none ring-0;
 }
 
-/* 2. ESTA É A CHAVE: Altera a cor da seta (ícone) do seletor */
-:deep(.p-dropdown.custom-dropdown .p-dropdown-trigger) {
-    @apply text-slate-600 dark:text-slate-400 !important;
-    width: 2.5rem !important;
+/* Força a cor dos Placeholders para combinarem com os Dropdowns */
+:deep(.custom-input-minimal::placeholder),
+:deep(.custom-calendar-minimal .p-inputtext::placeholder) {
+    @apply text-slate-300 dark:text-slate-600 font-black !important;
 }
 
-/* 3. Garante que o label (texto selecionado) também acompanhe a cor */
-:deep(.p-dropdown.custom-dropdown .p-dropdown-label) {
-    @apply text-slate-700 dark:text-slate-200 font-semibold text-xs !important;
-    padding: 0.5rem 0.75rem !important;
-}
-
-/* 4. Remove o contorno azul/laranja ao clicar */
-:deep(.p-dropdown:not(.p-disabled).p-focus) {
-    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important; /* Um leve glow laranja */
+/* Remove completamente os fundos brancos/cinzentos que o PrimeVue injeta ao passar o rato ou focar */
+:deep(.p-inputtext:enabled:focus),
+:deep(.p-inputtext:enabled:hover),
+:deep(.p-dropdown:not(.p-disabled):focus),
+:deep(.p-dropdown:not(.p-disabled):hover) {
+    background-color: transparent !important;
     border-color: transparent !important;
+    box-shadow: none !important;
 }
 
-/* 5. Ajuste do Painel que abre (Lista de Opções) */
-:deep(.p-dropdown-panel) {
+/* Dropdown Específico (Mesma regra de Relatórios) */
+:deep(.custom-dropdown-minimal .p-dropdown-label) {
+    @apply p-0 font-black flex items-center text-[10px] uppercase text-slate-800 dark:text-white !important;
+}
+:deep(.custom-dropdown-minimal .p-dropdown-trigger) {
+    @apply w-4 text-slate-400 !important;
+}
+
+/* Modais que abrem ao clicar (Opções e Calendário) */
+:deep(.p-dropdown-panel), :deep(.p-datepicker) {
     @apply dark:bg-slate-800 dark:border-slate-700 shadow-xl !important;
 }
-
 :deep(.p-dropdown-panel .p-dropdown-item) {
     @apply text-xs font-medium text-slate-600 dark:text-slate-300 !important;
 }
-
 :deep(.p-dropdown-panel .p-dropdown-item.p-highlight) {
-    @apply bg-orange-500/10 text-orange-600 dark:text-orange-400 !important;
+    @apply bg-sky-500/10 text-sky-600 dark:text-sky-400 !important;
 }
 
-/* 🌟 Tabela PrimeVue */
+/* ==========================================
+   🌟 TABELA E MODAIS (Mantidos do Original)
+   ========================================== */
+
+/* Tabela PrimeVue */
 :deep(.p-datatable .p-datatable-thead > tr > th) { @apply bg-slate-50 dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 py-6 px-4; }
 :deep(.p-datatable .p-datatable-tbody > tr) { @apply bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800/50 text-slate-700 dark:text-slate-300; }
 :deep(.p-datatable .p-datatable-tbody > tr > td) { @apply py-4 px-4; }
-:deep(.p-checkbox .p-checkbox-box) { @apply border-slate-300 dark:border-slate-600 rounded-md transition-colors; }
-:deep(.p-checkbox.p-highlight .p-checkbox-box) { @apply border-orange-500 bg-orange-500; }
 
-/* 🌟 Modais (Dialog) */
+/* Checkboxes da Tabela */
+:deep(.p-checkbox .p-checkbox-box) { @apply border-slate-300 dark:border-slate-600 rounded-md transition-colors; }
+:deep(.p-checkbox.p-highlight .p-checkbox-box) { @apply border-sky-500 bg-sky-500 !important; }
+
+/* Modais (Dialog) */
 :deep(.custom-dialog .p-dialog-header) { @apply bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-8 py-6; }
 :deep(.custom-dialog .p-dialog-content) { @apply dark:bg-slate-900; }
 :deep(.custom-dialog .p-dialog-title) { @apply text-lg font-black italic tracking-tight text-slate-800 dark:text-white; }

@@ -223,21 +223,39 @@ onMounted(carregarRespostas);
       </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 p-4 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm mb-6 flex flex-wrap items-center gap-3">
-        
-        <InputText v-model="filtros.q" placeholder="Pesquisar comentário..." class="flex-1 min-w-[200px] custom-input !py-3 !text-xs !rounded-xl" />
-        <InputText v-model="filtros.empresa" placeholder="Filtrar por Empresa" class="flex-1 min-w-[150px] custom-input !py-3 !text-xs !rounded-xl" />
-        
-        <Dropdown v-model="filtros.categoria" :options="opcoesCategoria" placeholder="Categoria" class="w-full md:w-40 custom-dropdown !text-xs !py-1 !rounded-xl" />
-        <Dropdown v-model="filtros.perfil" :options="opcoesPerfil" placeholder="Perfil" class="w-full md:w-40 custom-dropdown !text-xs !py-1 !rounded-xl" />
-        
-        <div class="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 transition-colors hover:border-slate-300">
+    <div class="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2 no-print relative overflow-hidden mb-6 items-center">
+      
+      <div class="absolute left-0 top-0 w-1 h-full bg-orange-500"></div>
+      
+      <div class="flex flex-col gap-1 px-2 md:px-3">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-search text-[8px]"></i> Pesquisa</span>
+        <InputText v-model="filtros.q" placeholder="Buscar..." class="custom-minimal-element w-full" />
+      </div>
+      
+      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-building text-[8px]"></i> Empresa</span>
+        <InputText v-model="filtros.empresa" placeholder="Filtrar..." class="custom-minimal-element w-full" />
+      </div>
+
+      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-tag text-[8px]"></i> Categoria</span>
+        <Dropdown v-model="filtros.categoria" :options="opcoesCategoria" class="custom-minimal-element w-full" />
+      </div>
+
+      <div class="flex flex-col gap-1 px-2 md:px-3 xl:border-l border-slate-100 dark:border-slate-800">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-user text-[8px]"></i> Perfil</span>
+        <Dropdown v-model="filtros.perfil" :options="opcoesPerfil" class="custom-minimal-element w-full" />
+      </div>
+
+      <div class="flex items-center justify-center px-2 md:px-3 border-l border-slate-100 dark:border-slate-800 h-full">
+        <div class="flex items-center gap-3">
             <InputSwitch v-model="filtros.incluir_excluidas" />
             <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer" @click="filtros.incluir_excluidas = !filtros.incluir_excluidas">
-            Ver Arquivados
+            Arquivados
             </label>
         </div>
-        </div>
+      </div>
+    </div>
 
     <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-6">
       
@@ -408,9 +426,63 @@ onMounted(carregarRespostas);
 .animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-/* --- Inputs e Dropdowns (Resilientes) --- */
+/* ==========================================
+   🌟 FILTROS ESTILO DASHBOARD (Barra de Topo)
+   ========================================== */
+
+/* Força transparência absoluta nos elementos de filtro */
+:deep(.custom-minimal-element),
+:deep(.custom-minimal-element.p-inputtext),
+:deep(.custom-minimal-element .p-inputtext) {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    color: inherit !important;
+    @apply text-[10px] font-black uppercase text-slate-800 dark:text-white w-full outline-none ring-0;
+}
+
+/* Cor dos Placeholders na barra */
+:deep(.custom-minimal-element::placeholder),
+:deep(.custom-minimal-element .p-inputtext::placeholder) {
+    @apply text-slate-300 dark:text-slate-600 font-black !important;
+}
+
+/* Blindagem contra os fundos de hover/focus do PrimeVue */
+:deep(.p-inputtext:enabled:focus),
+:deep(.p-inputtext:enabled:hover),
+:deep(.p-dropdown:not(.p-disabled):focus),
+:deep(.p-dropdown:not(.p-disabled):hover) {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Alinhamento do Dropdown na barra */
+:deep(.custom-minimal-element.p-dropdown .p-dropdown-label) {
+    @apply p-0 font-black flex items-center text-[10px] uppercase text-slate-800 dark:text-white !important;
+}
+:deep(.custom-minimal-element.p-dropdown .p-dropdown-trigger) {
+    @apply w-4 text-slate-400 !important;
+}
+
+/* Menu de opções flutuante (Laranja para a aba de Respostas) */
+:deep(.p-dropdown-panel) {
+    @apply dark:bg-slate-800 dark:border-slate-700 shadow-xl !important;
+}
+:deep(.p-dropdown-panel .p-dropdown-item) {
+    @apply text-xs font-medium text-slate-600 dark:text-slate-300 !important;
+}
+:deep(.p-dropdown-panel .p-dropdown-item.p-highlight) {
+    @apply bg-orange-500/10 text-orange-600 dark:text-orange-400 !important;
+}
+
+
+/* ==========================================
+   📝 INPUTS DO MODAL (Enriquecimento Qualitativo)
+   ========================================== */
+
 :deep(.custom-input), :deep(.custom-dropdown) {
-  /* Trocamos transparência por cores sólidas */
   @apply bg-white dark:bg-slate-800 
          border-slate-200 dark:border-slate-700 
          p-4 rounded-xl outline-none 
@@ -418,27 +490,27 @@ onMounted(carregarRespostas);
          transition-all font-medium text-slate-700 dark:text-slate-200;
 }
 
-:deep(.p-dropdown-label) { @apply py-1; }
+:deep(.custom-dropdown .p-dropdown-label) { 
+  @apply py-1 !important; 
+}
+
 
 /* ==========================================
-   Customização da Tabela - Anti-Saga (Cores Sólidas)
+   📊 CUSTOMIZAÇÃO DA TABELA (Cores Sólidas)
    ========================================== */
 
 :deep(.p-datatable .p-datatable-thead > tr > th) {
-  /* No modo escuro, pintamos o cabeçalho de Slate-900 para cobrir o branco do tema Saga */
   @apply bg-slate-50 dark:bg-slate-900 
          text-[10px] font-black uppercase tracking-widest text-slate-400 
          border-b border-slate-100 dark:border-slate-800 py-6 px-4;
 }
 
 :deep(.p-datatable .p-datatable-tbody > tr) {
-  /* Cada linha agora tem cor sólida no Dark Mode */
   @apply bg-white dark:bg-slate-900 
          text-slate-600 dark:text-slate-300
          transition-colors border-b border-slate-50 dark:border-slate-800/50;
 }
 
-/* Efeito de Hover nas linhas */
 :deep(.p-datatable .p-datatable-tbody > tr:hover) {
   @apply bg-slate-50/80 dark:bg-slate-800/40 !important;
 }
@@ -447,8 +519,9 @@ onMounted(carregarRespostas);
   @apply py-5 px-4;
 }
 
+
 /* ==========================================
-   Customização do Dialog (Modais)
+   🪟 CUSTOMIZAÇÃO DO DIALOG
    ========================================== */
 
 :deep(.custom-dialog-no-header .p-dialog-header) {
@@ -457,7 +530,6 @@ onMounted(carregarRespostas);
 
 :deep(.custom-dialog-no-header .p-dialog-content) {
   padding: 0 !important;
-  /* Garante que o conteúdo do modal também fique escuro */
   @apply dark:bg-slate-900;
 }
 </style>

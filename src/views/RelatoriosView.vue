@@ -18,28 +18,30 @@
         </div>
       </div>
 
-      <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 no-print relative overflow-hidden">
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 no-print relative overflow-hidden mb-6">
+        
         <div class="absolute left-0 top-0 w-1 h-full bg-indigo-500"></div>
         
         <div class="flex flex-col gap-1.5 px-3">
           <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-calendar text-[8px]"></i> Período</span>
-          <Dropdown v-model="filtros.periodo" :options="['Últimos 3 Meses', 'Últimos 6 Meses', 'Este Ano', 'Todos']" class="custom-dropdown-minimal w-full" />
+          <Dropdown v-model="filtros.periodo" :options="opcoesPeriodo" class="custom-dropdown-minimal w-full" />
         </div>
-        
+
         <div class="flex flex-col gap-1.5 px-3 md:border-l border-slate-100 dark:border-slate-800">
           <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-briefcase text-[8px]"></i> Segmento</span>
-          <Dropdown v-model="filtros.segmento" :options="['Todos', 'Enterprise', 'Mid-Market', 'SMB']" class="custom-dropdown-minimal w-full" />
+          <Dropdown v-model="filtros.segmento" :options="opcoesSegmento" class="custom-dropdown-minimal w-full" />
         </div>
 
         <div class="flex flex-col gap-1.5 px-3 lg:border-l border-slate-100 dark:border-slate-800">
           <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-chart-pie text-[8px]"></i> Tamanho / ARR</span>
-          <Dropdown v-model="filtros.arr" :options="['Todos', '> € 100k', '€ 50k - € 100k', '< € 50k']" class="custom-dropdown-minimal w-full" />
+          <Dropdown v-model="filtros.arr" :options="opcoesARR" class="custom-dropdown-minimal w-full" />
         </div>
 
         <div class="flex flex-col gap-1.5 px-3 md:border-l border-slate-100 dark:border-slate-800">
           <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-hourglass text-[8px]"></i> Tempo de Casa</span>
-          <Dropdown v-model="filtros.safra" :options="['Todos', '0-3 Meses (Onboarding)', '3-12 Meses', '+1 Ano']" class="custom-dropdown-minimal w-full" />
+          <Dropdown v-model="filtros.safra" :options="opcoesSafra" class="custom-dropdown-minimal w-full" />
         </div>
+
       </div>
 
       <div v-if="loadingDados" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -178,7 +180,9 @@ import Skeleton from 'primevue/skeleton';
 
 const toast = useToast();
 
-// ESTADOS GERAIS & FILTROS
+// ==========================================
+// 🎛️ ESTADOS GERAIS & FILTROS REAIS
+// ==========================================
 const loadingDados = ref(true);
 const loadingIA = ref(false);
 
@@ -188,6 +192,12 @@ const filtros = ref({
   arr: 'Todos',
   safra: 'Todos'
 });
+
+// Opções dinâmicas e estáticas
+const opcoesPeriodo = ref(['Últimos 3 Meses', 'Últimos 6 Meses', 'Este Ano', 'Todos']);
+const opcoesSegmento = ref(['Todos']); // <-- Começa só com 'Todos', depois preenche da API
+const opcoesARR = ref(['Todos', '> € 100k', '€ 50k - € 100k', '< € 50k']);
+const opcoesSafra = ref(['Todos', '0-3 Meses (Onboarding)', '3-12 Meses', '+1 Ano']);
 
 // ESTADOS DE E-MAIL
 const modalEmailOpen = ref(false);
@@ -214,6 +224,20 @@ watch(filtros, () => {
   fetchGraficos();
   gerarAnaliseIA(false);
 }, { deep: true });
+
+// ==========================================
+// 📡 FETCH DE CADASTROS (Segmentos e Gestores)
+// ==========================================
+const carregarFiltrosIniciais = async () => {
+  try {
+    const res = await api.get('/cadastros/segmentos');
+    // Mapeia o nome dos segmentos reais e adiciona a opção 'Todos' no início
+    opcoesSegmento.value = ['Todos', ...res.data.map(seg => seg.nome)];
+  } catch (error) {
+    console.error("Erro ao carregar os segmentos reais:", error);
+  }
+};
+
 
 // ==========================================
 // 📊 FETCH DOS DADOS REAIS (API PYTHON)
@@ -348,7 +372,8 @@ const abrirModalEmail = async () => {
   modalEmailOpen.value = true;
   if (listaGestores.value.length === 0) {
     try {
-      const res = await api.get('/gestores'); 
+      // 🚨 Corrigido o endpoint para puxar da rota real de cadastros
+      const res = await api.get('/cadastros/gestores'); 
       listaGestores.value = res.data;
     } catch (e) {
         console.error("Erro ao carregar gestores", e);
@@ -363,7 +388,6 @@ const confirmarEnvioEmail = async () => {
   }
   enviandoEmail.value = true;
   try {
-     // AQUI VAI O CÓDIGO DE DISPARO REAL
      setTimeout(() => {
         toast.add({ severity: 'success', summary: 'Sucesso!', detail: 'Relatório BI enviado.', life: 4000 });
         modalEmailOpen.value = false;
@@ -376,20 +400,61 @@ const confirmarEnvioEmail = async () => {
   }
 };
 
-onMounted(() => {
-  fetchGraficos();
-  gerarAnaliseIA();
+// 🌟 INICIALIZAÇÃO CORRETA DA PÁGINA
+onMounted(async () => {
+  await carregarFiltrosIniciais(); // Primeiro carrega os segmentos reais
+  fetchGraficos();                 // Depois desenha os gráficos
+  gerarAnaliseIA();                // Depois chama a IA
 });
 </script>
 
-<style scoped>
+<style scoped lang="postcss">
 @reference "tailwindcss";
 
-.custom-dropdown-minimal { @apply bg-transparent border-none shadow-none text-[10px] font-black uppercase text-slate-800 dark:text-white p-0; }
-:deep(.p-dropdown-label) { @apply p-0 font-black; }
-:deep(.p-dropdown-trigger) { @apply w-4; }
+/* ==========================================
+   🌟 FILTROS ESTILO DASHBOARD (Minimalistas e Uniformes)
+   ========================================== */
 
-/* REGRAS BLINDADAS DE IMPRESSÃO */
+/* Força transparência em TODOS os Dropdowns da barra superior */
+:deep(.custom-dropdown-minimal) {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    color: inherit !important;
+    @apply text-[10px] font-black uppercase text-slate-800 dark:text-white w-full outline-none ring-0;
+}
+
+/* Remove completamente os fundos que o PrimeVue injeta ao passar o rato ou focar */
+:deep(.p-dropdown:not(.p-disabled):focus),
+:deep(.p-dropdown:not(.p-disabled):hover) {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Alinhamento perfeito do texto e da setinha dentro do Dropdown */
+:deep(.custom-dropdown-minimal .p-dropdown-label) {
+    @apply p-0 font-black flex items-center text-[10px] uppercase text-slate-800 dark:text-white !important;
+}
+:deep(.custom-dropdown-minimal .p-dropdown-trigger) {
+    @apply w-4 text-slate-400 !important;
+}
+
+/* Menu de opções flutuante (Indigo para a aba Analítica) */
+:deep(.p-dropdown-panel) {
+    @apply dark:bg-slate-800 dark:border-slate-700 shadow-xl !important;
+}
+:deep(.p-dropdown-panel .p-dropdown-item) {
+    @apply text-xs font-medium text-slate-600 dark:text-slate-300 !important;
+}
+:deep(.p-dropdown-panel .p-dropdown-item.p-highlight) {
+    @apply bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 !important;
+}
+
+/* ==========================================
+   🖨️ REGRAS BLINDADAS DE IMPRESSÃO (Intactas)
+   ========================================== */
 @media print {
   @page { margin: 1cm; size: landscape; }
   .no-print { display: none !important; }
