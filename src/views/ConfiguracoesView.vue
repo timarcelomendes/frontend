@@ -204,10 +204,14 @@ const carregarDadosConfig = async () => {
       }
     }
   } catch (error) {
-    // ... mantido igual ...
   } finally {
     carregandoDados.value = false;
   }
+};
+
+const definirUrlAtual = () => {
+  config.value.base_url_frontend = window.location.origin;
+  toast.add({ severity: 'info', summary: 'URL Atualizada', detail: 'URL ajustada para o ambiente atual. Não se esqueça de guardar.', life: 3000 });
 };
 
 const salvarConfiguracoes = async () => {
@@ -307,6 +311,23 @@ const enviarTeste = async () => {
   }
 };
 
+const salvarConfigEmail = async () => {
+  savingConfig.value = true;
+  try {
+    const payload = { ...config.value };
+    
+    delete payload.base_url_frontend; 
+
+    await api.post('/config/email', payload); 
+    
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Credenciais guardadas com sucesso!' });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar configurações.' });
+  } finally {
+    savingConfig.value = false;
+  }
+};
+
 // ==========================================
 // 💾 GESTÃO DE UTILIZADORES
 // ==========================================
@@ -326,11 +347,9 @@ const carregarUtilizadores = async () => {
   try {
     const response = await api.get('/usuarios'); 
     
-    // Pega os dados, converte em array (se não for), e ordena inativos primeiro
     let lista = Array.isArray(response.data) ? response.data : [response.data];
     
     const utilizadoresOrdenados = lista.sort((a, b) => {
-      // Inativos (0/false) vão para cima, Ativos (1/true) vão para baixo
       return Number(a.ativo) - Number(b.ativo); 
     });
 
@@ -495,16 +514,19 @@ onMounted(() => {
       <TabPanel header="Geral">
         <div class="flex flex-col gap-6">
           
-          <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-6 shadow-sm">
-            <div class="flex flex-col gap-2">
-              <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">URL Base do Frontend (Auto-Detetada)</label>
-              <InputText v-model="config.base_url_frontend" disabled class="custom-input !text-[12px] opacity-70 cursor-not-allowed select-none" />
-              <div class="text-[10px] text-emerald-500 font-bold ml-1 uppercase tracking-widest mt-1">
-                <i class="pi pi-bolt"></i> O sistema identificou o seu ambiente: <span class="underline">{{ config.base_url_frontend }}</span>
+          <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
+            <div class="flex flex-col gap-2 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+              <label class="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <i class="pi pi-bolt text-emerald-500 mr-1"></i> Ambiente Detetado (Auto)
+              </label>
+              <div class="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                {{ config.base_url_frontend }}
               </div>
+              <p class="text-[9px] text-slate-400 font-medium mt-1">
+                O sistema usa esta origem dinamicamente para o redirecionamento de segurança. Não é guardada no banco de dados para evitar conflitos entre Nuvem e Localhost.
+              </p>
             </div>
-            <Button label="Guardar Geral" icon="pi pi-save" @click="salvarConfiguracoes" :loading="loading" class="w-full md:w-auto !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-8 !py-3 shadow-xl hover:scale-105 transition-transform" />
-          </div>
+            </div>
 
           <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6 group transition-all hover:border-orange-200 dark:hover:border-orange-500/30">
             <div class="flex items-center gap-5">
