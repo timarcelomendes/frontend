@@ -18,15 +18,14 @@
         </div>
       </div>
 
-      <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 no-print relative overflow-hidden mb-6">
-        
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 no-print relative overflow-hidden">
         <div class="absolute left-0 top-0 w-1 h-full bg-indigo-500"></div>
         
         <div class="flex flex-col gap-1.5 px-3">
           <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-calendar text-[8px]"></i> Período</span>
           <Dropdown v-model="filtros.periodo" :options="opcoesPeriodo" class="custom-dropdown-minimal w-full" />
         </div>
-
+        
         <div class="flex flex-col gap-1.5 px-3 md:border-l border-slate-100 dark:border-slate-800">
           <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-briefcase text-[8px]"></i> Segmento</span>
           <Dropdown v-model="filtros.segmento" :options="opcoesSegmento" class="custom-dropdown-minimal w-full" />
@@ -41,7 +40,6 @@
           <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-hourglass text-[8px]"></i> Tempo de Casa</span>
           <Dropdown v-model="filtros.safra" :options="opcoesSafra" class="custom-dropdown-minimal w-full" />
         </div>
-
       </div>
 
       <div v-if="loadingDados" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -181,7 +179,7 @@ import Skeleton from 'primevue/skeleton';
 const toast = useToast();
 
 // ==========================================
-// 🎛️ ESTADOS GERAIS & FILTROS REAIS
+// 🎛️ ESTADOS GERAIS & OPÇÕES DE FILTROS
 // ==========================================
 const loadingDados = ref(true);
 const loadingIA = ref(false);
@@ -195,7 +193,7 @@ const filtros = ref({
 
 // Opções dinâmicas e estáticas
 const opcoesPeriodo = ref(['Últimos 3 Meses', 'Últimos 6 Meses', 'Este Ano', 'Todos']);
-const opcoesSegmento = ref(['Todos']); // <-- Começa só com 'Todos', depois preenche da API
+const opcoesSegmento = ref(['Todos']); // <-- Começa vazio, preenche da API
 const opcoesARR = ref(['Todos', '> € 100k', '€ 50k - € 100k', '< € 50k']);
 const opcoesSafra = ref(['Todos', '0-3 Meses (Onboarding)', '3-12 Meses', '+1 Ano']);
 
@@ -226,18 +224,16 @@ watch(filtros, () => {
 }, { deep: true });
 
 // ==========================================
-// 📡 FETCH DE CADASTROS (Segmentos e Gestores)
+// 📡 FETCH DE CADASTROS (Segmentos Dinâmicos)
 // ==========================================
 const carregarFiltrosIniciais = async () => {
   try {
     const res = await api.get('/cadastros/segmentos');
-    // Mapeia o nome dos segmentos reais e adiciona a opção 'Todos' no início
     opcoesSegmento.value = ['Todos', ...res.data.map(seg => seg.nome)];
   } catch (error) {
     console.error("Erro ao carregar os segmentos reais:", error);
   }
 };
-
 
 // ==========================================
 // 📊 FETCH DOS DADOS REAIS (API PYTHON)
@@ -257,13 +253,13 @@ const fetchGraficos = async () => {
                 {
                     label: 'Tópicos Críticos',
                     data: scatterData.filter(d => d.y <= 6),
-                    backgroundColor: 'rgba(244, 63, 94, 0.8)', // Rose-500
+                    backgroundColor: 'rgba(244, 63, 94, 0.8)',
                     borderColor: '#f43f5e',
                 },
                 {
                     label: 'Atenção/Melhoria',
                     data: scatterData.filter(d => d.y > 6),
-                    backgroundColor: 'rgba(245, 158, 11, 0.8)', // Yellow-500
+                    backgroundColor: 'rgba(245, 158, 11, 0.8)',
                     borderColor: '#f59e0b',
                 }
             ]
@@ -272,18 +268,14 @@ const fetchGraficos = async () => {
             responsive: true, maintainAspectRatio: false,
             plugins: {
                 legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 10, weight: 'bold' } } },
-                tooltip: {
-                    callbacks: { label: (ctx) => `${ctx.raw.tema}: ${ctx.raw.x} menções | Nota: ${ctx.raw.y}` }
-                }
+                tooltip: { callbacks: { label: (ctx) => `${ctx.raw.tema}: ${ctx.raw.x} menções | Nota: ${ctx.raw.y}` } }
             },
             scales: {
                 x: { title: { display: true, text: 'Frequência (Menções)', font: { size: 10, weight: 'bold' } }, grid: { borderDash: [5, 5] } },
                 y: { title: { display: true, text: 'Nota Média', font: { size: 10, weight: 'bold' } }, min: 0, max: 10, grid: { borderDash: [5, 5] } }
             }
         };
-    } catch(e) {
-        console.error("Erro Scatter:", e);
-    }
+    } catch(e) { console.error("Erro Scatter:", e); }
 
     // 2. ANÁLISE DE SAFRA (STACKED BAR)
     try {
@@ -303,9 +295,7 @@ const fetchGraficos = async () => {
             plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 10, weight: 'bold' } } } },
             scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, grid: { borderDash: [5, 5] } } }
         };
-    } catch(e) {
-        console.error("Erro Safra:", e);
-    }
+    } catch(e) { console.error("Erro Safra:", e); }
 
     // 3. RISCO FINANCEIRO (BUBBLE CHART)
     try {
@@ -337,9 +327,7 @@ const fetchGraficos = async () => {
                 y: { title: { display: true, text: 'Receita ARR (€)', font: { size: 10, weight: 'bold' } } }
             }
         };
-    } catch(e) {
-        console.error("Erro Risco Financeiro:", e);
-    }
+    } catch(e) { console.error("Erro Risco Financeiro:", e); }
 
   } catch (error) {
     console.error("Erro geral no fetchGraficos:", error);
@@ -372,7 +360,7 @@ const abrirModalEmail = async () => {
   modalEmailOpen.value = true;
   if (listaGestores.value.length === 0) {
     try {
-      // 🚨 Corrigido o endpoint para puxar da rota real de cadastros
+      // Usa a rota correta da API de cadastros
       const res = await api.get('/cadastros/gestores'); 
       listaGestores.value = res.data;
     } catch (e) {
@@ -400,11 +388,11 @@ const confirmarEnvioEmail = async () => {
   }
 };
 
-// 🌟 INICIALIZAÇÃO CORRETA DA PÁGINA
+// 🌟 INICIALIZAÇÃO OTIMIZADA
 onMounted(async () => {
-  await carregarFiltrosIniciais(); // Primeiro carrega os segmentos reais
-  fetchGraficos();                 // Depois desenha os gráficos
-  gerarAnaliseIA();                // Depois chama a IA
+  await carregarFiltrosIniciais(); // 1º Puxa os segmentos reais
+  fetchGraficos();                 // 2º Renderiza com o segmento já injetado nas opções
+  gerarAnaliseIA();                // 3º Pede a IA
 });
 </script>
 
@@ -414,8 +402,6 @@ onMounted(async () => {
 /* ==========================================
    🌟 FILTROS ESTILO DASHBOARD (Minimalistas e Uniformes)
    ========================================== */
-
-/* Força transparência em TODOS os Dropdowns da barra superior */
 :deep(.custom-dropdown-minimal) {
     background-color: transparent !important;
     border: none !important;
@@ -425,7 +411,6 @@ onMounted(async () => {
     @apply text-[10px] font-black uppercase text-slate-800 dark:text-white w-full outline-none ring-0;
 }
 
-/* Remove completamente os fundos que o PrimeVue injeta ao passar o rato ou focar */
 :deep(.p-dropdown:not(.p-disabled):focus),
 :deep(.p-dropdown:not(.p-disabled):hover) {
     background-color: transparent !important;
@@ -433,7 +418,6 @@ onMounted(async () => {
     box-shadow: none !important;
 }
 
-/* Alinhamento perfeito do texto e da setinha dentro do Dropdown */
 :deep(.custom-dropdown-minimal .p-dropdown-label) {
     @apply p-0 font-black flex items-center text-[10px] uppercase text-slate-800 dark:text-white !important;
 }
@@ -441,7 +425,6 @@ onMounted(async () => {
     @apply w-4 text-slate-400 !important;
 }
 
-/* Menu de opções flutuante (Indigo para a aba Analítica) */
 :deep(.p-dropdown-panel) {
     @apply dark:bg-slate-800 dark:border-slate-700 shadow-xl !important;
 }
@@ -453,7 +436,7 @@ onMounted(async () => {
 }
 
 /* ==========================================
-   🖨️ REGRAS BLINDADAS DE IMPRESSÃO (Intactas)
+   🖨️ REGRAS BLINDADAS DE IMPRESSÃO 
    ========================================== */
 @media print {
   @page { margin: 1cm; size: landscape; }

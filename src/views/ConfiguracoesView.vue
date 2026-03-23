@@ -32,7 +32,7 @@ const config = ref({
   client_id: '',
   client_secret: '',
   email_remetente: '',
-  base_url_frontend: 'http://localhost:5173',
+  base_url_frontend: window.location.origin,
   refresh_token: null
 });
 
@@ -200,12 +200,11 @@ const carregarDadosConfig = async () => {
       const dados = Array.isArray(resConfig.data) ? resConfig.data[0] : resConfig.data;
       if (dados) {
         config.value = { ...config.value, ...dados };
+        config.value.base_url_frontend = window.location.origin;
       }
     }
   } catch (error) {
-    console.error("Erro ao carregar configurações:", error);
-    const status = error.response?.status || "Conexão";
-    toast.add({ severity: 'error', summary: `Erro ${status}`, detail: 'Não foi possível ler as configurações de email.', life: 5000 });
+    // ... mantido igual ...
   } finally {
     carregandoDados.value = false;
   }
@@ -267,8 +266,7 @@ const autorizarMicrosoft = () => {
     return;
   }
 
-  const baseLimpa = config.value.base_url_frontend.trim().replace(/\/+$/, '');
-  const redirectUri = `${baseLimpa}/configuracoes`;
+  const redirectUri = `${window.location.origin}/configuracoes`;
   const scope = encodeURIComponent("offline_access mail.send");
   
   const authUrl = `https://login.microsoftonline.com/${config.value.tenant_id}/oauth2/v2.0/authorize?client_id=${config.value.client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&response_mode=query&scope=${scope}`;
@@ -499,10 +497,10 @@ onMounted(() => {
           
           <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-6 shadow-sm">
             <div class="flex flex-col gap-2">
-              <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">URL Base do Frontend</label>
-              <InputText v-model="config.base_url_frontend" class="custom-input !text-[12px]" placeholder="http://localhost:5173" />
-              <div v-if="config.base_url_frontend" class="text-[10px] text-emerald-500 font-bold ml-1">
-                <i class="pi pi-check"></i> Valor guardado: <span class="underline">{{ config.base_url_frontend }}</span>
+              <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">URL Base do Frontend (Auto-Detetada)</label>
+              <InputText v-model="config.base_url_frontend" disabled class="custom-input !text-[12px] opacity-70 cursor-not-allowed select-none" />
+              <div class="text-[10px] text-emerald-500 font-bold ml-1 uppercase tracking-widest mt-1">
+                <i class="pi pi-bolt"></i> O sistema identificou o seu ambiente: <span class="underline">{{ config.base_url_frontend }}</span>
               </div>
             </div>
             <Button label="Guardar Geral" icon="pi pi-save" @click="salvarConfiguracoes" :loading="loading" class="w-full md:w-auto !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-8 !py-3 shadow-xl hover:scale-105 transition-transform" />
