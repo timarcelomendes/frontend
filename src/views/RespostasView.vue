@@ -150,9 +150,11 @@ const respostaAtual = ref({
 
 const abrirEdicao = (dados) => {
   respostaAtual.value = { 
-    id: dados.resposta_id, nota: dados.nota, categoria: dados.categoria || 'Não Categorizado', 
-    motivo: dados.motivo || '', canal: dados.canal || '', expectativas: dados.expectativas || '', 
-    o_que_faltava: dados.o_que_faltava || ''
+    ...dados,
+    id: dados.resposta_id,
+    empresa: dados.nome || dados.empresa,
+    empresa_id: dados.empresa_id || null, // 👈 Agora captura o ID correto
+    gestor_id: dados.gestor_id || null    // 👈 Agora captura o Gestor correto
   };
   dialogEdicao.value = true;
 };
@@ -216,24 +218,27 @@ onMounted(async () => {
 const dialogNovaAcao = ref(false);
 const salvandoAcao = ref(false);
 const novaAcaoForm = ref({ titulo: '', gestor_id: null, prioridade: 'Alta', descricao: '' });
-const gestoresLista = ref([]); // Vamos preencher isto com a lista de gestores
+const gestoresLista = ref([]); 
 
 const abrirNovaAcao = async () => {
-  // Pré-preenchemos a descrição com a dor original do cliente (Super Útil!)
-  novaAcaoForm.value = {
-    titulo: `Revisão de NPS crítico: ${respostaAtual.value.empresa || 'Cliente'}`,
-    gestor_id: null,
-    prioridade: 'Alta',
-    descricao: `Feedback original do cliente (Nota ${respostaAtual.value.nota}): "${respostaAtual.value.motivo || 'Sem comentário'}"\n\nO que devemos fazer: `
-  };
-  
-  // Carrega a lista de gestores para o dropdown
   if (gestoresLista.value.length === 0) {
     try {
       const res = await api.get('/cadastros/gestores');
       gestoresLista.value = res.data;
-    } catch(e) {}
+    } catch(e) {
+      console.error("Erro ao carregar lista de gestores:", e);
+      toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar gestores.' });
+    }
   }
+
+  novaAcaoForm.value = {
+    titulo: `Revisão de NPS: ${respostaAtual.value.empresa || 'Cliente'}`,
+    gestor_id: respostaAtual.value.gestor_id ? Number(respostaAtual.value.gestor_id) : null,
+    empresa_id: respostaAtual.value.empresa_id ? Number(respostaAtual.value.empresa_id) : null,
+    prioridade: 'Alta',
+    descricao: `Analise do feedback da ${respostaAtual.value.empresa || 'empresa'}`
+  };
+  
   dialogNovaAcao.value = true;
 };
 
@@ -246,6 +251,7 @@ const criarPlanoAcao = async () => {
       resposta_id: respostaAtual.value.id,
       titulo: novaAcaoForm.value.titulo,
       gestor_id: novaAcaoForm.value.gestor_id,
+      empresa_id: novaAcaoForm.value.empresa_id,
       prioridade: novaAcaoForm.value.prioridade,
       descricao: novaAcaoForm.value.descricao
     };
@@ -520,6 +526,15 @@ const criarPlanoAcao = async () => {
       </div>
 
       <div class="p-8 space-y-4 bg-white dark:bg-slate-900">
+        
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Empresa Vinculada</label>
+          <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700 flex items-center gap-2">
+            <i class="pi pi-building text-orange-500"></i>
+            {{ respostaAtual.empresa || 'Empresa não identificada' }}
+          </div>
+        </div>
+
         <div class="flex flex-col gap-1.5">
           <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Título da Tarefa *</label>
           <InputText v-model="novaAcaoForm.titulo" class="custom-input !py-2.5 !text-xs" />
@@ -527,7 +542,15 @@ const criarPlanoAcao = async () => {
 
         <div class="flex flex-col gap-1.5">
           <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Atribuir Gestor</label>
-          <Dropdown v-model="novaAcaoForm.gestor_id" :options="gestoresLista" optionLabel="nome" optionValue="id" placeholder="Selecione..." class="custom-dropdown w-full" filter />
+          <Dropdown 
+            v-model="novaAcaoForm.gestor_id" 
+            :options="gestoresLista" 
+            optionLabel="nome" 
+            optionValue="id" 
+            placeholder="Selecione um responsável..." 
+            class="custom-dropdown w-full" 
+            filter 
+          />
         </div>
 
         <div class="flex flex-col gap-1.5">

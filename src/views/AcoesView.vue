@@ -88,8 +88,12 @@ const acaoAtual = ref({});
 const opcoesStatus = ['Pendente', 'Em Andamento', 'Concluído'];
 const opcoesPrioridade = ['Alta', 'Média', 'Baixa'];
 
-const abrirEdicao = (dados) => {
-  acaoAtual.value = { ...dados };
+const abrirEdicao = (acao) => {
+  acaoAtual.value = { 
+    ...acao,
+    empresa_nome: acao.empresa_nome || 'Conta Geral',
+    prazo_limite: acao.prazo_limite ? new Date(acao.prazo_limite) : null
+  };
   dialogAcao.value = true;
 };
 
@@ -104,6 +108,36 @@ const salvarAcao = async () => {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar alterações.' });
   } finally {
     salvando.value = false;
+  }
+};
+
+const excluirAcao = async (id) => {
+  // Confirmação para evitar exclusões acidentais
+  if (!confirm('Tem certeza que deseja excluir permanentemente esta ação?')) return;
+  
+  try {
+    await api.delete(`/acoes/${id}`);
+    
+    // Remove a ação da lista local para atualizar o Kanban instantaneamente
+    acoes.value = acoes.value.filter(a => a.id !== id);
+    
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Sucesso', 
+      detail: 'Ação removida do quadro.', 
+      life: 3000 
+    });
+    
+    // Se o modal de edição estiver aberto, fecha-o
+    if (dialogAcao.value) dialogAcao.value = false;
+  } catch (error) {
+    console.error('Erro ao excluir ação:', error);
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Erro', 
+      detail: 'Não foi possível excluir a ação.', 
+      life: 3000 
+    });
   }
 };
 
@@ -186,27 +220,31 @@ onMounted(() => {
                class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-orange-300 dark:hover:border-orange-500/50 transition-all group">
             
             <div class="flex justify-between items-start mb-2">
-              <Tag :value="acao.prioridade" :severity="getPrioridadeColor(acao.prioridade)" class="!bg-transparent !border !border-current !text-[8px] px-1.5 py-0 uppercase tracking-widest font-black" />
-              <button @click="abrirEdicao(acao)" class="text-slate-300 hover:text-orange-500 transition-colors"><i class="pi pi-ellipsis-h"></i></button>
+            <span class="text-[9px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 dark:bg-orange-500/10 px-2 py-1 rounded-md border border-orange-100 dark:border-orange-500/20">
+                <i class="pi pi-building text-[8px] mr-1"></i> 
+                {{ acao.empresa_nome || 'Conta Geral' }}
+            </span>
+            
+            <div class="flex gap-1">
+                <button @click="abrirEdicao(acao)" class="text-slate-300 hover:text-orange-500 transition-colors p-1" v-tooltip.top="'Editar'">
+                <i class="pi pi-ellipsis-h text-sm"></i>
+                </button>
+                <button @click.stop="excluirAcao(acao.id)" class="text-slate-300 hover:text-rose-500 transition-colors p-1" v-tooltip.top="'Excluir'">
+                <i class="pi pi-trash text-xs"></i>
+                </button>
+            </div>
             </div>
             
-            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-tight mb-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{{ acao.titulo }}</h4>
+            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-tight mb-3 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{{ acao.titulo }}</h4>
             
-            <div class="flex items-center gap-2 mb-4">
-              <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded-md flex items-center gap-1 border border-slate-100 dark:border-slate-700"><i class="pi pi-building text-[8px]"></i> {{ acao.empresa_nome || 'Conta Geral' }}</span>
-            </div>
-
             <div class="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-700/50">
-               <div class="flex items-center gap-2" v-tooltip.top="acao.gestor_nome || 'Sem Gestor'">
+               <div class="flex items-center gap-2" v-tooltip.top="acao.gestor_nome || 'Atribuindo...'">
                   <Avatar :label="gerarIniciais(acao.gestor_nome)" shape="circle" class="!bg-orange-100 !text-orange-600 !w-6 !h-6 !text-[10px] !font-black" />
-                  <span class="text-[10px] font-bold text-slate-500 max-w-[80px] truncate">{{ acao.gestor_nome?.split(' ')[0] || 'Atribuir' }}</span>
+                  <span class="text-[10px] font-bold text-slate-500 max-w-[80px] truncate">{{ acao.gestor_nome?.split(' ')[0] || 'Gestor' }}</span>
                </div>
-               <div class="flex items-center gap-1 text-[10px] font-black" :class="isAtrasado(acao.prazo_limite, acao.status) ? 'text-rose-500' : 'text-slate-400'">
-                 <i class="pi pi-calendar text-[9px]"></i> {{ formatarData(acao.prazo_limite) }}
-               </div>
+               <Tag :value="acao.prioridade" :severity="getPrioridadeColor(acao.prioridade)" class="!bg-transparent !border !border-current !text-[8px] px-1.5 py-0 uppercase tracking-widest font-black" />
             </div>
           </div>
-          <div v-if="acoesPendentes.length === 0" class="text-center py-8 text-[10px] uppercase tracking-widest font-bold text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">Arraste tarefas para aqui</div>
         </div>
       </div>
 
@@ -223,27 +261,33 @@ onMounted(() => {
                class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-sky-300 dark:hover:border-sky-500/50 transition-all group">
             
             <div class="flex justify-between items-start mb-2">
-              <Tag :value="acao.prioridade" :severity="getPrioridadeColor(acao.prioridade)" class="!bg-transparent !border !border-current !text-[8px] px-1.5 py-0 uppercase tracking-widest font-black" />
-              <button @click="abrirEdicao(acao)" class="text-slate-300 hover:text-sky-500 transition-colors"><i class="pi pi-ellipsis-h"></i></button>
+            <span class="text-[9px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 dark:bg-orange-500/10 px-2 py-1 rounded-md border border-orange-100 dark:border-orange-500/20">
+                <i class="pi pi-building text-[8px] mr-1"></i> 
+                {{ acao.empresa_nome || 'Conta Geral' }}
+            </span>
+            
+            <div class="flex gap-1">
+                <button @click="abrirEdicao(acao)" class="text-slate-300 hover:text-orange-500 transition-colors p-1" v-tooltip.top="'Editar'">
+                <i class="pi pi-ellipsis-h text-sm"></i>
+                </button>
+                <button @click.stop="excluirAcao(acao.id)" class="text-slate-300 hover:text-rose-500 transition-colors p-1" v-tooltip.top="'Excluir'">
+                <i class="pi pi-trash text-xs"></i>
+                </button>
+            </div>
             </div>
             
-            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-tight mb-2 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">{{ acao.titulo }}</h4>
+            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-tight mb-3 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">{{ acao.titulo }}</h4>
             
-            <div class="flex items-center gap-2 mb-4">
-              <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded-md flex items-center gap-1 border border-slate-100 dark:border-slate-700"><i class="pi pi-building text-[8px]"></i> {{ acao.empresa_nome || 'Conta Geral' }}</span>
-            </div>
-
             <div class="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-700/50">
-               <div class="flex items-center gap-2" v-tooltip.top="acao.gestor_nome || 'Sem Gestor'">
+               <div class="flex items-center gap-2" v-tooltip.top="acao.gestor_nome || 'Gestor'">
                   <Avatar :label="gerarIniciais(acao.gestor_nome)" shape="circle" class="!bg-sky-100 !text-sky-600 !w-6 !h-6 !text-[10px] !font-black" />
-                  <span class="text-[10px] font-bold text-slate-500 max-w-[80px] truncate">{{ acao.gestor_nome?.split(' ')[0] || 'Atribuir' }}</span>
+                  <span class="text-[10px] font-bold text-slate-500 max-w-[80px] truncate">{{ acao.gestor_nome?.split(' ')[0] || 'Gestor' }}</span>
                </div>
                <div class="flex items-center gap-1 text-[10px] font-black" :class="isAtrasado(acao.prazo_limite, acao.status) ? 'text-rose-500' : 'text-slate-400'">
                  <i class="pi pi-calendar text-[9px]"></i> {{ formatarData(acao.prazo_limite) }}
                </div>
             </div>
           </div>
-          <div v-if="acoesAndamento.length === 0" class="text-center py-8 text-[10px] uppercase tracking-widest font-bold text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">Arraste tarefas para aqui</div>
         </div>
       </div>
 
@@ -260,27 +304,33 @@ onMounted(() => {
                class="bg-white/60 dark:bg-slate-800/60 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-500/50 transition-all group opacity-80 hover:opacity-100">
             
             <div class="flex justify-between items-start mb-2">
-              <Tag value="FINALIZADO" class="!bg-emerald-50 dark:!bg-emerald-500/10 !text-emerald-500 !text-[8px] px-1.5 py-0 uppercase tracking-widest font-black border border-emerald-100 dark:border-emerald-500/20" />
-              <button @click="abrirEdicao(acao)" class="text-slate-300 hover:text-emerald-500 transition-colors"><i class="pi pi-ellipsis-h"></i></button>
+            <span class="text-[9px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 dark:bg-orange-500/10 px-2 py-1 rounded-md border border-orange-100 dark:border-orange-500/20">
+                <i class="pi pi-building text-[8px] mr-1"></i> 
+                {{ acao.empresa_nome || 'Conta Geral' }}
+            </span>
+            
+            <div class="flex gap-1">
+                <button @click="abrirEdicao(acao)" class="text-slate-300 hover:text-orange-500 transition-colors p-1" v-tooltip.top="'Editar'">
+                <i class="pi pi-ellipsis-h text-sm"></i>
+                </button>
+                <button @click.stop="excluirAcao(acao.id)" class="text-slate-300 hover:text-rose-500 transition-colors p-1" v-tooltip.top="'Excluir'">
+                <i class="pi pi-trash text-xs"></i>
+                </button>
+            </div>
             </div>
             
             <h4 class="text-sm font-bold text-slate-600 dark:text-slate-300 leading-tight mb-2 line-through">{{ acao.titulo }}</h4>
             
-            <div class="flex items-center gap-2 mb-4">
-              <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded-md flex items-center gap-1 border border-slate-100 dark:border-slate-700"><i class="pi pi-building text-[8px]"></i> {{ acao.empresa_nome || 'Conta Geral' }}</span>
-            </div>
-
             <div class="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-700/50">
-               <div class="flex items-center gap-2" v-tooltip.top="acao.gestor_nome || 'Sem Gestor'">
+               <div class="flex items-center gap-2">
                   <Avatar :label="gerarIniciais(acao.gestor_nome)" shape="circle" class="!bg-emerald-100 !text-emerald-600 !w-6 !h-6 !text-[10px] !font-black" />
-                  <span class="text-[10px] font-bold text-slate-400 max-w-[80px] truncate">{{ acao.gestor_nome?.split(' ')[0] || 'Atribuir' }}</span>
+                  <span class="text-[10px] font-bold text-slate-400">{{ acao.gestor_nome?.split(' ')[0] }}</span>
                </div>
                <div class="flex items-center gap-1 text-[10px] font-black text-emerald-500">
                  <i class="pi pi-check text-[9px]"></i> Fechado
                </div>
             </div>
           </div>
-          <div v-if="acoesConcluidas.length === 0" class="text-center py-8 text-[10px] uppercase tracking-widest font-bold text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">Arraste tarefas para aqui</div>
         </div>
       </div>
 
