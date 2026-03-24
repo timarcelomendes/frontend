@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
+import Menu from 'primevue/menu';
 
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
@@ -166,8 +167,52 @@ const gerarIniciais = (nome) => {
   return partes.length > 1 ? (partes[0][0] + partes[partes.length - 1][0]).toUpperCase() : partes[0][0].toUpperCase();
 };
 
+// ==========================================
+// ⚙️ MENU DE OPÇÕES (Dropdown) E GESTORES
+// ==========================================
+const menuOpcoes = ref();
+const acaoSelecionada = ref(null);
+const gestoresLista = ref([]);
+
+// Abre o menu na posição do clique
+const toggleMenu = (event, acao) => {
+  acaoSelecionada.value = acao;
+  menuOpcoes.value.toggle(event);
+};
+
+// O formato dinâmico do Menu
+const menuItens = ref([
+  { 
+    label: 'Editar Detalhes', 
+    icon: 'pi pi-pencil', 
+    command: () => abrirEdicao(acaoSelecionada.value) 
+  },
+  { 
+    label: 'Alterar Responsável', 
+    icon: 'pi pi-user-edit', 
+    command: () => abrirEdicao(acaoSelecionada.value) 
+  },
+  { separator: true },
+  { 
+    label: 'Excluir', 
+    icon: 'pi pi-trash', 
+    command: () => excluirAcao(acaoSelecionada.value.id) 
+  }
+]);
+
+// Buscar gestores para permitir a troca
+const carregarGestores = async () => {
+  try {
+    const res = await api.get('/cadastros/gestores');
+    gestoresLista.value = res.data;
+  } catch (error) {
+    console.error('Erro ao carregar gestores', error);
+  }
+};
+
 onMounted(() => {
   carregarAcoes();
+  carregarGestores();
 });
 </script>
 
@@ -220,19 +265,14 @@ onMounted(() => {
                class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-orange-300 dark:hover:border-orange-500/50 transition-all group">
             
             <div class="flex justify-between items-start mb-2">
-            <span class="text-[9px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 dark:bg-orange-500/10 px-2 py-1 rounded-md border border-orange-100 dark:border-orange-500/20">
-                <i class="pi pi-building text-[8px] mr-1"></i> 
-                {{ acao.empresa_nome || 'Conta Geral' }}
-            </span>
-            
-            <div class="flex gap-1">
-                <button @click="abrirEdicao(acao)" class="text-slate-300 hover:text-orange-500 transition-colors p-1" v-tooltip.top="'Editar'">
-                <i class="pi pi-ellipsis-h text-sm"></i>
-                </button>
-                <button @click.stop="excluirAcao(acao.id)" class="text-slate-300 hover:text-rose-500 transition-colors p-1" v-tooltip.top="'Excluir'">
-                <i class="pi pi-trash text-xs"></i>
-                </button>
-            </div>
+              <span class="text-[9px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 dark:bg-orange-500/10 px-2 py-1 rounded-md border border-orange-100 dark:border-orange-500/20">
+                  <i class="pi pi-building text-[8px] mr-1"></i> 
+                  {{ acao.empresa_nome || 'Conta Geral' }}
+              </span>
+              
+              <button @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1 flex items-center justify-center h-6 w-6 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer" aria-haspopup="true">
+                <i class="pi pi-ellipsis-v text-xs"></i>
+              </button>
             </div>
             
             <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-tight mb-3 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{{ acao.titulo }}</h4>
@@ -261,19 +301,14 @@ onMounted(() => {
                class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-sky-300 dark:hover:border-sky-500/50 transition-all group">
             
             <div class="flex justify-between items-start mb-2">
-            <span class="text-[9px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 dark:bg-orange-500/10 px-2 py-1 rounded-md border border-orange-100 dark:border-orange-500/20">
-                <i class="pi pi-building text-[8px] mr-1"></i> 
-                {{ acao.empresa_nome || 'Conta Geral' }}
-            </span>
-            
-            <div class="flex gap-1">
-                <button @click="abrirEdicao(acao)" class="text-slate-300 hover:text-orange-500 transition-colors p-1" v-tooltip.top="'Editar'">
-                <i class="pi pi-ellipsis-h text-sm"></i>
-                </button>
-                <button @click.stop="excluirAcao(acao.id)" class="text-slate-300 hover:text-rose-500 transition-colors p-1" v-tooltip.top="'Excluir'">
-                <i class="pi pi-trash text-xs"></i>
-                </button>
-            </div>
+              <span class="text-[9px] font-black uppercase tracking-widest text-sky-600 bg-sky-50 dark:bg-sky-500/10 px-2 py-1 rounded-md border border-sky-100 dark:border-sky-500/20">
+                  <i class="pi pi-building text-[8px] mr-1"></i> 
+                  {{ acao.empresa_nome || 'Conta Geral' }}
+              </span>
+              
+              <button @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1 flex items-center justify-center h-6 w-6 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer" aria-haspopup="true">
+                <i class="pi pi-ellipsis-v text-xs"></i>
+              </button>
             </div>
             
             <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-tight mb-3 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">{{ acao.titulo }}</h4>
@@ -304,19 +339,14 @@ onMounted(() => {
                class="bg-white/60 dark:bg-slate-800/60 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-500/50 transition-all group opacity-80 hover:opacity-100">
             
             <div class="flex justify-between items-start mb-2">
-            <span class="text-[9px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 dark:bg-orange-500/10 px-2 py-1 rounded-md border border-orange-100 dark:border-orange-500/20">
-                <i class="pi pi-building text-[8px] mr-1"></i> 
-                {{ acao.empresa_nome || 'Conta Geral' }}
-            </span>
-            
-            <div class="flex gap-1">
-                <button @click="abrirEdicao(acao)" class="text-slate-300 hover:text-orange-500 transition-colors p-1" v-tooltip.top="'Editar'">
-                <i class="pi pi-ellipsis-h text-sm"></i>
-                </button>
-                <button @click.stop="excluirAcao(acao.id)" class="text-slate-300 hover:text-rose-500 transition-colors p-1" v-tooltip.top="'Excluir'">
-                <i class="pi pi-trash text-xs"></i>
-                </button>
-            </div>
+              <span class="text-[9px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-100 dark:border-emerald-500/20">
+                  <i class="pi pi-building text-[8px] mr-1"></i> 
+                  {{ acao.empresa_nome || 'Conta Geral' }}
+              </span>
+              
+              <button @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1 flex items-center justify-center h-6 w-6 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer" aria-haspopup="true">
+                <i class="pi pi-ellipsis-v text-xs"></i>
+              </button>
             </div>
             
             <h4 class="text-sm font-bold text-slate-600 dark:text-slate-300 leading-tight mb-2 line-through">{{ acao.titulo }}</h4>
@@ -339,8 +369,8 @@ onMounted(() => {
     <Dialog v-model:visible="dialogAcao" :modal="true" :style="{width: '500px'}" :closable="false" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog-no-header shadow-2xl">
       <div class="bg-slate-900 text-white p-6 flex justify-between items-center">
         <div>
-          <h2 class="text-lg font-black italic tracking-tight"><i class="pi pi-pencil text-orange-500 mr-2"></i> Editar Tarefa</h2>
-          <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-1 font-bold">{{ acaoAtual.empresa_nome || 'Detalhes' }}</p>
+          <h2 class="text-lg font-black italic tracking-tight"><i class="pi pi-pencil text-orange-500 mr-2"></i> Detalhes da Ação</h2>
+          <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-1 font-bold">{{ acaoAtual.empresa_nome || 'Ajustes' }}</p>
         </div>
         <button @click="dialogAcao = false" class="text-slate-400 hover:text-white transition-colors p-2"><i class="pi pi-times text-xl"></i></button>
       </div>
@@ -357,14 +387,20 @@ onMounted(() => {
             <Dropdown v-model="acaoAtual.status" :options="opcoesStatus" class="custom-dropdown w-full" />
           </div>
           <div class="flex flex-col gap-2">
-            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Prioridade</label>
-            <Dropdown v-model="acaoAtual.prioridade" :options="opcoesPrioridade" class="custom-dropdown w-full" />
+            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Responsável</label>
+            <Dropdown v-model="acaoAtual.gestor_id" :options="gestoresLista" optionLabel="nome" optionValue="id" placeholder="Atribuir..." class="custom-dropdown w-full" filter />
           </div>
         </div>
 
-        <div class="flex flex-col gap-2">
-          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Prazo de Resolução</label>
-          <Calendar v-model="acaoAtual.prazo_limite" dateFormat="yy-mm-dd" class="w-full custom-calendar" inputClass="custom-input !w-full" />
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Prioridade</label>
+            <Dropdown v-model="acaoAtual.prioridade" :options="opcoesPrioridade" class="custom-dropdown w-full" />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Prazo de Resolução</label>
+            <Calendar v-model="acaoAtual.prazo_limite" dateFormat="yy-mm-dd" class="w-full custom-calendar" inputClass="custom-input !w-full" />
+          </div>
         </div>
 
         <div class="flex flex-col gap-2">
@@ -378,6 +414,17 @@ onMounted(() => {
         <Button label="Guardar" :loading="salvando" icon="pi pi-save" class="flex-1 bg-slate-900 dark:bg-white dark:text-slate-900 border-none rounded-xl font-black text-[11px] uppercase tracking-widest text-white shadow-xl hover:-translate-y-0.5 transition-transform" @click="salvarAcao" />
       </div>
     </Dialog>
+
+    <Menu ref="menuOpcoes" :model="menuItens" :popup="true" class="w-48 !rounded-[1.5rem] !border-slate-200 dark:!border-slate-700 dark:!bg-slate-800 shadow-xl overflow-hidden py-2">
+      <template #item="{ item, props }">
+        <a v-ripple class="flex items-center px-4 py-2.5 cursor-pointer group" 
+           :class="{'hover:bg-rose-50 dark:hover:bg-rose-500/10': item.label === 'Excluir', 'hover:bg-slate-50 dark:hover:bg-slate-700/50': item.label !== 'Excluir' && !item.separator}" 
+           v-bind="props.action" @click="item.command">
+            <i :class="[item.icon, item.label === 'Excluir' ? 'text-rose-500' : 'text-slate-400 group-hover:text-orange-500']" class="mr-3 text-sm transition-colors"></i>
+            <span :class="item.label === 'Excluir' ? 'text-rose-600 font-bold' : 'text-slate-600 dark:text-slate-300 font-semibold'" class="text-[10px] uppercase tracking-widest">{{ item.label }}</span>
+        </a>
+      </template>
+    </Menu>
 
   </div>
 </template>
@@ -398,4 +445,8 @@ onMounted(() => {
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { @apply bg-transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-slate-200 dark:bg-slate-700 rounded-full; }
+
+/* Remove a linha feia padrão do PrimeVue Menu */
+:deep(.p-menu) { @apply p-0 border-none !important; }
+:deep(.p-menuitem-separator) { @apply my-1 border-slate-100 dark:border-slate-700 !important; }
 </style>
