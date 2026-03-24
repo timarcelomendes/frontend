@@ -18,42 +18,120 @@ const toast = useToast();
 const respostas = ref([]);
 const loading = ref(true);
 
+// --- DADOS PARA OS COMBOS ---
+const empresasData = ref([]);
+const opcoesCompanhia = ref(['Todas']);
+
+const carregarCombos = async () => {
+  try {
+    const [resEmp, resComp] = await Promise.all([
+      api.get('/cadastros/empresas'),
+      api.get('/cadastros/companhias') // Puxamos a sua nova tabela!
+    ]);
+    
+    if (resEmp.data) {
+      empresasData.value = resEmp.data;
+    }
+    
+    if (resComp.data) {
+      // Verifica se a API devolveu objetos ou apenas as strings
+      const isArrayOfStrings = typeof resComp.data[0] === 'string';
+      const nomes = isArrayOfStrings 
+          ? resComp.data.filter(c => c !== 'Todas as Companhias' && c !== 'Todas')
+          : resComp.data.map(c => c.nome);
+          
+      opcoesCompanhia.value = ['Todas', ...nomes.sort()];
+    }
+  } catch (error) {
+    console.error("Erro ao carregar combos:", error);
+  }
+};
+
+// 🌟 COMBOBOX INTELIGENTE: Filtra as empresas com base na companhia escolhida
+const opcoesEmpresa = computed(() => {
+  let filtradas = empresasData.value;
+  if (filtros.value.companhia && filtros.value.companhia !== 'Todas') {
+    filtradas = empresasData.value.filter(e => e.companhia === filtros.value.companhia);
+  }
+  return ['Todas', ...filtradas.map(e => e.nome).sort()];
+});
+
+
 // 🔍 FILTROS COM MEMÓRIA DE SESSÃO
 const filtros = ref({
   q: '', 
-  empresa: '', 
+  companhia: 'Todas', // 👈 NOVO ESTADO
+  empresa: 'Todas',   // 👈 AGORA INICIA COMO 'Todas' PARA COMBOBOX
   categoria: 'Todas', 
   perfil: 'Todos', 
-  // Lê do navegador se o botão estava ligado na última vez
   incluir_excluidas: localStorage.getItem('nps_ver_arquivados') === 'true' 
 });
 
 const opcoesCategoria = ['Todas', 'Promotor', 'Neutro', 'Detrator'];
 const opcoesPerfil = ['Todos', 'Decisor', 'Influenciador', 'Outro'];
 
-// ... (Mantenha as funções metricasAtuais, carregarRespostas, etc. como estão) ...
-
 // 🚀 O SEGREDO DA UX: Watcher Inteligente com "Debounce"
 let timeoutPesquisa = null;
 
+// Quando muda a companhia, limpa a empresa selecionada
+watch(() => filtros.value.companhia, (nova, antiga) => {
+  if (nova !== antiga) {
+    filtros.value.empresa = 'Todas';
+  }
+});
+
 watch(filtros, (novosFiltros) => {
-  // 1. Guarda instantaneamente a preferência do botão no navegador
   localStorage.setItem('nps_ver_arquivados', novosFiltros.incluir_excluidas);
   
-  // 2. Aguarda 500ms após o utilizador parar de digitar para chamar a base de dados
   clearTimeout(timeoutPesquisa);
   timeoutPesquisa = setTimeout(() => {
     carregarRespostas();
   }, 500);
-}, { deep: true }); // O deep:true faz o Vue observar TODOS os campos (q, empresa, dropdowns e switch)
+}, { deep: true }); 
 
-// 📊 MÉTRICAS EM TEMPO REAL
+
+// ==========================================
+// 📡 COMUNICAÇÃO COM A API E FILTROS LOCAIS
+// ==========================================
+const carregarRespostas = async () => {
+  loading.value = true;
+  try {
+    const params = {
+      q: filtros.value.q,
+      companhia: filtros.value.companhia === 'Todas' ? '' : filtros.value.companhia,
+      empresa: filtros.value.empresa === 'Todas' ? '' : filtros.value.empresa,
+      categoria: filtros.value.categoria,
+      perfil: filtros.value.perfil,
+      incluir_excluidas: filtros.value.incluir_excluidas,
+      topn: 300
+    };
+    
+    const response = await api.get('/respostas', { params });
+    
+    respostas.value = response.data.map(item => {
+      const estaArquivado = item.excluido === true || item.excluido === 'True' || item.excluido === 'true' || item.excluido === 1 || item.excluido === '1';
+      return { ...item, excluido: estaArquivado };
+    });
+
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar feedbacks.', life: 3000 });
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 💡 FILTRO DE COMPANHIA
+const respostasFiltradas = computed(() => {
+    return respostas.value; 
+});
+
+// 📊 MÉTRICAS EM TEMPO REAL (Agora usam a array já filtrada)
 const metricasAtuais = computed(() => {
-  const total = respostas.value.length;
+  const total = respostasFiltradas.value.length;
   if (total === 0) return { nps: 0, promotores: 0, neutros: 0, detratores: 0, total: 0 };
   
   let p = 0, n = 0, d = 0;
-  respostas.value.forEach(r => {
+  respostasFiltradas.value.forEach(r => {
     if (r.nota >= 9) p++;
     else if (r.nota >= 7) n++;
     else d++;
@@ -69,40 +147,6 @@ const salvando = ref(false);
 const respostaAtual = ref({
   id: '', nota: 0, categoria: '', motivo: '', canal: '', expectativas: '', o_que_faltava: ''
 });
-
-// ==========================================
-// 📡 COMUNICAÇÃO COM A API
-// ==========================================
-
-const carregarRespostas = async () => {
-  loading.value = true;
-  try {
-    const params = {
-      q: filtros.value.q,
-      empresa: filtros.value.empresa,
-      categoria: filtros.value.categoria,
-      perfil: filtros.value.perfil,
-      incluir_excluidas: filtros.value.incluir_excluidas,
-      topn: 300
-    };
-    
-    const response = await api.get('/respostas', { params });
-    
-    // 💡 BLINDAGEM: Converte o texto "False" / "True" ou números 0 / 1 em booleanos reais do JavaScript
-    respostas.value = response.data.map(item => {
-      const estaArquivado = item.excluido === true || item.excluido === 'True' || item.excluido === 'true' || item.excluido === 1 || item.excluido === '1';
-      return {
-        ...item,
-        excluido: estaArquivado
-      };
-    });
-
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar feedbacks.', life: 3000 });
-  } finally {
-    loading.value = false;
-  }
-};
 
 const abrirEdicao = (dados) => {
   respostaAtual.value = { 
@@ -127,13 +171,12 @@ const salvarResposta = async () => {
   }
 };
 
-// 💡 LÓGICA DE UX OTIMISTA: Muda na tela na mesma hora que clica
 const alternarEstadoArquivo = async (dados) => {
   const estadoAnterior = dados.excluido;
-  dados.excluido = !estadoAnterior; // Inverte instantaneamente o ícone na tela
+  dados.excluido = !estadoAnterior; 
   
   try {
-    if (!estadoAnterior) { // Agora o false é realmente false!
+    if (!estadoAnterior) { 
       await api.post(`/respostas/${dados.resposta_id}/soft-delete`);
       toast.add({ severity: 'info', summary: 'Arquivado', detail: 'Feedback ocultado do Dashboard.', life: 3000 });
     } else {
@@ -141,13 +184,11 @@ const alternarEstadoArquivo = async (dados) => {
       toast.add({ severity: 'success', summary: 'Restaurado', detail: 'Feedback voltou a ficar ativo.', life: 3000 });
     }
 
-    // Se o switch "Ver Arquivados" estiver desligado, removemos a linha da tabela na hora
     if (!filtros.value.incluir_excluidas && !estadoAnterior) {
       respostas.value = respostas.value.filter(r => r.resposta_id !== dados.resposta_id);
     }
-    
   } catch (error) {
-    dados.excluido = estadoAnterior; // Se a API falhar (ex: sem net), desfazemos o ícone
+    dados.excluido = estadoAnterior; 
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao comunicar com o servidor.', life: 3000 });
   }
 };
@@ -166,11 +207,58 @@ const obterCorNPS = (nota) => {
   return 'bg-rose-500 shadow-rose-500/30';
 };
 
-watch([() => filtros.value.categoria, () => filtros.value.perfil, () => filtros.value.incluir_excluidas], () => {
+onMounted(async () => {
+  await carregarCombos(); // Carrega empresas e companhias primeiro
   carregarRespostas();
 });
 
-onMounted(carregarRespostas);
+// --- NOVO: LÓGICA DE PLANO DE AÇÃO ---
+const dialogNovaAcao = ref(false);
+const salvandoAcao = ref(false);
+const novaAcaoForm = ref({ titulo: '', gestor_id: null, prioridade: 'Alta', descricao: '' });
+const gestoresLista = ref([]); // Vamos preencher isto com a lista de gestores
+
+const abrirNovaAcao = async () => {
+  // Pré-preenchemos a descrição com a dor original do cliente (Super Útil!)
+  novaAcaoForm.value = {
+    titulo: `Revisão de NPS crítico: ${respostaAtual.value.empresa || 'Cliente'}`,
+    gestor_id: null,
+    prioridade: 'Alta',
+    descricao: `Feedback original do cliente (Nota ${respostaAtual.value.nota}): "${respostaAtual.value.motivo || 'Sem comentário'}"\n\nO que devemos fazer: `
+  };
+  
+  // Carrega a lista de gestores para o dropdown
+  if (gestoresLista.value.length === 0) {
+    try {
+      const res = await api.get('/cadastros/gestores');
+      gestoresLista.value = res.data;
+    } catch(e) {}
+  }
+  dialogNovaAcao.value = true;
+};
+
+const criarPlanoAcao = async () => {
+  if (!novaAcaoForm.value.titulo) return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'O título é obrigatório.'});
+  
+  salvandoAcao.value = true;
+  try {
+    const payload = {
+      resposta_id: respostaAtual.value.id,
+      titulo: novaAcaoForm.value.titulo,
+      gestor_id: novaAcaoForm.value.gestor_id,
+      prioridade: novaAcaoForm.value.prioridade,
+      descricao: novaAcaoForm.value.descricao
+    };
+    
+    await api.post('/acoes', payload);
+    toast.add({ severity: 'success', summary: 'Ação Delegada', detail: 'O Gestor foi notificado e o ticket criado.' });
+    dialogNovaAcao.value = false;
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao delegar ação.' });
+  } finally {
+    salvandoAcao.value = false;
+  }
+};
 
 </script>
 
@@ -223,7 +311,7 @@ onMounted(carregarRespostas);
       </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2 no-print relative overflow-hidden mb-6 items-center">
+    <div class="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 no-print relative overflow-hidden mb-6 items-center">
       
       <div class="absolute left-0 top-0 w-1 h-full bg-orange-500"></div>
       
@@ -231,10 +319,15 @@ onMounted(carregarRespostas);
         <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-search text-[8px]"></i> Pesquisa</span>
         <InputText v-model="filtros.q" placeholder="Buscar..." class="custom-minimal-element w-full" />
       </div>
+
+      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-sitemap text-[8px]"></i> Companhia</span>
+        <Dropdown v-model="filtros.companhia" :options="opcoesCompanhia" class="custom-minimal-element w-full" />
+      </div>
       
       <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
         <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-building text-[8px]"></i> Empresa</span>
-        <InputText v-model="filtros.empresa" placeholder="Filtrar..." class="custom-minimal-element w-full" />
+        <Dropdown v-model="filtros.empresa" :options="opcoesEmpresa" filter placeholder="Todas" class="custom-minimal-element w-full" />
       </div>
 
       <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
@@ -242,7 +335,7 @@ onMounted(carregarRespostas);
         <Dropdown v-model="filtros.categoria" :options="opcoesCategoria" class="custom-minimal-element w-full" />
       </div>
 
-      <div class="flex flex-col gap-1 px-2 md:px-3 xl:border-l border-slate-100 dark:border-slate-800">
+      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
         <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-user text-[8px]"></i> Perfil</span>
         <Dropdown v-model="filtros.perfil" :options="opcoesPerfil" class="custom-minimal-element w-full" />
       </div>
@@ -270,7 +363,7 @@ onMounted(carregarRespostas);
         </div>
       </div>
 
-      <DataTable v-else :value="respostas" :paginator="true" :rows="10" dataKey="resposta_id" class="p-datatable-custom" rowHover>
+      <DataTable v-else :value="respostasFiltradas" :paginator="true" :rows="10" dataKey="resposta_id" class="p-datatable-custom" rowHover>
         <template #empty>
           <div class="text-center py-20">
             <i class="pi pi-inbox text-4xl text-slate-300 mb-4 block"></i>
@@ -389,6 +482,7 @@ onMounted(carregarRespostas);
 
         <div class="flex flex-col gap-2">
           <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Comentário Original (Voice of Customer)</label>
+          <Button label="Delegar Plano de Ação (Mini-Jira)" icon="pi pi-bolt" @click="abrirNovaAcao" class="w-full !bg-orange-50 dark:!bg-orange-500/10 !text-orange-600 !border !border-orange-200 dark:!border-orange-500/30 !rounded-xl !py-3 !font-black !text-[10px] uppercase tracking-widest hover:!bg-orange-100 transition-colors mt-2" />
           <Textarea v-model="respostaAtual.motivo" rows="3" class="custom-input !bg-slate-50 dark:!bg-slate-800 !text-xs italic" />
         </div>
 
@@ -416,7 +510,42 @@ onMounted(carregarRespostas);
         <Button label="Guardar Auditoria" :loading="salvando" icon="pi pi-save" class="flex-1 bg-slate-900 dark:bg-white dark:text-slate-900 border-none rounded-xl font-black text-[11px] uppercase tracking-widest text-white shadow-xl hover:-translate-y-0.5 transition-transform" @click="salvarResposta" />
       </div>
     </Dialog>
+    <Dialog v-model:visible="dialogNovaAcao" :modal="true" :style="{width: '450px'}" :closable="false" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog-no-header shadow-2xl">
+      <div class="bg-gradient-to-r from-orange-500 to-rose-500 text-white p-6 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-black italic tracking-tight"><i class="pi pi-bolt mr-2"></i> Delegar Ação</h2>
+          <p class="text-[10px] text-orange-100 uppercase tracking-widest mt-1 font-bold">Resolução de Churn</p>
+        </div>
+        <button @click="dialogNovaAcao = false" class="text-white/70 hover:text-white transition-colors p-2"><i class="pi pi-times text-xl"></i></button>
+      </div>
 
+      <div class="p-8 space-y-4 bg-white dark:bg-slate-900">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Título da Tarefa *</label>
+          <InputText v-model="novaAcaoForm.titulo" class="custom-input !py-2.5 !text-xs" />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Atribuir Gestor</label>
+          <Dropdown v-model="novaAcaoForm.gestor_id" :options="gestoresLista" optionLabel="nome" optionValue="id" placeholder="Selecione..." class="custom-dropdown w-full" filter />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Prioridade</label>
+          <Dropdown v-model="novaAcaoForm.prioridade" :options="['Alta', 'Média', 'Baixa']" class="custom-dropdown w-full" />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Instruções / Contexto</label>
+          <Textarea v-model="novaAcaoForm.descricao" rows="5" class="custom-input !text-[11px]" />
+        </div>
+      </div>
+      
+      <div class="p-6 bg-slate-50 dark:bg-slate-900/50 flex gap-4 w-full border-t border-slate-100 dark:border-slate-800">
+        <Button label="Cancelar" text class="flex-1 font-black text-[11px] uppercase tracking-widest text-slate-400" @click="dialogNovaAcao = false" />
+        <Button label="Criar Tarefa" :loading="salvandoAcao" icon="pi pi-check" class="flex-1 bg-orange-500 border-none rounded-xl font-black text-[11px] uppercase tracking-widest text-white shadow-xl hover:-translate-y-0.5 transition-transform" @click="criarPlanoAcao" />
+      </div>
+    </Dialog>
   </div>
 </template>
 

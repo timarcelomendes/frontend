@@ -1,8 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import ClientesView from '../views/ClientesView.vue';
-import RelatoriosView from '../views/RelatoriosView.vue';
 
 const routes = [
+  // ==========================================
+  // 🔓 ROTAS PÚBLICAS (Autenticação)
+  // ==========================================
   {
     path: '/login',
     name: 'Login',
@@ -15,18 +16,33 @@ const routes = [
     component: () => import('../views/ForgotPasswordView.vue'),
     meta: { requiresAuth: false }
   },
-  // 👆 ---------------------- 👆
   {
     path: '/reset-password',
     name: 'ResetPassword', 
     component: () => import('../views/RedefinirSenhaView.vue'),
     meta: { requiresAuth: false }
   },
+
+  // ==========================================
+  // 🔒 ROTAS PRIVADAS (Core da Aplicação)
+  // ==========================================
   {
     path: '/',
     name: 'Dashboard',
     component: () => import('../views/DashboardView.vue'),
     meta: { requiresAuth: true } 
+  },
+  {
+    path: '/respostas',
+    name: 'Respostas',
+    component: () => import('../views/RespostasView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/acoes',
+    name: 'Acoes',
+    component: () => import('../views/AcoesView.vue'),
+    meta: { requiresAuth: true } // 👈 CORREÇÃO: Faltava a proteção aqui!
   },
   {
     path: '/audiencia',
@@ -35,11 +51,21 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/respostas',
-    name: 'Respostas',
-    component: () => import('../views/RespostasView.vue'),
+    path: '/clientes',
+    name: 'Clientes', // 👈 CORREÇÃO: Nome padronizado para maiúscula
+    component: () => import('../views/ClientesView.vue'), // 👈 CORREÇÃO: Transformado em Lazy Loading
     meta: { requiresAuth: true }
   },
+  {
+    path: '/relatorios',
+    name: 'Relatorios',
+    component: () => import('../views/RelatoriosView.vue'), // 👈 CORREÇÃO: Transformado em Lazy Loading
+    meta: { requiresAuth: true }
+  },
+
+  // ==========================================
+  // ⚙️ ROTAS PRIVADAS (Gestão e Sistema)
+  // ==========================================
   {
     path: '/importacao',
     name: 'Importacao',
@@ -52,18 +78,10 @@ const routes = [
     component: () => import('../views/ConfiguracoesView.vue'),
     meta: { requiresAuth: true }
   },
-  {
-    path: '/clientes',
-    name: 'clientes',
-    component: ClientesView,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/relatorios',
-    name: 'Relatorios',
-    component: RelatoriosView,
-    meta: { requiresAuth: true }
-  },
+
+  // ==========================================
+  // ❌ ROTA FALLBACK (Página não encontrada)
+  // ==========================================
   {
     path: '/:pathMatch(.*)*',
     redirect: '/'
@@ -75,6 +93,7 @@ const router = createRouter({
   routes
 });
 
+// Guardião de Navegação (Verifica se tem token antes de abrir a página)
 router.beforeEach((to, from, next) => {
   const isAuthenticated = localStorage.getItem('token');
 

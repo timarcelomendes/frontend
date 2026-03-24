@@ -23,6 +23,7 @@ const segmentos = ref([]);
 const perfis = ref([]);
 const cargos = ref([]); 
 const gestores = ref([]); 
+const companhias = ref([]); // 👈 ESTADO PARA COMPANHIAS
 const loading = ref(true);
 
 const dialogVisivel = ref(false);
@@ -38,7 +39,7 @@ const cliente = ref({
 const dialogEmpresa = ref(false);
 const editandoEmpresa = ref(false);
 const empresaForm = ref({
-  id: null, nome: '', segmento: null, valor_contrato: 0, gestor: null 
+  id: null, nome: '', segmento: null, valor_contrato: 0, gestor: null, companhia: null // 👈 COMPANHIA NO FORMULÁRIO DA EMPRESA
 });
 
 const dialogSegmento = ref(false);
@@ -57,17 +58,24 @@ const dialogGestor = ref(false);
 const editandoGestor = ref(false);
 const gestorForm = ref({ id: null, nome: '', papel: '', email: '' });
 
+// 👈 MÉTODOS PARA COMPANHIAS
+const dialogCompanhia = ref(false);
+const editandoCompanhia = ref(false);
+const companhiaForm = ref({ id: null, nome: '' });
+
 const carregarTudo = async () => {
   loading.value = true;
   try {
-    const [resCli, resEmp, resSeg, resPerf, resCargos, resGestores] = await Promise.all([
+    const [resCli, resEmp, resSeg, resPerf, resCargos, resGestores, resCompanhias] = await Promise.all([
       api.get('/clientes'), api.get('/cadastros/empresas'), api.get('/cadastros/segmentos'),
-      api.get('/cadastros/perfis'), api.get('/cadastros/cargos'), api.get('/cadastros/gestores') 
+      api.get('/cadastros/perfis'), api.get('/cadastros/cargos'), api.get('/cadastros/gestores'),
+      api.get('/cadastros/companhias') // 👈 PUXANDO COMPANHIAS
     ]);
     
     clientes.value = resCli.data; empresas.value = resEmp.data;
     segmentos.value = resSeg.data; perfis.value = resPerf.data;
     cargos.value = resCargos.data; gestores.value = resGestores.data;
+    companhias.value = resCompanhias.data;
   } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar dados.' }); } 
   finally { loading.value = false; }
 };
@@ -110,14 +118,15 @@ const executarExclusao = async () => {
   finally { excluindo.value = false; idParaExcluir.value = null; }
 };
 
-const abrirNovaEmpresa = () => { empresaForm.value = { id: null, nome: '', segmento: null, valor_contrato: 0, gestor: null }; editandoEmpresa.value = false; dialogEmpresa.value = true; };
+const abrirNovaEmpresa = () => { empresaForm.value = { id: null, nome: '', segmento: null, valor_contrato: 0, gestor: null, companhia: null }; editandoEmpresa.value = false; dialogEmpresa.value = true; };
 const editarFichaEmpresa = (dados) => { 
   empresaForm.value = { 
     id: dados.id, 
     nome: dados.nome, 
     segmento: dados.segmento, 
     valor_contrato: dados.arr_total || 0, 
-    gestor: gestores.value.find(g => g.nome === dados.gestor) || null
+    gestor: gestores.value.find(g => g.nome === dados.gestor) || null,
+    companhia: companhias.value.find(c => c.id === dados.companhia_id) || null // 👈 POPULANDO COMPANHIA NA EDIÇÃO
   }; 
   editandoEmpresa.value = true; 
   dialogEmpresa.value = true; 
@@ -130,7 +139,8 @@ const salvarEmpresa = async () => {
     segmento: empresaForm.value.segmento,
     valor_contrato: empresaForm.value.valor_contrato,
     gestor: empresaForm.value.gestor ? empresaForm.value.gestor.nome : null,
-    gestor_id: empresaForm.value.gestor ? empresaForm.value.gestor.id : null
+    gestor_id: empresaForm.value.gestor ? empresaForm.value.gestor.id : null,
+    companhia_id: empresaForm.value.companhia ? empresaForm.value.companhia.id : null // 👈 ENVIANDO COMPANHIA PARA O BACKEND
   };
 
   try {
@@ -145,6 +155,19 @@ const salvarEmpresa = async () => {
   } finally {
     saving.value = false;
   }
+};
+
+const abrirNovaCompanhia = () => { companhiaForm.value = { id: null, nome: '' }; editandoCompanhia.value = false; dialogCompanhia.value = true; };
+const editarFichaCompanhia = (dados) => { companhiaForm.value = { ...dados }; editandoCompanhia.value = true; dialogCompanhia.value = true; };
+const salvarCompanhia = async () => {
+  if (!companhiaForm.value.nome) return toast.add({ severity: 'warn', summary: 'Atenção', detail: 'O nome da companhia é obrigatório.', life: 3000 });
+  saving.value = true;
+  try {
+    if (editandoCompanhia.value) await api.put(`/cadastros/companhias/${companhiaForm.value.id}`, companhiaForm.value);
+    else await api.post('/cadastros/companhias', companhiaForm.value);
+    dialogCompanhia.value = false; carregarTudo();
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Companhia salva.' });
+  } catch (e) {} finally { saving.value = false; }
 };
 
 const abrirNovoSegmento = () => { segmentoForm.value = { id: null, nome: '' }; editandoSegmento.value = false; dialogSegmento.value = true; };
@@ -199,7 +222,6 @@ const salvarGestor = async () => {
 const formatarMoeda = (valor) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(valor || 0);
 const getIniciais = (nome) => nome ? nome.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'CL';
 
-// 🌟 FUNÇÃO QUE CRUZA A EMPRESA COM O GESTOR
 const getGestorPorEmpresa = (nomeEmpresa) => {
   if (!nomeEmpresa || nomeEmpresa === '-') return 'Sem Empresa';
   const emp = empresas.value.find(e => e.nome === nomeEmpresa);
@@ -293,6 +315,14 @@ onMounted(carregarTudo);
                 <Column field="nome" header="Conta" sortable>
                   <template #body="{ data }"><span class="text-sm font-black text-slate-800 dark:text-white flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-orange-500"><i class="pi pi-building text-xs"></i></div>{{ data.nome }}</span></template>
                 </Column>
+
+                <Column field="companhia" header="Companhia do Grupo">
+                  <template #body="{ data }">
+                    <Tag v-if="data.companhia" :value="data.companhia" class="!bg-indigo-50 dark:!bg-indigo-500/10 !text-indigo-600 dark:!text-indigo-400 !border !border-indigo-100 dark:!border-indigo-500/20 !text-[9px] !font-black !uppercase !tracking-widest !px-3" />
+                    <span v-else class="text-[10px] text-slate-400 italic font-medium">Não associada</span>
+                  </template>
+                </Column>
+
                 <Column field="gestor" header="Gestor">
                   <template #body="{ data }">
                     <span v-if="data.gestor" class="text-[10px] font-bold text-sky-600 dark:text-sky-400"><i class="pi pi-briefcase text-xs mr-1"></i> {{ typeof data.gestor === 'object' ? data.gestor.nome : data.gestor }}</span>
@@ -310,6 +340,22 @@ onMounted(carregarTudo);
                 </Column>
                 <Column alignFrozen="right" style="width: 80px">
                   <template #body="{ data }"><Button icon="pi pi-pencil" @click="editarFichaEmpresa(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-orange-50 hover:!text-orange-500" /></template>
+                </Column>
+              </DataTable>
+            </div>
+          </TabPanel>
+
+          <TabPanel>
+            <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-sitemap text-indigo-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Companhias</span></div></template>
+            <div class="pt-4">
+              <div class="flex justify-end mb-4"><Button label="Nova Companhia" icon="pi pi-plus" @click="abrirNovaCompanhia" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
+              <DataTable :value="companhias" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
+                <Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column>
+                <Column field="nome" header="Companhia do Grupo" sortable>
+                  <template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-sitemap text-indigo-500"></i> {{ data.nome }}</span></template>
+                </Column>
+                <Column alignFrozen="right" style="width: 80px">
+                  <template #body="{ data }"><Button icon="pi pi-pencil" @click="editarFichaCompanhia(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500" /></template>
                 </Column>
               </DataTable>
             </div>
@@ -360,6 +406,22 @@ onMounted(carregarTudo);
       <Dialog v-model:visible="dialogEmpresa" :header="editandoEmpresa ? 'Editar Conta' : 'Nova Conta'" modal :style="{width: '450px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
         <div class="p-6 md:p-8 space-y-4 bg-slate-50/50 dark:bg-slate-900">
           <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome da Empresa *</label><InputText v-model="empresaForm.nome" class="custom-input w-full" /></div>
+          
+          <div class="flex flex-col gap-1.5 pt-2">
+            <label class="text-[10px] font-black uppercase text-indigo-500 ml-1">
+              <i class="pi pi-sitemap text-[8px]"></i> Companhia do Grupo (Vínculo)
+            </label>
+            <Dropdown 
+              v-model="empresaForm.companhia" 
+              :options="companhias" 
+              optionLabel="nome" 
+              placeholder="Selecione a Companhia" 
+              filter
+              showClear
+              class="custom-dropdown w-full" 
+            />
+          </div>
+
           <div class="flex flex-col gap-1.5">
             <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Segmento de Mercado</label>
             <Dropdown v-model="empresaForm.segmento" :options="segmentos" optionLabel="nome" optionValue="nome" editable filter placeholder="Selecione ou digite" class="custom-dropdown w-full" />
@@ -375,6 +437,7 @@ onMounted(carregarTudo);
               optionLabel="nome" 
               placeholder="Selecione o Gestor" 
               filter
+              showClear
               class="custom-dropdown w-full" 
             />
           </div>
@@ -385,6 +448,13 @@ onMounted(carregarTudo);
           </div>
         </div>
         <template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900"><Button :label="editandoEmpresa ? 'Atualizar Conta' : 'Criar Conta'" @click="salvarEmpresa" :loading="saving" class="w-full !bg-orange-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl" /></div></template>
+      </Dialog>
+
+      <Dialog v-model:visible="dialogCompanhia" :header="editandoCompanhia ? 'Editar Companhia' : 'Nova Companhia'" modal :style="{width: '400px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
+        <div class="p-6 md:p-8 space-y-4 bg-slate-50/50 dark:bg-slate-900">
+          <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome da Companhia *</label><InputText v-model="companhiaForm.nome" class="custom-input w-full" /></div>
+        </div>
+        <template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900"><Button :label="editandoCompanhia ? 'Atualizar Companhia' : 'Criar Companhia'" @click="salvarCompanhia" :loading="saving" class="w-full !bg-indigo-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-transform" /></div></template>
       </Dialog>
 
       <Dialog v-model:visible="dialogGestor" :header="editandoGestor ? 'Editar Gestor' : 'Novo Gestor'" modal :style="{width: '500px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">

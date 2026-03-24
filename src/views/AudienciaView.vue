@@ -25,7 +25,9 @@ const cargos = ref([]);
 const loading = ref(true);
 
 const gestores = ref([{ label: 'Todos', value: null }]);
+const companhias = ref([{ label: 'Todas', value: null }]); // 👈 NOVO: Estado das Companhias
 const filtroGestor = ref(null);
+const filtroCompanhia = ref(null); // 👈 NOVO: Filtro selecionado
 
 const enviandoEmail = ref(false);
 const idsEnviando = ref([]); 
@@ -72,6 +74,7 @@ const limparFiltros = () => {
   filtrosTabela.value.global.value = null;
   filtroStatus.value = null;
   filtroGestor.value = null;
+  filtroCompanhia.value = null; // 👈 NOVO: Limpar filtro de companhia
   filtroDataInicio.value = null;
   filtroDataFim.value = null;
   filtroTipoData.value = 'proximo_envio';
@@ -79,17 +82,29 @@ const limparFiltros = () => {
 
 const clientesFiltrados = computed(() => {
   return clientes.value.filter(c => {
+    
+    // 1. Filtro de Status
     let matchesStatus = true;
     if (filtroStatus.value) {
       const st = (c.status_envio || 'Pendente').trim().toLowerCase();
       matchesStatus = st === filtroStatus.value.toLowerCase();
     }
 
+    // 2. Filtro de Gestor
     let matchesGestor = true;
     if (filtroGestor.value) {
       matchesGestor = c.gestor === filtroGestor.value;
     }
 
+    // 3. Filtro de Companhia (Cruzamento Inteligente no Frontend) 👈 NOVO
+    let matchesCompanhia = true;
+    if (filtroCompanhia.value) {
+      const empresaObj = empresas.value.find(e => e.nome === c.empresa);
+      const companhiaDoCliente = empresaObj ? empresaObj.companhia : null;
+      matchesCompanhia = companhiaDoCliente === filtroCompanhia.value;
+    }
+
+    // 4. Filtro de Datas
     let matchesDate = true;
     if (filtroDataInicio.value || filtroDataFim.value) {
       const dataAlvoStr = c[filtroTipoData.value];
@@ -113,7 +128,7 @@ const clientesFiltrados = computed(() => {
       }
     }
     
-    return matchesStatus && matchesDate && matchesGestor; 
+    return matchesStatus && matchesDate && matchesGestor && matchesCompanhia; 
   });
 });
 
@@ -157,6 +172,14 @@ const carregarClientes = async () => {
       gestores.value = [{ label: 'Todos', value: null }, ...resGest.data.map(g => ({ label: g.nome, value: g.nome }))];
     }
   } catch (e) {}
+
+  // 👈 NOVO: Carregar lista de Companhias
+  try { 
+    const resComp = await api.get('/cadastros/companhias'); 
+    if(resComp.data) {
+      companhias.value = [{ label: 'Todas', value: null }, ...resComp.data.map(c => ({ label: c.nome, value: c.nome }))];
+    }
+  } catch (e) {}
   
   loading.value = false;
 };
@@ -165,19 +188,16 @@ const carregarClientes = async () => {
 const sincronizarStatusRealTime = async () => {
   try {
     const response = await api.get('/clientes', {
-      params: { _t: new Date().getTime() }, // Método oficial do Axios para quebrar cache
+      params: { _t: new Date().getTime() }, 
       headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' }
     });
     
-    // DEBUG: Mostra no F12 o que o banco está REALMENTE a devolver
-    // Se no F12 aparecer "Respondido" e você souber que é "Enviado", o cache está no Backend Python!
     if (response.data && response.data.length > 0) {
       console.log("🔄 Real-Time Atualizado. Exemplo Cliente 1 Status:", response.data[0].status_envio);
     }
 
     const idsSelecionados = clientesSelecionados.value.map(c => c.cliente_id);
 
-    // O operador spread [...] obriga o Vue a descartar o array antigo e renderizar o novo
     clientes.value = [...response.data];
 
     if (idsSelecionados.length > 0) {
@@ -251,7 +271,6 @@ const dispararLote = async () => {
   finally { enviandoEmail.value = false; }
 };
 
-// 🌟 SOLUÇÃO DA DATA (Ignora o Fuso Horário)
 const formatarData = (dataStr) => {
   if (!dataStr || dataStr === 'None' || dataStr === 'null') return 'Pendente';
   try {
@@ -325,13 +344,18 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
       </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2 no-print relative overflow-hidden mb-6 items-center">
+    <div class="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 no-print relative overflow-hidden mb-6 items-center">
       
       <div class="absolute left-0 top-0 w-1 h-full bg-sky-500"></div>
       
       <div class="flex flex-col gap-1 px-2 md:px-3">
         <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-search text-[8px]"></i> Pesquisa</span>
         <InputText v-model="pesquisa" @input="atualizarFiltro" placeholder="Nome, email..." class="custom-input-minimal w-full" />
+      </div>
+
+      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-sitemap text-[8px]"></i> Companhia</span>
+        <Dropdown v-model="filtroCompanhia" :options="companhias" optionLabel="label" optionValue="value" placeholder="Todas" class="custom-dropdown-minimal w-full" />
       </div>
 
       <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">

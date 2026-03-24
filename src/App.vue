@@ -213,6 +213,11 @@ const logout = () => {
         <router-link v-if="isAdmin" to="/configuracoes" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Configurações' : null">
           <i class="pi pi-cog"></i> <span v-if="sidebarExpandida" class="animate-fadein">Configurações</span>
         </router-link>
+
+        <router-link to="/acoes" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 text-slate-400 hover:text-white hover:bg-slate-800" active-class="!bg-orange-500/10 !text-orange-500 font-bold border border-orange-500/20">
+          <i class="pi pi-check-square text-lg"></i>
+          <span class="text-sm font-medium tracking-wide">Planos de Ação</span>
+        </router-link>
       </nav>
 
       <div class="p-4 space-y-2">

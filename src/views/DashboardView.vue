@@ -9,6 +9,7 @@ import Skeleton from 'primevue/skeleton';
 import Slider from 'primevue/slider';
 import Calendar from 'primevue/calendar';
 import Tooltip from 'primevue/tooltip';
+import Dropdown from 'primevue/dropdown';
 
 const vTooltip = Tooltip;
 const toast = useToast();
@@ -30,13 +31,20 @@ const kpis = ref({
   delta_total: "+5%",
   total_decisores: 0, 
   revenue_at_risk: 0,
+  clientes_resgatados: 0,
+  clientes_em_risco: 0,
+  queda_drastica: 0 
 });
 
 const ranking = ref([]);
 const nuvemPalavras = ref([]);
 const taxaResposta = ref(0);
 
-// --- TÓPICOS CRÍTICOS (Substituiu Última Voz) ---
+// --- ESTADOS DE COMPANHIAS ---
+const companhiaSelecionada = ref('Todas as Companhias');
+const listaCompanhias = ref(['Todas as Companhias']);
+
+// --- TÓPICOS CRÍTICOS
 const topicosCriticos = ref([]);
 
 // --- INTELIGÊNCIA PREDITIVA ---
@@ -163,20 +171,49 @@ const gerarInsightIA = async (forcarNova = false) => {
 };
 
 // ==========================================
-// 📅 VIGILANTE DO FILTRO DE DATAS
+// 🏢 CARREGAR COMPANHIAS DA API
 // ==========================================
+const carregarCompanhias = async () => {
+  try {
+    // 💡 BLINDAGEM: Usamos a rota central de cadastros para garantir consistência em todo o sistema
+    const res = await api.get('/cadastros/companhias');
+    if (res.data) {
+      const nomes = res.data.map(c => c.nome).sort();
+      listaCompanhias.value = ['Todas as Companhias', ...nomes];
+    }
+  } catch (error) {
+    console.error("Erro ao carregar companhias:", error);
+  }
+};
+
+// ==========================================
+// 📅 VIGILANTE DE FILTROS (Datas e Companhia)
+// ==========================================
+watch(companhiaSelecionada, () => {
+  carregarDashboard();
+  gerarInsightIA(false); // Carrega IA do Cache ou gera nova para esta companhia
+});
+
 watch(datasFiltro, (novasDatas) => {
   if (novasDatas && novasDatas[0] && novasDatas[1]) {
     carregarDashboard();
-    gerarInsightIA(false); // Carrega IA do Cache automaticamente
+    gerarInsightIA(false); 
   } 
   else if (!novasDatas || novasDatas.length === 0) {
     carregarDashboard(); 
-    gerarInsightIA(false); // Carrega IA do Cache automaticamente
+    gerarInsightIA(false); 
   }
 });
 
 const obterParametrosFiltro = () => {
+  const params = new URLSearchParams();
+
+  // Filtro de Companhia
+  if (companhiaSelecionada.value && companhiaSelecionada.value !== 'Todas as Companhias') {
+    params.append('companhia', companhiaSelecionada.value);
+  }
+
+  // Filtro de Data
   if (datasFiltro.value && datasFiltro.value[0] && datasFiltro.value[1]) {
     const formatarData = (data) => {
       const d = new Date(data);
@@ -184,11 +221,12 @@ const obterParametrosFiltro = () => {
       return d.toISOString().split('T')[0];
     };
     
-    const inicio = formatarData(datasFiltro.value[0]);
-    const fim = formatarData(datasFiltro.value[1]);
-    return `?data_inicio=${inicio}&data_fim=${fim}`;
+    params.append('data_inicio', formatarData(datasFiltro.value[0]));
+    params.append('data_fim', formatarData(datasFiltro.value[1]));
   }
-  return '';
+  
+  const queryStr = params.toString();
+  return queryStr ? `?${queryStr}` : '';
 };
 
 // ==========================================
@@ -213,7 +251,6 @@ const carregarDashboard = async () => {
       smartInsights.value.valor_em_risco = `€ ${kpis.value.revenue_at_risk.toLocaleString('pt-PT')}`; 
       smartInsights.value.nivel_alerta = percDetratores > 20 ? 'Crítico' : 'Estável';
       
-      // 👈 DESCOMENTADO E AJUSTADO PARA LER DA API
       topicosCriticos.value = resKpis.data.kpis.topicos_criticos || [];
 
       montarGraficos(resTrend.data);
@@ -355,8 +392,9 @@ const exportarDados = async () => {
 };
 
 onMounted(() => {
+  carregarCompanhias(); // 👈 AGORA CARREGA AS COMPANHIAS AO ABRIR O DASHBOARD
   carregarDashboard();
-  gerarInsightIA(false); // Inicia verificando se há cache
+  gerarInsightIA(false); 
 });
 </script>
 
@@ -379,15 +417,44 @@ onMounted(() => {
             </p>
           </div>
         </div>
+        
         <div class="flex flex-wrap md:flex-nowrap gap-3">
+          
           <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 h-10 shadow-sm transition-all focus-within:ring-2 focus-within:ring-orange-500/20">
-            <i class="pi pi-calendar text-slate-400 text-xs"></i>
-            <Calendar v-model="datasFiltro" selectionMode="range" :manualInput="false" placeholder="Filtrar por período..." dateFormat="dd/mm/yy" class="border-none w-56 shadow-none !text-[11px] !font-bold custom-calendar bg-transparent" @hide="carregarDashboard" />
-            <i v-if="datasFiltro && datasFiltro[1]" class="pi pi-times-circle text-slate-300 hover:text-rose-500 cursor-pointer ml-2 transition-colors" @click="datasFiltro = null; carregarDashboard()" title="Limpar Filtro"></i>
+            <i class="pi pi-briefcase text-slate-400 text-xs"></i>
+            <Dropdown 
+              v-model="companhiaSelecionada" 
+              :options="listaCompanhias" 
+              placeholder="Todas as Companhias" 
+              class="border-none shadow-none !text-[11px] !font-bold bg-transparent w-48 xl:w-56 custom-dropdown focus:shadow-none" 
+            />
+            <i v-if="companhiaSelecionada && companhiaSelecionada !== 'Todas as Companhias'" 
+               class="pi pi-times-circle text-slate-300 hover:text-rose-500 cursor-pointer ml-2 transition-colors" 
+               @click="companhiaSelecionada = 'Todas as Companhias'" 
+               title="Limpar Filtro">
+            </i>
           </div>
 
-          <Button icon="pi pi-refresh" @click="carregarDashboard" :loading="loading" class="w-10 h-10 !bg-white dark:!bg-slate-900 !text-slate-600 dark:!text-slate-300 !border-slate-200 dark:!border-slate-700 !rounded-xl hover:!bg-slate-50 transition-colors shadow-sm" />
-          <Button label="Exportar" icon="pi pi-cloud-download" @click="exportarDados" :loading="exportando" class="!bg-gradient-to-r !from-slate-900 !to-slate-800 dark:!from-orange-500 dark:!to-orange-600 !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105 transition-transform duration-300 hidden md:flex" />
+          <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 h-10 shadow-sm transition-all focus-within:ring-2 focus-within:ring-orange-500/20">
+            <i class="pi pi-calendar text-slate-400 text-xs"></i>
+            <Calendar 
+              v-model="datasFiltro" 
+              selectionMode="range" 
+              :manualInput="false" 
+              placeholder="Filtrar por período..." 
+              dateFormat="dd/mm/yy" 
+              class="border-none shadow-none !text-[11px] !font-bold bg-transparent w-48 xl:w-56 custom-calendar" 
+              @hide="carregarDashboard" 
+            />
+            <i v-if="datasFiltro && datasFiltro[1]" 
+               class="pi pi-times-circle text-slate-300 hover:text-rose-500 cursor-pointer ml-2 transition-colors" 
+               @click="datasFiltro = null; carregarDashboard()" 
+               title="Limpar Filtro">
+            </i>
+          </div>
+
+          <Button icon="pi pi-refresh" @click="carregarDashboard" :loading="loading" class="w-10 h-10 !bg-white dark:!bg-slate-900 !text-slate-600 dark:!text-slate-300 !border-slate-200 dark:!border-slate-700 !rounded-xl hover:!bg-slate-50 transition-colors shadow-sm shrink-0" />
+          <Button label="Exportar" icon="pi pi-cloud-download" @click="exportarDados" :loading="exportando" class="!bg-gradient-to-r !from-slate-900 !to-slate-800 dark:!from-orange-500 dark:!to-orange-600 !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105 transition-transform duration-300 hidden md:flex shrink-0" />
         </div>
       </div>
 
@@ -397,7 +464,8 @@ onMounted(() => {
 
       <div v-else class="space-y-6">
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6">
+          
           <div class="bg-white dark:bg-slate-900/80 p-6 xl:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
             <div class="flex justify-between items-start mb-2">
               <div>
@@ -456,7 +524,6 @@ onMounted(() => {
                   </span>
                </div>
             </div>
-
           </div>
 
           <div class="bg-white dark:bg-slate-900/80 p-6 xl:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
@@ -485,8 +552,8 @@ onMounted(() => {
           <div class="bg-white dark:bg-slate-900/80 p-6 xl:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
             <div class="flex justify-between items-start mb-2">
               <div>
-                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Conversão de Detratores</span>
-                <span class="text-[8px] font-bold text-slate-400/70 uppercase tracking-widest mt-0.5">Evolução de Safra</span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Conversão</span>
+                <span class="text-[8px] font-bold text-slate-400/70 uppercase tracking-widest mt-0.5">Detratores Resgatados</span>
               </div>
               <div class="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20 group-hover:bg-emerald-500 transition-colors duration-300">
                 <i class="pi pi-arrow-up-right text-emerald-500 group-hover:text-white transition-colors text-xs"></i>
@@ -504,6 +571,33 @@ onMounted(() => {
                </div>
             </div>
           </div>
+          
+          <div class="bg-white dark:bg-slate-900/80 p-6 xl:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-24 h-24 bg-rose-500/5 rounded-bl-[100px] pointer-events-none group-hover:scale-110 transition-transform"></div>
+            
+            <div class="flex justify-between items-start mb-2 relative z-10">
+              <div>
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Risco de Churn</span>
+                <span class="text-[8px] font-bold text-slate-400/70 uppercase tracking-widest mt-0.5">Promotores Perdidos</span>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center border border-rose-100 dark:border-rose-500/20 group-hover:bg-rose-500 transition-colors duration-300">
+                <i class="pi pi-arrow-down-right text-rose-500 group-hover:text-white transition-colors text-xs"></i>
+              </div>
+            </div>
+            
+            <div class="mt-4 relative z-10">
+               <div class="flex items-baseline gap-2">
+                 <span class="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{{ kpis.clientes_em_risco || 0 }}</span>
+                 <span class="text-rose-500 font-black text-xl">clientes</span>
+               </div>
+               <div class="mt-3 flex items-center gap-2">
+                  <span class="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 px-2 py-1 rounded-lg border border-rose-100 dark:border-rose-500/20 flex items-center gap-1.5 uppercase tracking-widest">
+                    <i class="pi pi-exclamation-circle text-[8px]"></i> {{ kpis.queda_drastica || 0 }} Quedas p/ Detrator
+                  </span>
+               </div>
+            </div>
+          </div>
+
         </div>
 
         <div v-if="topRisco && topRisco.nps <= 30" class="relative overflow-hidden bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 p-6 lg:p-8 rounded-[2rem] flex flex-col md:flex-row items-center gap-6 lg:gap-8 group animate-fadein">
@@ -801,6 +895,19 @@ onMounted(() => {
 :deep(.custom-calendar .p-inputtext) { 
   border: none; 
   @apply bg-transparent p-2 outline-none shadow-none text-slate-700 dark:text-slate-100 font-medium;
+}
+
+/* --- Dropdown Customizado --- */
+:deep(.custom-dropdown) {
+  border: none !important;
+  box-shadow: none !important;
+  @apply bg-transparent outline-none text-slate-700 dark:text-slate-100 font-medium;
+}
+:deep(.custom-dropdown .p-dropdown-label) {
+  @apply p-2;
+}
+:deep(.custom-dropdown.p-focus) {
+  box-shadow: none !important;
 }
 
 /* Esconder Scrollbars */
