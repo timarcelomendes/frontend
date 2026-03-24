@@ -125,6 +125,9 @@ const logout = () => {
           <i class="pi pi-comments"></i> <span>Respostas</span>
         </router-link>
 
+        <router-link to="/acoes" class="nav-item" @click="mobileMenuAberto = false">
+          <i class="pi pi-check-square"></i> <span>Planos de Ação</span>
+        </router-link>
         <router-link to="/importacao" class="nav-item" @click="mobileMenuAberto = false">
           <i class="pi pi-upload"></i> <span>Importação</span>
         </router-link>
