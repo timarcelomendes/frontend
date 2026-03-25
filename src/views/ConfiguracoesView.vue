@@ -17,6 +17,8 @@ import Dropdown from 'primevue/dropdown';
 import InputSwitch from 'primevue/inputswitch';
 import Skeleton from 'primevue/skeleton';
 import InputNumber from 'primevue/inputnumber';
+import MultiSelect from 'primevue/multiselect';
+import Textarea from 'primevue/textarea';
 
 const toast = useToast();
 
@@ -564,6 +566,61 @@ const forcarDisparoNPS = async () => {
   }
 };
 
+const loadingRegras = ref(false);
+const savingRegras = ref(false);
+
+const regrasConfig = ref({
+  scheduler_horas: 6,
+  sla_detrator_dias: 2,
+  sla_neutro_dias: 5,
+  sla_promotor_dias: 7,
+  fillout_campos: ['clienteId', 'email', 'nome', 'empresa', 'empresa_id'],
+  email_template_html: ''
+});
+
+const opcoesCamposFillout = ref([
+  { label: 'ID do Cliente', value: 'clienteId' },
+  { label: 'E-mail', value: 'email' },
+  { label: 'Nome', value: 'nome' },
+  { label: 'Empresa', value: 'empresa' },
+  { label: 'ID da Empresa', value: 'empresa_id' },
+  { label: 'Gestor', value: 'gestor' },
+  { label: 'Segmento', value: 'segmento' }
+]);
+
+const carregarRegras = async () => {
+  loadingRegras.value = true;
+  try {
+    const res = await api.get('/config/regras');
+    regrasConfig.value = {
+      ...res.data,
+      // Converte a string separada por vírgulas de volta para array para o MultiSelect do Vue
+      fillout_campos: res.data.fillout_campos ? res.data.fillout_campos.split(',') : []
+    };
+  } catch (error) {
+    console.error("Erro ao carregar regras", error);
+  } finally {
+    loadingRegras.value = false;
+  }
+};
+
+const salvarRegras = async () => {
+  savingRegras.value = true;
+  try {
+    const payload = {
+      ...regrasConfig.value,
+      // Converte o array de volta para string antes de enviar para o backend
+      fillout_campos: regrasConfig.value.fillout_campos.join(',')
+    };
+    await api.post('/config/regras', payload);
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Regras de negócio atualizadas!', life: 3000 });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar configurações.', life: 5000 });
+  } finally {
+    savingRegras.value = false;
+  }
+};
+
 onMounted(() => {
   carregarDadosConfig();
   carregarConfiguracoesAI();
@@ -572,6 +629,7 @@ onMounted(() => {
   processarCallbackMicrosoft();
   carregarSeguranca();
   carregarElegiveisNPS();
+  carregarRegras()
 });
 
 </script>
@@ -946,6 +1004,79 @@ onMounted(() => {
           <div class="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
             <Button label="Guardar Integrações" icon="pi pi-save" :loading="savingIntegracoes" @click="salvarIntegracoes" class="!bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none font-black text-xs uppercase tracking-widest px-6 py-3 shadow-xl hover:-translate-y-0.5 transition-transform" />
           </div>
+        </div>
+      </TabPanel>
+      <TabPanel header="Regras & Operação">
+        <div class="p-2 space-y-8 animate-fadein">
+          <div>
+            <h3 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest mb-1">Regras de Negócio e SLAs</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Personalize prazos de resolução, campos do formulário e o design dos e-mails de convite.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6">
+              <div class="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 pb-4">
+                <i class="pi pi-cog text-orange-500 text-xl"></i>
+                <h4 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Motor & Formulário</h4>
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Frequência do Robô de Disparos (Horas)</label>
+                <div class="flex items-center gap-3">
+                  <InputNumber v-model="regrasConfig.scheduler_horas" :min="1" :max="48" showButtons buttonLayout="horizontal" class="w-full custom-input" />
+                </div>
+                <p class="text-[9px] text-slate-400 italic">O sistema verificará a fila de clientes elegíveis a cada {{ regrasConfig.scheduler_horas }} horas.</p>
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Campos de Contexto (Link Fillout)</label>
+                <MultiSelect v-model="regrasConfig.fillout_campos" :options="opcoesCamposFillout" optionLabel="label" optionValue="value" display="chip" placeholder="Selecione as variáveis" class="custom-input !p-1" />
+                <p class="text-[9px] text-slate-400 italic">Estes dados serão injetados de forma invisível (Hidden Fields) na URL do formulário.</p>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6">
+              <div class="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 pb-4">
+                <i class="pi pi-stopwatch text-indigo-500 text-xl"></i>
+                <h4 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Prazos de Ação (SLA no Kanban)</h4>
+              </div>
+
+              <div class="grid grid-cols-3 gap-4">
+                <div class="flex flex-col gap-2">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-rose-500 ml-1">Detratores</label>
+                  <InputNumber v-model="regrasConfig.sla_detrator_dias" :min="1" suffix=" dias" class="custom-input !text-rose-600" />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-yellow-500 ml-1">Neutros</label>
+                  <InputNumber v-model="regrasConfig.sla_neutro_dias" :min="1" suffix=" dias" class="custom-input !text-yellow-600" />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-emerald-500 ml-1">Promotores</label>
+                  <InputNumber v-model="regrasConfig.sla_promotor_dias" :min="1" suffix=" dias" class="custom-input !text-emerald-600" />
+                </div>
+              </div>
+              <p class="text-[9px] text-slate-400 italic">Tempo limite para o gestor resolver a tarefa no painel de Auditoria.</p>
+            </div>
+
+            <div class="md:col-span-2 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6">
+              <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
+                <div class="flex items-center gap-3">
+                  <i class="pi pi-envelope text-sky-500 text-xl"></i>
+                  <h4 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Template HTML do Convite</h4>
+                </div>
+                <span class="text-[9px] font-bold text-sky-500 bg-sky-50 dark:bg-sky-500/10 px-2 py-1 rounded">Variáveis: {nome}, {empresa}, {survey_url}</span>
+              </div>
+
+              <Textarea v-model="regrasConfig.email_template_html" rows="10" placeholder="<html>...</html>" class="custom-input w-full font-mono text-[10px]" />
+            </div>
+
+          </div>
+
+          <div class="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button label="Guardar Regras" icon="pi pi-save" :loading="savingRegras" @click="salvarRegras" class="!bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none font-black text-xs uppercase tracking-widest px-6 py-3 shadow-xl hover:-translate-y-0.5 transition-transform" />
+          </div>
+
         </div>
       </TabPanel>
     </TabView>
