@@ -18,7 +18,9 @@ const toast = useToast();
 const respostas = ref([]);
 const loading = ref(true);
 
-// --- DADOS PARA OS COMBOS ---
+// ==========================================
+// 🏢 DADOS PARA OS COMBOS DE FILTRO
+// ==========================================
 const empresasData = ref([]);
 const opcoesCompanhia = ref(['Todas']);
 
@@ -26,7 +28,7 @@ const carregarCombos = async () => {
   try {
     const [resEmp, resComp] = await Promise.all([
       api.get('/cadastros/empresas'),
-      api.get('/cadastros/companhias') // Puxamos a sua nova tabela!
+      api.get('/cadastros/companhias')
     ]);
     
     if (resEmp.data) {
@@ -34,7 +36,6 @@ const carregarCombos = async () => {
     }
     
     if (resComp.data) {
-      // Verifica se a API devolveu objetos ou apenas as strings
       const isArrayOfStrings = typeof resComp.data[0] === 'string';
       const nomes = isArrayOfStrings 
           ? resComp.data.filter(c => c !== 'Todas as Companhias' && c !== 'Todas')
@@ -57,11 +58,13 @@ const opcoesEmpresa = computed(() => {
 });
 
 
+// ==========================================
 // 🔍 FILTROS COM MEMÓRIA DE SESSÃO
+// ==========================================
 const filtros = ref({
   q: '', 
-  companhia: 'Todas', // 👈 NOVO ESTADO
-  empresa: 'Todas',   // 👈 AGORA INICIA COMO 'Todas' PARA COMBOBOX
+  companhia: 'Todas', 
+  empresa: 'Todas',   
   categoria: 'Todas', 
   perfil: 'Todos', 
   incluir_excluidas: localStorage.getItem('nps_ver_arquivados') === 'true' 
@@ -120,12 +123,13 @@ const carregarRespostas = async () => {
   }
 };
 
-// 💡 FILTRO DE COMPANHIA
 const respostasFiltradas = computed(() => {
     return respostas.value; 
 });
 
-// 📊 MÉTRICAS EM TEMPO REAL (Agora usam a array já filtrada)
+// ==========================================
+// 📊 MÉTRICAS EM TEMPO REAL
+// ==========================================
 const metricasAtuais = computed(() => {
   const total = respostasFiltradas.value.length;
   if (total === 0) return { nps: 0, promotores: 0, neutros: 0, detratores: 0, total: 0 };
@@ -141,7 +145,9 @@ const metricasAtuais = computed(() => {
   return { nps, promotores: p, neutros: n, detratores: d, total };
 });
 
-// 📝 ESTADO DE EDIÇÃO (Close the Loop)
+// ==========================================
+// 📝 ESTADO DE EDIÇÃO E AUDITORIA
+// ==========================================
 const dialogEdicao = ref(false);
 const salvando = ref(false);
 const respostaAtual = ref({
@@ -153,8 +159,8 @@ const abrirEdicao = (dados) => {
     ...dados,
     id: dados.resposta_id,
     empresa: dados.nome || dados.empresa,
-    empresa_id: dados.empresa_id || null, // 👈 Agora captura o ID correto
-    gestor_id: dados.gestor_id || null    // 👈 Agora captura o Gestor correto
+    empresa_id: dados.empresa_id ? Number(dados.empresa_id) : null,
+    gestor_id: dados.gestor_id ? Number(dados.gestor_id) : null
   };
   dialogEdicao.value = true;
 };
@@ -173,6 +179,9 @@ const salvarResposta = async () => {
   }
 };
 
+// ==========================================
+// 🗂️ ARQUIVO (SOFT DELETE)
+// ==========================================
 const alternarEstadoArquivo = async (dados) => {
   const estadoAnterior = dados.excluido;
   dados.excluido = !estadoAnterior; 
@@ -196,25 +205,8 @@ const alternarEstadoArquivo = async (dados) => {
 };
 
 // ==========================================
-// 🎨 UTILITÁRIOS DE UI
+// 🚀 DELEGAR PLANO DE AÇÃO (KANBAN)
 // ==========================================
-const formatarData = (dataStr) => {
-  if (!dataStr) return '-';
-  return new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(dataStr));
-};
-
-const obterCorNPS = (nota) => {
-  if (nota >= 9) return 'bg-emerald-500 shadow-emerald-500/30';
-  if (nota >= 7) return 'bg-yellow-500 shadow-yellow-500/30 text-slate-900';
-  return 'bg-rose-500 shadow-rose-500/30';
-};
-
-onMounted(async () => {
-  await carregarCombos(); // Carrega empresas e companhias primeiro
-  carregarRespostas();
-});
-
-// --- NOVO: LÓGICA DE PLANO DE AÇÃO ---
 const dialogNovaAcao = ref(false);
 const salvandoAcao = ref(false);
 const novaAcaoForm = ref({ titulo: '', gestor_id: null, prioridade: 'Alta', descricao: '' });
@@ -236,14 +228,16 @@ const abrirNovaAcao = async () => {
     gestor_id: respostaAtual.value.gestor_id ? Number(respostaAtual.value.gestor_id) : null,
     empresa_id: respostaAtual.value.empresa_id ? Number(respostaAtual.value.empresa_id) : null,
     prioridade: 'Alta',
-    descricao: `Analise do feedback da ${respostaAtual.value.empresa || 'empresa'}`
+    descricao: `Análise do feedback da ${respostaAtual.value.empresa || 'empresa'}. \n\nComentário original: "${respostaAtual.value.motivo || 'Sem comentário'}"`
   };
   
   dialogNovaAcao.value = true;
 };
 
 const criarPlanoAcao = async () => {
-  if (!novaAcaoForm.value.titulo) return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'O título é obrigatório.'});
+  if (!novaAcaoForm.value.titulo) {
+    return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'O título é obrigatório.'});
+  }
   
   salvandoAcao.value = true;
   try {
@@ -257,15 +251,33 @@ const criarPlanoAcao = async () => {
     };
     
     await api.post('/acoes', payload);
-    toast.add({ severity: 'success', summary: 'Ação Delegada', detail: 'O Gestor foi notificado e o ticket criado.' });
+    toast.add({ severity: 'success', summary: 'Ação Delegada', detail: 'O Gestor foi notificado e a ação criada no Kanban.' });
     dialogNovaAcao.value = false;
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao delegar ação.' });
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao delegar ação. Verifique a conexão.' });
   } finally {
     salvandoAcao.value = false;
   }
 };
 
+// ==========================================
+// 🎨 UTILITÁRIOS DE UI
+// ==========================================
+const formatarData = (dataStr) => {
+  if (!dataStr) return '-';
+  return new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(dataStr));
+};
+
+const obterCorNPS = (nota) => {
+  if (nota >= 9) return 'bg-emerald-500 shadow-emerald-500/30';
+  if (nota >= 7) return 'bg-yellow-500 shadow-yellow-500/30 text-slate-900';
+  return 'bg-rose-500 shadow-rose-500/30';
+};
+
+onMounted(async () => {
+  await carregarCombos(); 
+  carregarRespostas();
+});
 </script>
 
 <template>
@@ -411,9 +423,9 @@ const criarPlanoAcao = async () => {
             <div class="flex flex-col">
               <div class="flex items-center gap-2">
                 <span class="text-[12px] font-bold text-slate-800 dark:text-slate-100" :class="{'line-through text-slate-400': s.data.excluido}">
-                  {{ s.data.cliente_nome || 'Utilizador Anónimo' }}
+                  {{ s.data.cliente_nome || s.data.nome || 'Utilizador Anónimo' }}
                 </span>
-                <i v-if="s.data.perfil_cliente === 'Decisor'" class="pi pi-star-fill text-yellow-500 text-[10px]" v-tooltip.top="'Decisor'"></i>
+                <i v-if="s.data.perfil_decisor === 'Decisor' || s.data.perfil_cliente === 'Decisor'" class="pi pi-star-fill text-yellow-500 text-[10px]" v-tooltip.top="'Decisor'"></i>
               </div>
               <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{{ s.data.empresa || 'Sem Empresa' }}</span>
             </div>
@@ -488,7 +500,7 @@ const criarPlanoAcao = async () => {
 
         <div class="flex flex-col gap-2">
           <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Comentário Original (Voice of Customer)</label>
-          <Button label="Delegar Plano de Ação (Mini-Jira)" icon="pi pi-bolt" @click="abrirNovaAcao" class="w-full !bg-orange-50 dark:!bg-orange-500/10 !text-orange-600 !border !border-orange-200 dark:!border-orange-500/30 !rounded-xl !py-3 !font-black !text-[10px] uppercase tracking-widest hover:!bg-orange-100 transition-colors mt-2" />
+          <Button label="Delegar Plano de Ação (Kanban)" icon="pi pi-bolt" @click="abrirNovaAcao" class="w-full !bg-orange-50 dark:!bg-orange-500/10 !text-orange-600 !border !border-orange-200 dark:!border-orange-500/30 !rounded-xl !py-3 !font-black !text-[10px] uppercase tracking-widest hover:!bg-orange-100 transition-colors mt-2" />
           <Textarea v-model="respostaAtual.motivo" rows="3" class="custom-input !bg-slate-50 dark:!bg-slate-800 !text-xs italic" />
         </div>
 
@@ -516,11 +528,12 @@ const criarPlanoAcao = async () => {
         <Button label="Guardar Auditoria" :loading="salvando" icon="pi pi-save" class="flex-1 bg-slate-900 dark:bg-white dark:text-slate-900 border-none rounded-xl font-black text-[11px] uppercase tracking-widest text-white shadow-xl hover:-translate-y-0.5 transition-transform" @click="salvarResposta" />
       </div>
     </Dialog>
+
     <Dialog v-model:visible="dialogNovaAcao" :modal="true" :style="{width: '450px'}" :closable="false" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog-no-header shadow-2xl">
       <div class="bg-gradient-to-r from-orange-500 to-rose-500 text-white p-6 flex justify-between items-center">
         <div>
           <h2 class="text-lg font-black italic tracking-tight"><i class="pi pi-bolt mr-2"></i> Delegar Ação</h2>
-          <p class="text-[10px] text-orange-100 uppercase tracking-widest mt-1 font-bold">Resolução de Churn</p>
+          <p class="text-[10px] text-orange-100 uppercase tracking-widest mt-1 font-bold">Ação Direta no Kanban</p>
         </div>
         <button @click="dialogNovaAcao = false" class="text-white/70 hover:text-white transition-colors p-2"><i class="pi pi-times text-xl"></i></button>
       </div>
@@ -629,7 +642,6 @@ const criarPlanoAcao = async () => {
     @apply bg-orange-500/10 text-orange-600 dark:text-orange-400 !important;
 }
 
-
 /* ==========================================
    📝 INPUTS DO MODAL (Enriquecimento Qualitativo)
    ========================================== */
@@ -645,7 +657,6 @@ const criarPlanoAcao = async () => {
 :deep(.custom-dropdown .p-dropdown-label) { 
   @apply py-1 !important; 
 }
-
 
 /* ==========================================
    📊 CUSTOMIZAÇÃO DA TABELA (Cores Sólidas)
@@ -670,7 +681,6 @@ const criarPlanoAcao = async () => {
 :deep(.p-datatable .p-datatable-tbody > tr > td) {
   @apply py-5 px-4;
 }
-
 
 /* ==========================================
    🪟 CUSTOMIZAÇÃO DO DIALOG

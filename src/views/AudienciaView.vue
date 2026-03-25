@@ -21,13 +21,14 @@ const toast = useToast();
 const clientes = ref([]); 
 const empresas = ref([]); 
 const perfis = ref([{ nome: 'Decisor' }, { nome: 'Influenciador' }, { nome: 'Usuário Final' }, { nome: 'Técnico' }]);   
-const cargos = ref([]);   
+const cargos = ref([]);
+const segmentos = ref([]);   
 const loading = ref(true);
 
 const gestores = ref([{ label: 'Todos', value: null }]);
-const companhias = ref([{ label: 'Todas', value: null }]); // 👈 NOVO: Estado das Companhias
+const companhias = ref([{ label: 'Todas', value: null }]); 
 const filtroGestor = ref(null);
-const filtroCompanhia = ref(null); // 👈 NOVO: Filtro selecionado
+const filtroCompanhia = ref(null); 
 
 const enviandoEmail = ref(false);
 const idsEnviando = ref([]); 
@@ -74,7 +75,7 @@ const limparFiltros = () => {
   filtrosTabela.value.global.value = null;
   filtroStatus.value = null;
   filtroGestor.value = null;
-  filtroCompanhia.value = null; // 👈 NOVO: Limpar filtro de companhia
+  filtroCompanhia.value = null; 
   filtroDataInicio.value = null;
   filtroDataFim.value = null;
   filtroTipoData.value = 'proximo_envio';
@@ -96,7 +97,7 @@ const clientesFiltrados = computed(() => {
       matchesGestor = c.gestor === filtroGestor.value;
     }
 
-    // 3. Filtro de Companhia (Cruzamento Inteligente no Frontend) 👈 NOVO
+    // 3. Filtro de Companhia
     let matchesCompanhia = true;
     if (filtroCompanhia.value) {
       const empresaObj = empresas.value.find(e => e.nome === c.empresa);
@@ -150,7 +151,9 @@ const cliente = ref({
   telefone: '',
   empresa: null, 
   perfil_decisor: null,
-  cargo: null
+  cargo: null,
+  gestor: null,
+  segmento: null
 });
 
 // ==========================================
@@ -165,6 +168,7 @@ const carregarClientes = async () => {
   try { const resEmp = await api.get('/cadastros/empresas'); if(resEmp.data) empresas.value = resEmp.data; } catch (e) {}
   try { const resPerf = await api.get('/cadastros/perfis'); if(resPerf.data) perfis.value = resPerf.data; } catch (e) {}
   try { const resCargos = await api.get('/cadastros/cargos'); if(resCargos.data) cargos.value = resCargos.data; } catch (e) {}
+  try { const resSeg = await api.get('/cadastros/segmentos'); if(resSeg.data) segmentos.value = resSeg.data; } catch (e) {}
   
   try { 
     const resGest = await api.get('/cadastros/gestores'); 
@@ -173,7 +177,6 @@ const carregarClientes = async () => {
     }
   } catch (e) {}
 
-  // 👈 NOVO: Carregar lista de Companhias
   try { 
     const resComp = await api.get('/cadastros/companhias'); 
     if(resComp.data) {
@@ -192,10 +195,6 @@ const sincronizarStatusRealTime = async () => {
       headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' }
     });
     
-    if (response.data && response.data.length > 0) {
-      console.log("🔄 Real-Time Atualizado. Exemplo Cliente 1 Status:", response.data[0].status_envio);
-    }
-
     const idsSelecionados = clientesSelecionados.value.map(c => c.cliente_id);
 
     clientes.value = [...response.data];
@@ -218,8 +217,16 @@ onUnmounted(() => {
 });
 
 // FUNÇÕES DE CRUD
-const abrirNovo = () => { cliente.value = { cliente_id: null, nome: '', email: '', telefone: '', empresa: null, perfil_decisor: null, cargo: null }; editando.value = false; clienteDialog.value = true; };
-const editarCliente = (dados) => { cliente.value = { ...dados }; editando.value = true; clienteDialog.value = true; };
+const abrirNovo = () => { 
+    cliente.value = { cliente_id: null, nome: '', email: '', telefone: '', empresa: null, perfil_decisor: null, cargo: null, gestor: null, segmento: null }; 
+    editando.value = false; 
+    clienteDialog.value = true; 
+};
+const editarCliente = (dados) => { 
+    cliente.value = { ...dados }; 
+    editando.value = true; 
+    clienteDialog.value = true; 
+};
 
 const salvarCliente = async () => {
   if (!cliente.value.nome || !cliente.value.email || !cliente.value.cargo) {
@@ -243,32 +250,64 @@ const salvarCliente = async () => {
 };
 
 // ==========================================
-// 🚀 5. DISPAROS E FORMATAÇÃO
+// 🚀 5. DISPAROS E FORMATAÇÃO (NPS API)
 // ==========================================
 const dispararIndividual = async (row_data) => {
-  const id = row_data.cliente_id || row_data.id;
+  const id = row_data.cliente_id;
+  if (!id) return;
+
   idsEnviando.value.push(id); 
+  
   try {
     const response = await api.post(`/clientes/${id}/forcar-envio`);
-    toast.add({ severity: 'success', summary: 'Gatilho Acionado', detail: response.data.message || 'Envio concluído', life: 4000 });
-    setTimeout(sincronizarStatusRealTime, 1000); 
-  } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao disparar n8n.', life: 5000 }); } 
-  finally { idsEnviando.value = idsEnviando.value.filter(i => i !== id); }
+    
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Tudo pronto! 🚀', 
+      detail: `O convite para ${row_data.nome} já foi enviado para a fila de processamento.`, 
+      life: 5000 
+    });
+
+    setTimeout(sincronizarStatusRealTime, 2000); 
+    
+  } catch (error) { 
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Ops! Algo aconteceu', 
+      detail: 'Não conseguimos acionar o disparo nativo agora.', 
+      life: 5000 
+    }); 
+  } finally { 
+    idsEnviando.value = idsEnviando.value.filter(i => i !== id); 
+  }
 };
 
 const dispararLote = async () => {
-  if (clientesSelecionados.value.length === 0) return toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Selecione clientes primeiro.', life: 4000 });
-  if (!confirm(`Disparar para ${clientesSelecionados.value.length} clientes?`)) return;
+  if (clientesSelecionados.value.length === 0) {
+    return toast.add({ severity: 'warn', summary: 'Ninguém selecionado', detail: 'Selecione pelo menos uma pessoa para disparar o lote.', life: 3000 });
+  }
   
+  const total = clientesSelecionados.value.length;
   enviandoEmail.value = true;
+  
   try {
-    const idsParaEnvio = clientesSelecionados.value.map(c => c.cliente_id || c.id);
-    const response = await api.post('/clientes/forcar-envio-lote', { cliente_ids: idsParaEnvio });
-    toast.add({ severity: 'info', summary: 'Lote Iniciado', detail: response.data.message || 'Disparos na fila.', life: 6000 });
+    const idsParaEnvio = clientesSelecionados.value.map(c => c.cliente_id);
+    await api.post('/clientes/forcar-envio-lote', { cliente_ids: idsParaEnvio });
+    
+    toast.add({ 
+      severity: 'info', 
+      summary: 'Trabalho em curso! 🛠️', 
+      detail: `Estamos a processar o envio para ${total} contactos. Pode continuar a navegar, o sistema cuidará do resto.`, 
+      life: 8000 
+    });
+    
     clientesSelecionados.value = [];
-    setTimeout(sincronizarStatusRealTime, 1500);
-  } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha no lote.', life: 5000 }); } 
-  finally { enviandoEmail.value = false; }
+    setTimeout(sincronizarStatusRealTime, 3000);
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro no Lote', detail: 'Houve um problema ao processar o lote de envios.', life: 5000 });
+  } finally {
+    enviandoEmail.value = false;
+  }
 };
 
 const formatarData = (dataStr) => {
@@ -454,16 +493,27 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
 
         <Column header="Ações" alignFrozen="right" style="width: 130px">
           <template #body="slotProps">
-            <div class="flex gap-1.5 justify-end">
-              <Button icon="pi pi-send" v-tooltip.top="'Disparar n8n'" @click="dispararIndividual(slotProps.data)" :loading="idsEnviando.includes(slotProps.data.cliente_id || slotProps.data.id)" :disabled="enviandoEmail" class="w-7 h-7 !bg-orange-50 !text-orange-500 !border-none hover:!bg-orange-100 rounded-lg transition-colors !text-xs" />
-              <Button icon="pi pi-pencil" v-tooltip.top="'Editar'" @click="editarCliente(slotProps.data)" class="w-7 h-7 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none hover:!text-slate-700 rounded-lg transition-colors !text-xs" />
+            <div class="flex gap-1.5 justify-end items-center"> <Button 
+                :icon="idsEnviando.includes(slotProps.data.cliente_id) ? 'pi pi-spin pi-spinner' : 'pi pi-send'" 
+                v-tooltip.top="idsEnviando.includes(slotProps.data.cliente_id) ? 'A processar...' : 'Forçar Disparo'" 
+                @click="dispararIndividual(slotProps.data)" 
+                :disabled="enviandoEmail || idsEnviando.includes(slotProps.data.cliente_id)" 
+                class="w-7 h-7 !bg-orange-50 !text-orange-500 !border-none hover:!bg-orange-100 rounded-lg transition-colors !text-xs p-0 flex items-center justify-center" 
+              />
+
+              <Button 
+                icon="pi pi-pencil" 
+                v-tooltip.top="'Editar'" 
+                @click="editarCliente(slotProps.data)" 
+                class="w-7 h-7 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none hover:!text-slate-700 rounded-lg transition-colors !text-xs p-0 flex items-center justify-center" 
+              />
             </div>
           </template>
         </Column>
       </DataTable>
     </div>
 
-    <Dialog v-model:visible="clienteDialog" :style="{width: '450px'}" :header="editando ? 'Editar Registo' : 'Nova Pessoa'" :modal="true" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
+    <Dialog v-model:visible="clienteDialog" :style="{width: '550px'}" :header="editando ? 'Editar Registo' : 'Nova Pessoa'" :modal="true" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
       <div class="p-6 md:p-8 space-y-4 bg-slate-50/50 dark:bg-slate-900">
         
         <div class="flex flex-col gap-1.5">
@@ -476,25 +526,42 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
           <InputText v-model="cliente.email" type="email" class="custom-input w-full" placeholder="joao@empresa.com" />
         </div>
 
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Telefone</label>
-          <InputText v-model="cliente.telefone" class="custom-input w-full" placeholder="+351 900 000 000" />
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Telefone</label>
+            <InputText v-model="cliente.telefone" class="custom-input w-full" placeholder="+351 900 000 000" />
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Conta (Empresa)</label>
+            <Dropdown v-model="cliente.empresa" :options="empresas" optionLabel="nome" optionValue="nome" editable filter placeholder="Selecione ou digite" class="custom-dropdown w-full" />
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Perfil</label>
+            <Dropdown v-model="cliente.perfil_decisor" :options="perfis" optionLabel="nome" optionValue="nome" editable placeholder="Selecione ou digite" class="custom-dropdown w-full" />
+            </div>
+            
+            <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Cargo *</label>
+            <Dropdown v-model="cliente.cargo" :options="cargos" optionLabel="nome" optionValue="nome" editable filter placeholder="Selecione ou digite" class="custom-dropdown w-full" />
+            </div>
         </div>
 
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Conta (Empresa)</label>
-          <Dropdown v-model="cliente.empresa" :options="empresas" optionLabel="nome" optionValue="nome" editable filter placeholder="Selecione ou digite" class="custom-dropdown w-full" />
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Gestor da Conta</label>
+            <Dropdown v-model="cliente.gestor" :options="gestores.filter(g => g.value !== null)" optionLabel="label" optionValue="value" editable filter placeholder="Atribuir Gestor" class="custom-dropdown w-full" />
+            </div>
+            
+            <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Segmento</label>
+            <Dropdown v-model="cliente.segmento" :options="segmentos" optionLabel="nome" optionValue="nome" editable filter placeholder="Selecione ou digite" class="custom-dropdown w-full" />
+            </div>
         </div>
-        
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Perfil</label>
-          <Dropdown v-model="cliente.perfil_decisor" :options="perfis" optionLabel="nome" optionValue="nome" editable placeholder="Selecione ou digite" class="custom-dropdown w-full" />
-        </div>
-        
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Cargo *</label>
-          <Dropdown v-model="cliente.cargo" :options="cargos" optionLabel="nome" optionValue="nome" editable filter placeholder="Selecione ou digite" class="custom-dropdown w-full" />
-        </div>
+
       </div>
       <template #footer>
         <div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900 flex gap-3 w-full">
@@ -530,10 +597,9 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ==========================================
-   🌟 FILTROS ESTILO DASHBOARD (Minimalistas e Uniformes)
+   🌟 FILTROS ESTILO DASHBOARD
    ========================================== */
 
-/* Força transparência em TODOS os elementos (Input, Dropdown, Calendário) */
 :deep(.custom-input-minimal),
 :deep(.custom-dropdown-minimal),
 :deep(.custom-calendar-minimal .p-inputtext) {
@@ -545,13 +611,11 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
     @apply text-[10px] font-black uppercase text-slate-800 dark:text-white w-full outline-none ring-0;
 }
 
-/* Força a cor dos Placeholders para combinarem com os Dropdowns */
 :deep(.custom-input-minimal::placeholder),
 :deep(.custom-calendar-minimal .p-inputtext::placeholder) {
     @apply text-slate-300 dark:text-slate-600 font-black !important;
 }
 
-/* Remove completamente os fundos brancos/cinzentos que o PrimeVue injeta ao passar o rato ou focar */
 :deep(.p-inputtext:enabled:focus),
 :deep(.p-inputtext:enabled:hover),
 :deep(.p-dropdown:not(.p-disabled):focus),
@@ -561,7 +625,6 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
     box-shadow: none !important;
 }
 
-/* Dropdown Específico (Mesma regra de Relatórios) */
 :deep(.custom-dropdown-minimal .p-dropdown-label) {
     @apply p-0 font-black flex items-center text-[10px] uppercase text-slate-800 dark:text-white !important;
 }
@@ -569,7 +632,6 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
     @apply w-4 text-slate-400 !important;
 }
 
-/* Modais que abrem ao clicar (Opções e Calendário) */
 :deep(.p-dropdown-panel), :deep(.p-datepicker) {
     @apply dark:bg-slate-800 dark:border-slate-700 shadow-xl !important;
 }
@@ -581,19 +643,16 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
 }
 
 /* ==========================================
-   🌟 TABELA E MODAIS (Mantidos do Original)
+   🌟 TABELA E MODAIS
    ========================================== */
 
-/* Tabela PrimeVue */
 :deep(.p-datatable .p-datatable-thead > tr > th) { @apply bg-slate-50 dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 py-6 px-4; }
 :deep(.p-datatable .p-datatable-tbody > tr) { @apply bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800/50 text-slate-700 dark:text-slate-300; }
 :deep(.p-datatable .p-datatable-tbody > tr > td) { @apply py-4 px-4; }
 
-/* Checkboxes da Tabela */
 :deep(.p-checkbox .p-checkbox-box) { @apply border-slate-300 dark:border-slate-600 rounded-md transition-colors; }
 :deep(.p-checkbox.p-highlight .p-checkbox-box) { @apply border-sky-500 bg-sky-500 !important; }
 
-/* Modais (Dialog) */
 :deep(.custom-dialog .p-dialog-header) { @apply bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-8 py-6; }
 :deep(.custom-dialog .p-dialog-content) { @apply dark:bg-slate-900; }
 :deep(.custom-dialog .p-dialog-title) { @apply text-lg font-black italic tracking-tight text-slate-800 dark:text-white; }
