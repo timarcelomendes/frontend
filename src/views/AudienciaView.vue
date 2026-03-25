@@ -349,6 +349,49 @@ const gerarPlano = async (empresa) => {
 };
 
 const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_${empresa}`); gerarPlano(empresa); };
+
+// ==========================================
+// ⏱️ MOTOR DE CÁLCULO DE FOLLOW-UP
+// ==========================================
+const regrasNPS = ref({ lembrete_dias: 3 }); // Fallback caso a API demore
+
+// 1. Vai buscar a regra dos dias ao banco de dados
+const carregarRegrasNPS = async () => {
+  try {
+    const res = await api.get('/config/regras');
+    if (res.data && res.data.lembrete_dias) {
+      regrasNPS.value.lembrete_dias = parseInt(res.data.lembrete_dias);
+    }
+  } catch (error) {
+    console.error("Erro ao ler regras de lembrete:", error);
+  }
+};
+
+// 2. Calcula visualmente quantos dias faltam
+const calcularStatusLembrete = (data_disparo) => {
+  if (!data_disparo) return null;
+
+  const dataEnvio = new Date(data_disparo);
+  const hoje = new Date();
+  
+  // Calcula a diferença em dias (ignorando as horas para ser exato)
+  dataEnvio.setHours(0, 0, 0, 0);
+  hoje.setHours(0, 0, 0, 0);
+  
+  const diasPassados = Math.floor((hoje - dataEnvio) / (1000 * 60 * 60 * 24));
+  const diasRestantes = regrasNPS.value.lembrete_dias - diasPassados;
+
+  if (diasRestantes > 1) {
+    return { texto: `Lembrete em ${diasRestantes} dias`, cor: 'text-slate-400', icone: 'pi-clock' };
+  } else if (diasRestantes === 1) {
+    return { texto: 'Lembrete Amanhã', cor: 'text-indigo-400', icone: 'pi-history' };
+  } else if (diasRestantes === 0) {
+    return { texto: 'Lembrete Hoje', cor: 'text-orange-500', icone: 'pi-send' };
+  } else {
+    return { texto: 'Na fila de disparo', cor: 'text-rose-500', icone: 'pi-exclamation-circle' }; // Já devia ter ido, o CRON vai apanhá-lo na próxima ronda
+  }
+};
+
 </script>
 
 <template>
@@ -472,12 +515,26 @@ const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_$
 
         <Column field="status_envio" header="Status" sortable style="min-width: 140px">
         <template #body="slotProps">
-            <div class="flex items-center gap-2">
-              <i v-if="(slotProps.data.status_envio || '').toLowerCase() === 'respondido'" class="pi pi-check-circle text-emerald-500 text-[12px]"></i>
-              <i v-else-if="(slotProps.data.status_envio || '').toLowerCase() === 'enviado'" class="pi pi-send text-blue-500 text-[11px] transform -rotate-12 mt-0.5"></i>
-              <i v-else-if="(slotProps.data.status_envio || '').toLowerCase() === 'erro'" class="pi pi-times-circle text-rose-500 text-[12px]"></i>
-              <i v-else class="pi pi-clock text-orange-400 text-[12px]"></i>
-              <Tag :value="slotProps.data.status_envio || 'Pendente'" :severity="obterCorStatus(slotProps.data.status_envio)" class="rounded-md text-[8px] px-2 py-0.5 uppercase tracking-widest font-black shadow-sm transition-all" />
+            <div class="flex flex-col gap-1.5 justify-center">
+              
+              <div class="flex items-center gap-2">
+                <i v-if="(slotProps.data.status_envio || '').toLowerCase() === 'respondido'" class="pi pi-check-circle text-emerald-500 text-[12px]"></i>
+                <i v-else-if="(slotProps.data.status_envio || '').toLowerCase() === 'enviado'" class="pi pi-send text-blue-500 text-[11px] transform -rotate-12 mt-0.5"></i>
+                <i v-else-if="(slotProps.data.status_envio || '').toLowerCase() === 'erro'" class="pi pi-times-circle text-rose-500 text-[12px]"></i>
+                <i v-else class="pi pi-clock text-orange-400 text-[12px]"></i>
+                <Tag :value="slotProps.data.status_envio || 'Pendente'" :severity="obterCorStatus(slotProps.data.status_envio)" class="rounded-md text-[8px] px-2 py-0.5 uppercase tracking-widest font-black shadow-sm transition-all" />
+              </div>
+
+              <div v-if="(slotProps.data.status_envio || '').toLowerCase() === 'enviado' && slotProps.data.ultimo_envio" 
+                   class="flex items-center gap-1.5 ml-1 animate-fadein">
+                <i class="pi text-[8px]" 
+                   :class="[calcularStatusLembrete(slotProps.data.ultimo_envio).icone, calcularStatusLembrete(slotProps.data.ultimo_envio).cor]"></i>
+                <span class="text-[8.5px] font-bold uppercase tracking-wider" 
+                      :class="calcularStatusLembrete(slotProps.data.ultimo_envio).cor">
+                  {{ calcularStatusLembrete(slotProps.data.ultimo_envio).texto }}
+                </span>
+              </div>
+
             </div>
         </template>
         </Column>

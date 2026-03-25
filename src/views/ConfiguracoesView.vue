@@ -211,15 +211,13 @@ const carregarDadosConfig = async () => {
   }
 };
 
-const definirUrlAtual = () => {
-  config.value.base_url_frontend = window.location.origin;
-  toast.add({ severity: 'info', summary: 'URL Atualizada', detail: 'URL ajustada para o ambiente atual. Não se esqueça de guardar.', life: 3000 });
-};
-
 const salvarConfiguracoes = async () => {
   loading.value = true;
   try {
-    await api.post('/config/email', config.value);
+    const payload = { ...config.value };
+    delete payload.base_url_frontend; 
+    
+    await api.post('/config/email', payload);
     toast.add({ severity: 'success', summary: 'Guardado', detail: 'Configurações salvas no banco.', life: 3000 });
     carregarDadosConfig();
   } catch (error) {
@@ -304,29 +302,12 @@ const enviandoTeste = ref(false);
 const enviarTeste = async () => {
   enviandoTeste.value = true;
   try {
-    const response = await api.post('/config/email/teste');
+    await api.post('/config/email/teste');
     toast.add({ severity: 'success', summary: 'E-mail Enviado', detail: 'Verifique a sua caixa de entrada.', life: 5000 });
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Falha no Teste', detail: error.response?.data?.detail || 'Erro ao disparar e-mail.', life: 5000 });
   } finally {
     enviandoTeste.value = false;
-  }
-};
-
-const salvarConfigEmail = async () => {
-  savingConfig.value = true;
-  try {
-    const payload = { ...config.value };
-    
-    delete payload.base_url_frontend; 
-
-    await api.post('/config/email', payload); 
-    
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Credenciais guardadas com sucesso!' });
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar configurações.' });
-  } finally {
-    savingConfig.value = false;
   }
 };
 
@@ -393,7 +374,7 @@ const alternarStatus = async (user_data) => {
       ativo: novoStatus 
     });
 
-    user_data.ativo = novoStatus; // Atualiza a tela na hora
+    user_data.ativo = novoStatus; 
 
     toast.add({ 
       severity: 'success', 
@@ -402,7 +383,6 @@ const alternarStatus = async (user_data) => {
       life: 3000 
     });
 
-    // Reordena a lista na hora para mandar os novos pendentes pro topo
     utilizadores.value.sort((a, b) => Number(a.ativo) - Number(b.ativo));
 
   } catch (error) {
@@ -423,8 +403,6 @@ const abrirNovoUser = () => {
   editandoUser.value = false;
   usuarioDialog.value = true;
 };
-
-const iniciais = (nome) => nome ? nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U';
 
 // ==========================================
 // 🔒 ESTADOS: SEGURANÇA (Sessão)
@@ -475,10 +453,7 @@ const integracoesConfig = ref({
   teams_webhook_url: '',
 });
 
-// Calcula automaticamente o URL do webhook baseado no domínio atual onde o frontend está a correr
-// (Assumindo que a API está no mesmo domínio ou ajustado na sua variável base)
 const webhookFilloutURL = computed(() => {
-  // Ajuste se o seu backend estiver num domínio diferente do frontend
   return `${config.value.base_url_frontend}/api/webhooks/fillout`;
 });
 
@@ -557,7 +532,6 @@ const forcarDisparoNPS = async () => {
   try {
     await api.post('/config/nps/forcar-disparo');
     toast.add({ severity: 'success', summary: 'Motor Iniciado', detail: 'Os e-mails estão a ser processados em segundo plano. Verifique os relatórios em breve.', life: 5000 });
-    // Recarrega a contagem após 3 segundos
     setTimeout(() => carregarElegiveisNPS(), 3000); 
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao iniciar disparo.', life: 5000 });
@@ -566,17 +540,26 @@ const forcarDisparoNPS = async () => {
   }
 };
 
+// ==========================================
+// ⚙️ REGRAS DE NEGÓCIO E TEMPLATES
+// ==========================================
 const loadingRegras = ref(false);
 const savingRegras = ref(false);
+const abaEmailAgradecimento = ref('promotor');
 
 const regrasConfig = ref({
+  scheduler_hora_inicio: '09:00',
   scheduler_horas: 6,
   sla_detrator_dias: 2,
   sla_neutro_dias: 5,
   sla_promotor_dias: 7,
   fillout_campos: ['clienteId', 'email', 'nome', 'empresa', 'empresa_id'],
   email_template_html: '',
-  email_agradecimento_html: ''
+  email_agradecimento_promotor: '',
+  email_agradecimento_neutro: '',
+  email_agradecimento_detrator: '',
+  lembrete_dias: 3,
+  email_template_lembrete: ''
 });
 
 const opcoesCamposFillout = ref([
@@ -595,7 +578,6 @@ const carregarRegras = async () => {
     const res = await api.get('/config/regras');
     regrasConfig.value = {
       ...res.data,
-      // Converte a string separada por vírgulas de volta para array para o MultiSelect do Vue
       fillout_campos: res.data.fillout_campos ? res.data.fillout_campos.split(',') : []
     };
   } catch (error) {
@@ -610,7 +592,6 @@ const salvarRegras = async () => {
   try {
     const payload = {
       ...regrasConfig.value,
-      // Converte o array de volta para string antes de enviar para o backend
       fillout_campos: regrasConfig.value.fillout_campos.join(',')
     };
     await api.post('/config/regras', payload);
@@ -622,6 +603,133 @@ const salvarRegras = async () => {
   }
 };
 
+// ==========================================
+// 🧪 MÓDULO DE TESTE: E-MAIL DE CONVITE
+// ==========================================
+const loadingTesteConvite = ref(false);
+const emailTesteConvite = ref('');
+
+const modeloBaseConvite = `<!DOCTYPE html>
+<html>
+<body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;">
+    <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto; text-align: center;">
+        <h2 style="color: #333;">Olá, {nome}!</h2>
+        <p style="color: #555; font-size: 16px;">Como avalia a sua parceria com a <strong>{empresa}</strong>?</p>
+        <a href="{survey_url}" style="display: inline-block; padding: 14px 28px; background-color: #F97316; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 25px;">Responder Pesquisa</a>
+    </div>
+</body>
+</html>`;
+
+const testarTemplateConvite = async () => {
+  if (!emailTesteConvite.value) {
+    return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail para receber o teste.', life: 3000 });
+  }
+  if (!regrasConfig.value.email_template_html) {
+    return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole algum código HTML antes de testar.', life: 3000 });
+  }
+
+  loadingTesteConvite.value = true;
+  try {
+    await api.post('/config/testar-template', {
+      email_destino: emailTesteConvite.value,
+      html_content: regrasConfig.value.email_template_html,
+      categoria: 'convite'
+    });
+    toast.add({ severity: 'success', summary: 'Enviado! 🚀', detail: 'Preview do convite enviado com sucesso.', life: 5000 });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Falha no Teste', detail: 'Não foi possível enviar o preview.', life: 5000 });
+  } finally {
+    loadingTesteConvite.value = false;
+  }
+};
+
+// ==========================================
+// 🧪 MÓDULO DE TESTE: E-MAIL DE AGRADECIMENTO
+// ==========================================
+const loadingTesteAgradecimento = ref(false);
+const emailTesteAgradecimento = ref('');
+
+const modeloBaseAgradecimento = `<!DOCTYPE html>
+<html>
+<body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;">
+    <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Obrigado, {nome}!</h2>
+        <p>A sua avaliação da parceria com a <strong>{empresa}</strong> é muito importante.</p>
+        <p>A sua nota final foi: <strong style="font-size: 18px; color: #F97316;">{nota}/10</strong></p>
+        
+        <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #F97316; margin: 20px 0;">
+            <p style="margin: 0; font-style: italic; color: #555;">"{motivo}"</p>
+        </div>
+        
+        <p>A nossa equipa já está a analisar o seu feedback.</p>
+    </div>
+</body>
+</html>`;
+
+const testarTemplateAgradecimento = async () => {
+  if (!emailTesteAgradecimento.value) {
+    return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail para receber o teste.', life: 3000 });
+  }
+
+  // Descobre qual é a aba ativa para pegar no HTML correto
+  let htmlAlvo = '';
+  if (abaEmailAgradecimento.value === 'promotor') htmlAlvo = regrasConfig.value.email_agradecimento_promotor;
+  else if (abaEmailAgradecimento.value === 'neutro') htmlAlvo = regrasConfig.value.email_agradecimento_neutro;
+  else htmlAlvo = regrasConfig.value.email_agradecimento_detrator;
+
+  if (!htmlAlvo) {
+    return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole algum código HTML antes de testar.', life: 3000 });
+  }
+
+  loadingTesteAgradecimento.value = true;
+  try {
+    await api.post('/config/testar-template', {
+      email_destino: emailTesteAgradecimento.value,
+      html_content: htmlAlvo,
+      categoria: abaEmailAgradecimento.value
+    });
+    toast.add({ severity: 'success', summary: 'Enviado! 🚀', detail: 'Preview do agradecimento enviado com sucesso.', life: 5000 });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Falha no Teste', detail: 'Não foi possível enviar o preview.', life: 5000 });
+  } finally {
+    loadingTesteAgradecimento.value = false;
+  }
+};
+
+// variáveis de teste do lembrete:
+const loadingTesteLembrete = ref(false);
+const emailTesteLembrete = ref('');
+
+const modeloBaseLembrete = `<!DOCTYPE html>
+<html>
+<body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;">
+    <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto; text-align: center;">
+        <h2 style="color: #333;">Olá novamente, {nome}!</h2>
+        <p style="color: #555; font-size: 16px;">Ainda não recebemos o seu feedback sobre a <strong>{empresa}</strong>. Leva menos de 1 minuto!</p>
+        <a href="{survey_url}" style="display: inline-block; padding: 14px 28px; background-color: #F97316; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 25px;">Responder Agora</a>
+    </div>
+</body>
+</html>`;
+
+const testarTemplateLembrete = async () => {
+  if (!emailTesteLembrete.value) return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail.' });
+  if (!regrasConfig.value.email_template_lembrete) return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole o HTML.' });
+
+  loadingTesteLembrete.value = true;
+  try {
+    await api.post('/config/testar-template', {
+      email_destino: emailTesteLembrete.value,
+      html_content: regrasConfig.value.email_template_lembrete,
+      categoria: 'convite' // Usa a mesma lógica de gerar o {survey_url} fictício
+    });
+    toast.add({ severity: 'success', summary: 'Enviado!', detail: 'Preview do lembrete enviado.' });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha no teste.' });
+  } finally {
+    loadingTesteLembrete.value = false;
+  }
+};
+
 onMounted(() => {
   carregarDadosConfig();
   carregarConfiguracoesAI();
@@ -630,7 +738,7 @@ onMounted(() => {
   processarCallbackMicrosoft();
   carregarSeguranca();
   carregarElegiveisNPS();
-  carregarRegras()
+  carregarRegras();
 });
 
 </script>
@@ -1007,89 +1115,218 @@ onMounted(() => {
           </div>
         </div>
       </TabPanel>
+
       <TabPanel header="Regras & Operação">
         <div class="p-2 space-y-8 animate-fadein">
-          <div>
-            <h3 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest mb-1">Regras de Negócio e SLAs</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Personalize prazos de resolução, campos do formulário e o design dos e-mails de convite.</p>
+          
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div>
+              <h3 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest mb-1 flex items-center gap-2">
+                <i class="pi pi-sliders-h text-orange-500"></i> Regras de Negócio
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Controlo absoluto sobre os tempos de resposta, formulários e comunicação com o cliente.</p>
+            </div>
+            <Button label="Guardar Regras" icon="pi pi-save" :loading="savingRegras" @click="salvarRegras" class="!bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none font-black text-xs uppercase tracking-widest px-6 py-3 shadow-xl hover:-translate-y-0.5 transition-transform" />
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6">
-              <div class="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 pb-4">
-                <i class="pi pi-cog text-orange-500 text-xl"></i>
-                <h4 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Motor & Formulário</h4>
-              </div>
-
-              <div class="flex flex-col gap-2">
-                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Frequência do Robô de Disparos (Horas)</label>
-                <div class="flex items-center gap-3">
-                  <InputNumber v-model="regrasConfig.scheduler_horas" :min="1" :max="48" showButtons buttonLayout="horizontal" class="w-full custom-input" />
+          <div class="md:col-span-2 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col lg:flex-row">
+              
+              <div class="p-6 lg:p-8 flex-1 border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                <div class="flex items-center gap-3 mb-8">
+                  <div class="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-orange-500 shadow-sm shrink-0"><i class="pi pi-bolt text-lg"></i></div>
+                  <div>
+                    <h4 class="text-[12px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Motor & Contexto</h4>
+                    <p class="text-[9px] text-slate-400 font-medium mt-0.5">Cadência de envios e injeção de dados</p>
+                  </div>
                 </div>
-                <p class="text-[9px] text-slate-400 italic">O sistema verificará a fila de clientes elegíveis a cada {{ regrasConfig.scheduler_horas }} horas.</p>
+
+                <div class="space-y-6">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    
+                    <div class="flex flex-col gap-2">
+                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">1º Envio do Dia</label>
+                      <InputText v-model="regrasConfig.scheduler_hora_inicio" placeholder="09:00" class="w-full text-center font-bold text-[11px] !py-3 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-orange-500/20" />
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Repetir a cada</label>
+                      <InputNumber v-model="regrasConfig.scheduler_horas" :min="1" :max="48" suffix=" horas" class="w-full" inputClass="w-full text-center font-bold text-[11px] !py-3 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-orange-500/20" />
+                    </div>
+                    
+                    <div class="flex flex-col gap-2">
+                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Lembrete em</label>
+                      <InputNumber v-model="regrasConfig.lembrete_dias" :min="1" :max="30" suffix=" dias" class="w-full" inputClass="w-full text-center font-bold text-[11px] !py-3 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-orange-500/20" />
+                    </div>
+
+                  </div>
+
+                  <div class="flex flex-col gap-2 pt-2">
+                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1 flex items-center justify-between">
+                      Injeção de Dados (Hidden Fields)
+                      <i class="pi pi-info-circle text-slate-400" v-tooltip.top="'Variáveis invisíveis passadas para a URL do Fillout'"></i>
+                    </label>
+                    <MultiSelect v-model="regrasConfig.fillout_campos" :options="opcoesCamposFillout" optionLabel="label" optionValue="value" display="chip" placeholder="Selecione as variáveis" class="custom-input !bg-white dark:!bg-slate-900 !py-2 shadow-sm !rounded-xl" />
+                  </div>
+                </div>
               </div>
 
-              <div class="flex flex-col gap-2">
-                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Campos de Contexto (Link Fillout)</label>
-                <MultiSelect v-model="regrasConfig.fillout_campos" :options="opcoesCamposFillout" optionLabel="label" optionValue="value" display="chip" placeholder="Selecione as variáveis" class="custom-input !p-1" />
-                <p class="text-[9px] text-slate-400 italic">Estes dados serão injetados de forma invisível (Hidden Fields) na URL do formulário.</p>
+              <div class="p-6 lg:p-8 flex-1 bg-white dark:bg-slate-900 group hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                <div class="flex items-center gap-3 mb-8">
+                  <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-sm shrink-0"><i class="pi pi-stopwatch text-lg"></i></div>
+                  <div>
+                    <h4 class="text-[12px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Prazos de Resolução</h4>
+                    <p class="text-[9px] text-slate-400 font-medium mt-0.5">SLA de encerramento no Kanban</p>
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-3.5">
+                  <div class="flex items-center justify-between bg-white dark:bg-slate-800/80 p-3 pl-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-rose-500"></div>
+                    <div>
+                      <span class="text-[10px] font-black uppercase tracking-widest text-rose-500 block">Detratores</span>
+                      <span class="text-[9px] text-slate-400 font-medium mt-0.5 block">Prioridade Máxima</span>
+                    </div>
+                    <InputNumber v-model="regrasConfig.sla_detrator_dias" :min="1" suffix=" dias" class="w-24" inputClass="w-full text-center font-black text-[11px] text-rose-600 !bg-rose-50 dark:!bg-rose-500/10 !border-none !py-2.5 !rounded-lg" />
+                  </div>
+
+                  <div class="flex items-center justify-between bg-white dark:bg-slate-800/80 p-3 pl-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-500"></div>
+                    <div>
+                      <span class="text-[10px] font-black uppercase tracking-widest text-yellow-600 dark:text-yellow-500 block">Neutros</span>
+                      <span class="text-[9px] text-slate-400 font-medium mt-0.5 block">Atenção Moderada</span>
+                    </div>
+                    <InputNumber v-model="regrasConfig.sla_neutro_dias" :min="1" suffix=" dias" class="w-24" inputClass="w-full text-center font-black text-[11px] text-yellow-600 !bg-yellow-50 dark:!bg-yellow-500/10 !border-none !py-2.5 !rounded-lg" />
+                  </div>
+
+                  <div class="flex items-center justify-between bg-white dark:bg-slate-800/80 p-3 pl-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
+                    <div>
+                      <span class="text-[10px] font-black uppercase tracking-widest text-emerald-500 block">Promotores</span>
+                      <span class="text-[9px] text-slate-400 font-medium mt-0.5 block">Manutenção Padrão</span>
+                    </div>
+                    <InputNumber v-model="regrasConfig.sla_promotor_dias" :min="1" suffix=" dias" class="w-24" inputClass="w-full text-center font-black text-[11px] text-emerald-600 !bg-emerald-50 dark:!bg-emerald-500/10 !border-none !py-2.5 !rounded-lg" />
+                  </div>
+                </div>
+              </div>
+              
+            </div>
+
+            <div class="md:col-span-2 bg-white dark:bg-slate-900 p-2 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
+              <div class="bg-slate-950 rounded-[1.5rem] overflow-hidden border border-slate-800 shadow-2xl">
+                
+                <div class="flex flex-col md:flex-row justify-between items-center bg-slate-900 px-6 py-4 border-b border-slate-800 gap-4">
+                  <div class="flex items-center gap-3">
+                    <div class="flex gap-1.5"><div class="w-3 h-3 rounded-full bg-rose-500"></div><div class="w-3 h-3 rounded-full bg-yellow-500"></div><div class="w-3 h-3 rounded-full bg-emerald-500"></div></div>
+                    <div class="w-px h-4 bg-slate-700 mx-2"></div>
+                    <i class="pi pi-send text-sky-400 text-sm"></i>
+                    <h4 class="text-[11px] font-black uppercase tracking-widest text-white">HTML: E-mail de Convite</h4>
+                  </div>
+
+                  <div class="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                    <i class="pi pi-envelope text-slate-500 pl-2 text-[10px]"></i>
+                    <InputText v-model="emailTesteConvite" placeholder="E-mail de teste..." class="!border-none !shadow-none !bg-transparent !text-slate-300 !text-[10px] w-36 placeholder:text-slate-600" />
+                    <Button icon="pi pi-play" label="Executar Preview" :loading="loadingTesteConvite" @click="testarTemplateConvite" class="!bg-sky-500/20 !text-sky-400 hover:!bg-sky-500 hover:!text-white !border-none !rounded-lg !text-[9px] !font-black !uppercase !tracking-widest !px-3 !py-1.5 transition-all" />
+                  </div>
+                </div>
+
+                <div class="bg-slate-900/50 px-6 py-2 border-b border-slate-800 flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                  <span class="text-[9px] text-slate-500 font-bold uppercase tracking-widest shrink-0">Injetáveis:</span>
+                  <Tag value="{nome}" class="!bg-sky-900/40 !text-sky-300 !text-[9px] !font-mono border border-sky-800/50" />
+                  <Tag value="{empresa}" class="!bg-sky-900/40 !text-sky-300 !text-[9px] !font-mono border border-sky-800/50" />
+                  <Tag value="{survey_url}" class="!bg-rose-900/40 !text-rose-300 !text-[9px] !font-mono border border-rose-800/50" v-tooltip.top="'Obrigatório (Link do Botão)'" />
+                </div>
+
+                <Textarea v-model="regrasConfig.email_template_html" rows="12" :placeholder="modeloBaseConvite" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-sky-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
               </div>
             </div>
 
-            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6">
-              <div class="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 pb-4">
-                <i class="pi pi-stopwatch text-indigo-500 text-xl"></i>
-                <h4 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Prazos de Ação (SLA no Kanban)</h4>
-              </div>
+            <div class="md:col-span-2 bg-white dark:bg-slate-900 p-2 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
+              <div class="bg-slate-950 rounded-[1.5rem] overflow-hidden border border-slate-800 shadow-2xl">
+                
+                <div class="flex flex-col md:flex-row justify-between items-center bg-slate-900 px-6 py-4 border-b border-slate-800 gap-4">
+                  <div class="flex items-center gap-3">
+                    <div class="flex gap-1.5"><div class="w-3 h-3 rounded-full bg-rose-500"></div><div class="w-3 h-3 rounded-full bg-yellow-500"></div><div class="w-3 h-3 rounded-full bg-emerald-500"></div></div>
+                    <div class="w-px h-4 bg-slate-700 mx-2"></div>
+                    <i class="pi pi-history text-purple-400 text-sm"></i>
+                    <h4 class="text-[11px] font-black uppercase tracking-widest text-white">HTML: E-mail de Lembrete</h4>
+                  </div>
 
-              <div class="grid grid-cols-3 gap-4">
-                <div class="flex flex-col gap-2">
-                  <label class="text-[9px] font-black uppercase tracking-widest text-rose-500 ml-1">Detratores</label>
-                  <InputNumber v-model="regrasConfig.sla_detrator_dias" :min="1" suffix=" dias" class="custom-input !text-rose-600" />
+                  <div class="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                    <i class="pi pi-envelope text-slate-500 pl-2 text-[10px]"></i>
+                    <InputText v-model="emailTesteLembrete" placeholder="E-mail de teste..." class="!border-none !shadow-none !bg-transparent !text-slate-300 !text-[10px] w-36 placeholder:text-slate-600" />
+                    <Button icon="pi pi-play" label="Executar Preview" :loading="loadingTesteLembrete" @click="testarTemplateLembrete" class="!bg-purple-500/20 !text-purple-400 hover:!bg-purple-500 hover:!text-white !border-none !rounded-lg !text-[9px] !font-black !uppercase !tracking-widest !px-3 !py-1.5 transition-all" />
+                  </div>
                 </div>
-                <div class="flex flex-col gap-2">
-                  <label class="text-[9px] font-black uppercase tracking-widest text-yellow-500 ml-1">Neutros</label>
-                  <InputNumber v-model="regrasConfig.sla_neutro_dias" :min="1" suffix=" dias" class="custom-input !text-yellow-600" />
+
+                <div class="bg-slate-900/50 px-6 py-2 border-b border-slate-800 flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                  <span class="text-[9px] text-slate-500 font-bold uppercase tracking-widest shrink-0">Injetáveis:</span>
+                  <Tag value="{nome}" class="!bg-purple-900/40 !text-purple-300 !text-[9px] !font-mono border border-purple-800/50" />
+                  <Tag value="{empresa}" class="!bg-purple-900/40 !text-purple-300 !text-[9px] !font-mono border border-purple-800/50" />
+                  <Tag value="{survey_url}" class="!bg-rose-900/40 !text-rose-300 !text-[9px] !font-mono border border-rose-800/50" v-tooltip.top="'Obrigatório (Link do Botão)'" />
                 </div>
-                <div class="flex flex-col gap-2">
-                  <label class="text-[9px] font-black uppercase tracking-widest text-emerald-500 ml-1">Promotores</label>
-                  <InputNumber v-model="regrasConfig.sla_promotor_dias" :min="1" suffix=" dias" class="custom-input !text-emerald-600" />
-                </div>
+
+                <Textarea v-model="regrasConfig.email_template_lembrete" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
               </div>
-              <p class="text-[9px] text-slate-400 italic">Tempo limite para o gestor resolver a tarefa no painel de Auditoria.</p>
             </div>
 
-            <div class="md:col-span-2 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6">
-              <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
-                <div class="flex items-center gap-3">
-                  <i class="pi pi-envelope text-sky-500 text-xl"></i>
-                  <h4 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Template HTML do Convite</h4>
-                </div>
-                <span class="text-[9px] font-bold text-sky-500 bg-sky-50 dark:bg-sky-500/10 px-2 py-1 rounded">Variáveis: {nome}, {empresa}, {survey_url}</span>
-              </div>
+            <div class="md:col-span-2 bg-white dark:bg-slate-900 p-2 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
+              <div class="bg-slate-950 rounded-[1.5rem] overflow-hidden border border-slate-800 shadow-2xl">
+                
+                <div class="flex flex-col md:flex-row justify-between items-center bg-slate-900 px-6 py-4 border-b border-slate-800 gap-4">
+                  <div class="flex items-center gap-3">
+                    <div class="flex gap-1.5"><div class="w-3 h-3 rounded-full bg-rose-500"></div><div class="w-3 h-3 rounded-full bg-yellow-500"></div><div class="w-3 h-3 rounded-full bg-emerald-500"></div></div>
+                    <div class="w-px h-4 bg-slate-700 mx-2"></div>
+                    <i class="pi pi-reply text-emerald-400 text-sm"></i>
+                    <h4 class="text-[11px] font-black uppercase tracking-widest text-white">HTML: Close The Loop</h4>
+                  </div>
 
-              <Textarea v-model="regrasConfig.email_template_html" rows="10" placeholder="<html>...</html>" class="custom-input w-full font-mono text-[10px]" />
-            </div>
-
-            <div class="md:col-span-2 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6 mt-6">
-              <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
-                <div class="flex items-center gap-3">
-                  <i class="pi pi-check-circle text-emerald-500 text-xl"></i>
-                  <h4 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Template HTML de Agradecimento (Pós-Pesquisa)</h4>
+                  <div class="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                    <i class="pi pi-envelope text-slate-500 pl-2 text-[10px]"></i>
+                    <InputText v-model="emailTesteAgradecimento" placeholder="E-mail de teste..." class="!border-none !shadow-none !bg-transparent !text-slate-300 !text-[10px] w-36 placeholder:text-slate-600" />
+                    <Button icon="pi pi-play" label="Executar Preview" :loading="loadingTesteAgradecimento" @click="testarTemplateAgradecimento" class="!bg-emerald-500/20 !text-emerald-400 hover:!bg-emerald-500 hover:!text-white !border-none !rounded-lg !text-[9px] !font-black !uppercase !tracking-widest !px-3 !py-1.5 transition-all" />
+                  </div>
                 </div>
-                <span class="text-[9px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded shadow-sm">Variáveis: {nome}, {empresa}, {titulo}, {mensagem}, {nota}</span>
+
+                <div class="bg-slate-900/80 px-4 pt-3 border-b border-slate-800 flex gap-2 overflow-x-auto">
+                  <button @click="abaEmailAgradecimento = 'promotor'" :class="abaEmailAgradecimento === 'promotor' ? 'bg-slate-800 text-emerald-400 border-t-2 border-emerald-500' : 'text-slate-500 hover:bg-slate-800/50 border-t-2 border-transparent'" class="px-5 py-2.5 rounded-t-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                    <i class="pi pi-file text-[10px]"></i> Promotores.html
+                  </button>
+                  <button @click="abaEmailAgradecimento = 'neutro'" :class="abaEmailAgradecimento === 'neutro' ? 'bg-slate-800 text-yellow-400 border-t-2 border-yellow-500' : 'text-slate-500 hover:bg-slate-800/50 border-t-2 border-transparent'" class="px-5 py-2.5 rounded-t-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                    <i class="pi pi-file text-[10px]"></i> Neutros.html
+                  </button>
+                  <button @click="abaEmailAgradecimento = 'detrator'" :class="abaEmailAgradecimento === 'detrator' ? 'bg-slate-800 text-rose-400 border-t-2 border-rose-500' : 'text-slate-500 hover:bg-slate-800/50 border-t-2 border-transparent'" class="px-5 py-2.5 rounded-t-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                    <i class="pi pi-file text-[10px]"></i> Detratores.html
+                  </button>
+                </div>
+
+                <div class="bg-slate-800/50 px-6 py-2 border-b border-slate-800 flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                  <span class="text-[9px] text-slate-500 font-bold uppercase tracking-widest shrink-0">Injetáveis:</span>
+                  <Tag value="{nome}" class="!bg-emerald-900/30 !text-emerald-400 !text-[9px] !font-mono border border-emerald-800/50" />
+                  <Tag value="{empresa}" class="!bg-emerald-900/30 !text-emerald-400 !text-[9px] !font-mono border border-emerald-800/50" />
+                  <Tag value="{nota}" class="!bg-emerald-900/30 !text-emerald-400 !text-[9px] !font-mono border border-emerald-800/50" />
+                  <Tag value="{motivo}" class="!bg-orange-900/30 !text-orange-400 !text-[9px] !font-mono border border-orange-800/50" />
+                  <Tag value="{expectativas}" class="!bg-slate-700/50 !text-slate-400 !text-[9px] !font-mono border border-slate-600/50" />
+                  <Tag value="{o_que_faltava}" class="!bg-slate-700/50 !text-slate-400 !text-[9px] !font-mono border border-slate-600/50" />
+                </div>
+
+                <div v-show="abaEmailAgradecimento === 'promotor'" class="animate-fadein bg-slate-800/30">
+                  <Textarea v-model="regrasConfig.email_agradecimento_promotor" rows="12" :placeholder="modeloBaseAgradecimento" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-emerald-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+                </div>
+
+                <div v-show="abaEmailAgradecimento === 'neutro'" class="animate-fadein bg-slate-800/30">
+                  <Textarea v-model="regrasConfig.email_agradecimento_neutro" rows="12" :placeholder="modeloBaseAgradecimento" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-yellow-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+                </div>
+
+                <div v-show="abaEmailAgradecimento === 'detrator'" class="animate-fadein bg-slate-800/30">
+                  <Textarea v-model="regrasConfig.email_agradecimento_detrator" rows="12" :placeholder="modeloBaseAgradecimento" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-rose-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+                </div>
+
               </div>
-              <p class="text-[10px] text-slate-500 italic">O sistema irá injetar dinamicamente o texto de {titulo} e {mensagem} adequado (se o cliente for promotor, neutro ou detrator) dentro deste layout.</p>
-              <Textarea v-model="regrasConfig.email_agradecimento_html" rows="10" placeholder="<html>...</html>" class="custom-input w-full font-mono text-[10px]" />
             </div>
 
           </div>
-
-          <div class="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
-            <Button label="Guardar Regras" icon="pi pi-save" :loading="savingRegras" @click="salvarRegras" class="!bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none font-black text-xs uppercase tracking-widest px-6 py-3 shadow-xl hover:-translate-y-0.5 transition-transform" />
-          </div>
-
         </div>
       </TabPanel>
     </TabView>
@@ -1149,11 +1386,22 @@ onMounted(() => {
 .animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+/* Custom Scrollbar for the horizontal tags */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5); /* slate-800/50 */
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.8); /* slate-600/80 */
+  border-radius: 4px;
+}
+
 /* ==========================================
    🌟 TABS: REMOÇÃO DE MARGENS E FUNDOS
    ========================================== */
 
-/* 1. Neutraliza os fundos (Antigo) */
 :deep(.p-tabview), 
 :deep(.p-tabview-nav-container), 
 :deep(.p-tabview-nav-content), 
@@ -1165,37 +1413,33 @@ onMounted(() => {
 
 :deep(.p-tabview-panels) {
     background: transparent !important;
-    padding: 0 !important;   /* 👈 Remove a margem interna que empurra a tabela */
-    margin-top: -10px !important; /* 👈 Ajuste fino para "colar" a tabela nas abas */
+    padding: 0 !important;   
+    margin-top: -10px !important; 
 }
 
-/* 3. Ajuste das Abas (Botões) */
 :deep(.p-tabview-nav li) {
     background: transparent !important;
     border: none !important;
     margin-right: 6px !important;
-    margin-bottom: 0 !important; /* Garante que a lista não empurre o conteúdo */
+    margin-bottom: 0 !important; 
 }
 
 :deep(.p-tabview-nav li .p-tabview-nav-link) {
     @apply bg-slate-100 dark:bg-slate-800 text-slate-500 !important;
     border: none !important;
     border-radius: 12px !important;
-    padding: 10px 18px !important; /* Abas um pouco mais compactas */
+    padding: 10px 18px !important; 
     transition: all 0.2s ease !important;
 }
 
-/* Aba Ativa */
 :deep(.p-tabview-nav li.p-highlight .p-tabview-nav-link) {
     @apply bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md !important;
 }
 
-/* 4. Remove a linha de borda inferior do cabeçalho das abas */
 :deep(.p-tabview .p-tabview-nav) {
     border-bottom: none !important;
 }
 
-/* Customização dos Inputs e Modais (Mantido) */
 :deep(.custom-input) { 
     @apply bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 p-4 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-slate-800 dark:text-white; 
 }
