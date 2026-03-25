@@ -575,7 +575,8 @@ const regrasConfig = ref({
   sla_neutro_dias: 5,
   sla_promotor_dias: 7,
   fillout_campos: ['clienteId', 'email', 'nome', 'empresa', 'empresa_id'],
-  email_template_html: ''
+  email_template_html: '',
+  email_agradecimento_html: ''
 });
 
 const opcoesCamposFillout = ref([
@@ -1069,6 +1070,18 @@ onMounted(() => {
               </div>
 
               <Textarea v-model="regrasConfig.email_template_html" rows="10" placeholder="<html>...</html>" class="custom-input w-full font-mono text-[10px]" />
+            </div>
+
+            <div class="md:col-span-2 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6 mt-6">
+              <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
+                <div class="flex items-center gap-3">
+                  <i class="pi pi-check-circle text-emerald-500 text-xl"></i>
+                  <h4 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Template HTML de Agradecimento (Pós-Pesquisa)</h4>
+                </div>
+                <span class="text-[9px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded shadow-sm">Variáveis: {nome}, {empresa}, {titulo}, {mensagem}, {nota}</span>
+              </div>
+              <p class="text-[10px] text-slate-500 italic">O sistema irá injetar dinamicamente o texto de {titulo} e {mensagem} adequado (se o cliente for promotor, neutro ou detrator) dentro deste layout.</p>
+              <Textarea v-model="regrasConfig.email_agradecimento_html" rows="10" placeholder="<html>...</html>" class="custom-input w-full font-mono text-[10px]" />
             </div>
 
           </div>
