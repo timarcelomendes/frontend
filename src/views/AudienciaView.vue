@@ -392,6 +392,12 @@ const calcularStatusLembrete = (data_disparo) => {
   }
 };
 
+onMounted(() => {
+  carregarClientes();
+  carregarRegrasNPS();
+  pollingInterval = setInterval(sincronizarStatusRealTime, 3000); 
+});
+
 </script>
 
 <template>
