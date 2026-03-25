@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
 
@@ -465,6 +465,56 @@ const salvarSeguranca = async () => {
   }
 };
 
+// --- ESTADO: INTEGRAÇÕES (FILLOUT & TEAMS) ---
+const loadingIntegracoes = ref(false);
+const savingIntegracoes = ref(false);
+
+const integracoesConfig = ref({
+  teams_webhook_url: '',
+});
+
+// Calcula automaticamente o URL do webhook baseado no domínio atual onde o frontend está a correr
+// (Assumindo que a API está no mesmo domínio ou ajustado na sua variável base)
+const webhookFilloutURL = computed(() => {
+  // Ajuste se o seu backend estiver num domínio diferente do frontend
+  return `${config.value.base_url_frontend}/api/webhooks/fillout`;
+});
+
+const copiarWebhookFillout = async () => {
+  try {
+    await navigator.clipboard.writeText(webhookFilloutURL.value);
+    toast.add({ severity: 'success', summary: 'Copiado!', detail: 'URL do Webhook copiado para a área de transferência.', life: 3000 });
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível copiar o URL.', life: 3000 });
+  }
+};
+
+const carregarIntegracoes = async () => {
+  loadingIntegracoes.value = true;
+  try {
+    const res = await api.get('/config/integracoes');
+    if (res.data) {
+      integracoesConfig.value.teams_webhook_url = res.data.teams_webhook_url || '';
+    }
+  } catch (error) {
+    console.error("Erro ao carregar integrações", error);
+  } finally {
+    loadingIntegracoes.value = false;
+  }
+};
+
+const salvarIntegracoes = async () => {
+  savingIntegracoes.value = true;
+  try {
+    await api.post('/config/integracoes', integracoesConfig.value);
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Integrações atualizadas com sucesso!', life: 3000 });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar configurações de integração.', life: 5000 });
+  } finally {
+    savingIntegracoes.value = false;
+  }
+};
+
 // ==========================================
 // 🧹 LIMPEZA DE CACHE
 // ==========================================
@@ -483,19 +533,51 @@ const limparCacheNavegador = () => {
   }, 1500);
 };
 
+// --- ESTADO: MOTOR NPS ---
+const totalElegiveisNPS = ref(0);
+const loadingElegiveis = ref(false);
+const disparandoNPS = ref(false);
+
+const carregarElegiveisNPS = async () => {
+  loadingElegiveis.value = true;
+  try {
+    const res = await api.get('/config/nps/elegiveis');
+    totalElegiveisNPS.value = res.data.total;
+  } catch (error) {
+    console.error("Erro ao contar elegíveis", error);
+  } finally {
+    loadingElegiveis.value = false;
+  }
+};
+
+const forcarDisparoNPS = async () => {
+  disparandoNPS.value = true;
+  try {
+    await api.post('/config/nps/forcar-disparo');
+    toast.add({ severity: 'success', summary: 'Motor Iniciado', detail: 'Os e-mails estão a ser processados em segundo plano. Verifique os relatórios em breve.', life: 5000 });
+    // Recarrega a contagem após 3 segundos
+    setTimeout(() => carregarElegiveisNPS(), 3000); 
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao iniciar disparo.', life: 5000 });
+  } finally {
+    disparandoNPS.value = false;
+  }
+};
+
 onMounted(() => {
   carregarDadosConfig();
   carregarConfiguracoesAI();
   carregarUtilizadores();
   carregarSessoesReais();
   processarCallbackMicrosoft();
-  carregarSeguranca(); 
+  carregarSeguranca();
+  carregarElegiveisNPS();
 });
 
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto animate-fadein px-4 md:px-8 py-4">
+  <div class="max-w-6xl mx-auto animate-fadein px-4 md:px-8 py-4 relative">
     
     <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
       <div>
@@ -513,7 +595,6 @@ onMounted(() => {
       
       <TabPanel header="Geral">
         <div class="flex flex-col gap-6">
-          
           <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
             <div class="flex flex-col gap-2 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
               <label class="text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -526,7 +607,7 @@ onMounted(() => {
                 O sistema usa esta origem dinamicamente para o redirecionamento de segurança. Não é guardada no banco de dados para evitar conflitos entre Nuvem e Localhost.
               </p>
             </div>
-            </div>
+          </div>
 
           <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6 group transition-all hover:border-orange-200 dark:hover:border-orange-500/30">
             <div class="flex items-center gap-5">
@@ -547,11 +628,55 @@ onMounted(() => {
               class="!bg-white dark:!bg-slate-800 !text-orange-600 dark:!text-orange-400 !border-orange-200 dark:!border-orange-500/30 hover:!bg-orange-50 dark:hover:!bg-orange-500/20 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 w-full md:w-auto shrink-0 shadow-sm transition-all"
             />
           </div>
-          
         </div>
       </TabPanel>
 
-      <TabPanel header="Email">
+      <TabPanel header="Motor NPS">
+        <div class="p-2 space-y-8 animate-fadein">
+          <div>
+            <h3 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest mb-1">Robô de Disparos</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Faça a gestão dos disparos automáticos de pesquisas de satisfação (NPS).</p>
+          </div>
+
+          <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-5">
+              <div class="w-14 h-14 bg-white dark:bg-slate-700 shadow-sm rounded-2xl flex items-center justify-center">
+                <i class="pi pi-users text-2xl text-orange-500"></i>
+              </div>
+              <div>
+                <div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Fila de Espera Atual</div>
+                <div class="text-3xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                  <Skeleton v-if="loadingElegiveis" width="3rem" height="2rem" />
+                  <span v-else>{{ totalElegiveisNPS }}</span>
+                  <span class="text-xs font-bold text-slate-400 bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded-lg">Clientes Elegíveis</span>
+                </div>
+              </div>
+            </div>
+            
+            <Button icon="pi pi-refresh" @click="carregarElegiveisNPS" :loading="loadingElegiveis" class="!bg-white dark:!bg-slate-700 !text-slate-500 dark:!text-slate-300 !border-slate-200 dark:!border-slate-600 shadow-sm" v-tooltip.top="'Atualizar Fila'" />
+          </div>
+
+          <div class="border-t border-slate-100 dark:border-slate-800 pt-8 flex items-start gap-6">
+            <div class="flex-1">
+              <h4 class="text-sm font-bold text-slate-800 dark:text-white mb-2">Forçar Disparo Imediato</h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-xl">
+                O sistema dispara os convites automaticamente a cada 6 horas. Se precisar de adiantar o processo, clique no botão ao lado. O robô irá processar a fila de espera atual imediatamente em segundo plano.
+              </p>
+            </div>
+            
+            <Button 
+              label="Disparar Agora" 
+              icon="pi pi-send" 
+              @click="forcarDisparoNPS" 
+              :loading="disparandoNPS"
+              :disabled="totalElegiveisNPS === 0"
+              class="!bg-orange-500 !border-none !text-white font-black text-xs uppercase tracking-widest px-6 py-3 shadow-lg shadow-orange-500/30 hover:!bg-orange-600 transition-all hover:-translate-y-0.5" 
+            />
+          </div>
+        </div>
+      </TabPanel>
+
+      <TabPanel header="E-mail">
         <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 pb-6 border-b border-slate-50 dark:border-slate-800 gap-4">
             <div>
@@ -606,9 +731,8 @@ onMounted(() => {
         </div>
       </TabPanel>
 
-      <TabPanel header="Inteligência Artificial">
+      <TabPanel header="IA">
         <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-          
           <div class="flex justify-between items-start lg:items-center mb-8 pb-6 border-b border-slate-50 dark:border-slate-800 flex-col lg:flex-row gap-4">
             <div class="flex items-center gap-4 group">
               <div class="w-12 h-12 rounded-[1.2rem] bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20 shadow-sm group-hover:scale-105 group-hover:bg-emerald-500 group-hover:border-emerald-500 transition-all duration-300">
@@ -616,343 +740,261 @@ onMounted(() => {
                   <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A6.0651 6.0651 0 0 0 19.02 19.818a5.9847 5.9847 0 0 0 3.9977-2.9001 6.051 6.051 0 0 0-.7358-7.0967zm-14.5358 1.15l8.6046-4.9658a.4735.4735 0 0 0 .2368-.4114v-1.6384a4.4335 4.4335 0 0 1 2.3023 2.1264 4.3854 4.3854 0 0 1 .4943 2.91 4.4287 4.4287 0 0 1-1.7828 2.5029l-7.3732 4.2526a.4735.4735 0 0 1-.4736 0L1.75 11.23a4.4431 4.4431 0 0 1-.7864-3.1413 4.4093 4.4093 0 0 1 2.0124-2.671 4.4383 4.4383 0 0 1 3.2384-.3676v5.4855a1.6521 1.6521 0 0 0 .8258 1.429zm3.5042-7.394l8.6046 4.9658a.4735.4735 0 0 1 .2368.4114v6.864a4.4335 4.4335 0 0 0-1.808-2.4839 4.3854 4.3854 0 0 0-3.0487-.7146 4.4287 4.4287 0 0 0-2.4347 1.4552l-3.6866 6.386a.4735.4735 0 0 1-.4114.2368H2.174a4.4431 4.4431 0 0 0 2.4578-2.108 4.4093 4.4093 0 0 0 .1786-3.3243 4.4383 4.4383 0 0 0-2.228-2.383L10.05 4.5025a1.6521 1.6521 0 0 1 1.2003-.9256zm-1.8217 12.0031l-8.6046 4.9658a.4735.4735 0 0 0-.2368.4114v1.6384a4.4335 4.4335 0 0 1-2.3023-2.1264 4.3854 4.3854 0 0 1-.4943-2.91 4.4287 4.4287 0 0 1 1.7828-2.5029l7.3732-4.2526a.4735.4735 0 0 1 .4736 0l8.0044 4.6235a4.4431 4.4431 0 0 1 .7864 3.1413 4.4093 4.4093 0 0 1-2.0124 2.671 4.4383 4.4383 0 0 1-3.2384.3676v-5.4855a1.6521 1.6521 0 0 0-.8258-1.429zM12 15.1768a3.1768 3.1768 0 1 1 0-6.3536 3.1768 3.1768 0 0 1 0 6.3536z"/>
                 </svg>
               </div>
-              
               <div class="flex flex-col justify-center">
-                <h2 class="text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">
-                  Integração OpenAI
-                </h2>
-                <p class="text-[10px] md:text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest mt-0.5">
-                  Motor Preditivo do Magic AI Dashboard
-                </p>
+                <h2 class="text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Integração OpenAI</h2>
+                <p class="text-[10px] md:text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Motor Preditivo do Magic AI Dashboard</p>
               </div>
             </div>
-            <Button label="Guardar Configurações" icon="pi pi-save" @click="salvarConfiguracoesAI" :loading="savingAIConfig" class="w-full lg:w-auto !bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform" />
+            <Button label="Guardar" icon="pi pi-save" @click="salvarConfiguracoesAI" :loading="savingAIConfig" class="w-full lg:w-auto !bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform" />
           </div>
 
           <div class="space-y-6 max-w-3xl">
             <div class="flex flex-col gap-2">
               <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Chave de API (Secret Key)</label>
               <Password v-model="formConfigAI.openai_api_key" :feedback="false" toggleMask placeholder="sk-..." inputClass="custom-input !text-[12px] w-full" class="w-full" />
-              <small class="text-slate-400 italic font-medium ml-1">Nunca partilhe esta chave. Obtenha uma em <a href="https://platform.openai.com" target="_blank" class="text-orange-500 hover:underline">platform.openai.com</a></small>
+              <small class="text-slate-400 italic font-medium ml-1">Nunca partilhe esta chave. Obtenha uma em platform.openai.com</small>
             </div>
-
             <div class="flex flex-col gap-2">
               <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Motor de Processamento (Modelo)</label>
               <Dropdown v-model="formConfigAI.openai_model" :options="opcoesModeloIA" optionLabel="label" optionValue="value" class="custom-input !p-0 !text-[12px]" />
             </div>
-
             <div class="flex flex-col gap-2">
               <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Temperatura de Criatividade (0.0 a 1.0)</label>
               <InputText v-model="formConfigAI.ai_temperature" placeholder="0.4" class="custom-input !text-[12px] w-full md:w-1/3" />
-              <small class="text-slate-400 italic font-medium ml-1">Valores mais baixos (0.2 - 0.4) geram respostas mais analíticas e precisas.</small>
+            </div>
+          </div>
+        </div>
+      </TabPanel>
+
+      <TabPanel header="Utilizadores">
+        <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4 md:p-6 shadow-sm">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div>
+              <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Gestão de Utilizadores</h3>
+              <p class="text-[9px] text-slate-300 font-bold italic mt-1">Utilizadores registados no sistema</p>
+            </div>
+            <div class="flex gap-3 items-center w-full sm:w-auto">
+              <Button icon="pi pi-refresh" @click="carregarUtilizadores" :loading="carregandoUtilizadores" class="w-10 h-10 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !rounded-xl hover:!bg-slate-100 dark:hover:!bg-slate-700 transition-colors shadow-sm" />
+              <Button label="Novo Utilizador" icon="pi pi-user-plus" @click="abrirNovoUser" class="flex-1 sm:flex-none !bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-orange-500/30 hover:scale-105 transition-transform" />
+            </div>
+          </div>
+
+          <DataTable :value="utilizadores" responsiveLayout="stack" breakpoint="960px" class="p-datatable-sm custom-table" :rows="5" paginator rowHover>
+            <Column field="nome" header="Utilizador">
+              <template #body="s">
+                <div class="flex items-center gap-3">
+                  <span class="font-bold text-slate-800 dark:text-white">{{ s.data.nome }}</span>
+                  <Tag v-if="!s.data.ativo" value="Aguardando Aprovação" class="text-[10px] font-bold uppercase tracking-wider !bg-yellow-600 !text-white" rounded />
+                </div>
+              </template>
+            </Column>
+            <Column field="cargo" header="Cargo">
+              <template #body="s">
+                <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">{{ s.data.cargo || 'Analista' }}</span>
+              </template>
+            </Column>
+            <Column header="Perfil">
+              <template #body="s">
+                <Tag :value="s.data.tipo" :severity="s.data.tipo === 'Admin' ? 'danger' : 'info'" class="!text-[9px] !font-black !px-3 !py-1 uppercase tracking-widest !rounded-lg" />
+              </template>
+            </Column>
+            <Column header="Estado">
+              <template #body="s">
+                <div class="flex items-center gap-2">
+                  <div :class="['w-2 h-2 rounded-full', s.data.ativo ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-slate-300']"></div>
+                  <span class="text-[10px] font-black uppercase tracking-widest" :class="s.data.ativo ? 'text-emerald-500' : 'text-slate-400'">{{ s.data.ativo ? 'Ativo' : 'Inativo' }}</span>
+                </div>
+              </template>
+            </Column>
+            <Column field="ultimo_acesso" header="Último Acesso" sortable>
+              <template #body="{ data }">
+                <div class="flex items-center gap-2">
+                  <i class="pi pi-clock text-slate-400 text-[10px]"></i>
+                  <span :class="data.ultimo_acesso ? 'text-slate-600 dark:text-slate-300 font-medium' : 'text-slate-400 italic'">{{ formatarDataHora(data.ultimo_acesso) }}</span>
+                </div>
+              </template>
+            </Column>
+            <Column alignFrozen="right" style="width: 100px">
+              <template #body="s">
+                <div class="flex gap-2 justify-end">
+                  <Button icon="pi pi-pencil" @click="prepararEdicaoUser(s.data)" v-tooltip.top="'Editar Utilizador'" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" />
+                  <Button :icon="s.data.ativo ? 'pi pi-lock' : 'pi pi-unlock'" @click="alternarStatus(s.data)" v-tooltip.top="s.data.ativo ? 'Bloquear Acesso' : 'Desbloquear Acesso'" :class="['w-8 h-8 !border-none !text-[10px] rounded-lg transition-colors', s.data.ativo ? '!bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 hover:!bg-rose-500 hover:!text-white' : '!bg-emerald-50 dark:!bg-emerald-500/10 !text-emerald-500 hover:!bg-emerald-500 hover:!text-white']" />
+                </div>
+              </template>
+            </Column>
+            <template #empty>
+              <div class="text-center p-8 text-slate-400 text-[10px] font-black uppercase tracking-widest">Nenhum utilizador encontrado na base de dados.</div>
+            </template>
+          </DataTable>
+        </div>
+      </TabPanel>
+
+      <TabPanel header="Segurança">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div class="lg:col-span-4 space-y-6">
+            <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
+              <h3 class="text-[11px] font-black uppercase text-slate-800 dark:text-white tracking-widest mb-6 flex items-center gap-2">
+                <i class="pi pi-key text-orange-500"></i> Alterar Senha
+              </h3>
+              <div class="space-y-4">
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Senha Atual</label>
+                  <Password v-model="formSenha.atual" toggleMask :feedback="false" inputClass="custom-input !text-[12px] w-full" class="w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nova Senha</label>
+                  <Password v-model="formSenha.nova" toggleMask inputClass="custom-input !text-[12px] w-full" class="w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5 pb-4">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirmar Nova Senha</label>
+                  <Password v-model="formSenha.confirmacao" toggleMask :feedback="false" inputClass="custom-input !text-[12px] w-full" class="w-full" />
+                </div>
+                <Button label="Atualizar Senha" @click="alterarMinhaSenha" :loading="loadingSenha" class="w-full !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 shadow-xl hover:scale-[1.02] transition-transform" />
+              </div>
             </div>
           </div>
           
-        </div>
-      </TabPanel>
-
-        <TabPanel header="Utilizadores">
-            <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4 md:p-6 shadow-sm">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <div class="lg:col-span-8 space-y-6">
+            <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
+              <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
-                <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Gestão de Utilizadores</h3>
-                <p class="text-[9px] text-slate-300 font-bold italic mt-1">Utilizadores registados no sistema</p>
+                  <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Regras de Acesso</h3>
+                  <p class="text-[9px] text-slate-400 font-bold italic mt-1">Tempo limite de inatividade</p>
                 </div>
-                <div class="flex gap-3 items-center w-full sm:w-auto">
-                <Button icon="pi pi-refresh" @click="carregarUtilizadores" :loading="carregandoUtilizadores" class="w-10 h-10 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !rounded-xl hover:!bg-slate-100 dark:hover:!bg-slate-700 transition-colors shadow-sm" />
-                <Button label="Novo Utilizador" icon="pi pi-user-plus" @click="abrirNovoUser" class="flex-1 sm:flex-none !bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-orange-500/30 hover:scale-105 transition-transform" />
+              </div>
+              <div class="flex flex-col gap-2 max-w-xl">
+                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Tempo de Expiração da Sessão</label>
+                <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                  <InputNumber v-model="configSeguranca.tempo_minutos" inputId="tempo_sessao" :min="5" :max="1440" suffix=" minutos" class="w-full sm:w-48" inputClass="custom-input !text-[12px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10" />
+                  <Button label="Guardar Regra" icon="pi pi-save" class="w-full sm:w-auto !bg-indigo-600 !border-none hover:!bg-indigo-700 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform px-6 py-4 sm:py-3" @click="salvarSeguranca" :loading="salvandoSeguranca" />
                 </div>
+              </div>
             </div>
 
-            <DataTable :value="utilizadores" responsiveLayout="stack" breakpoint="960px" class="p-datatable-sm custom-table" :rows="5" paginator rowHover>
-                <Column field="nome" header="Utilizador">
-                  <template #body="s">
-                    <div class="flex items-center gap-3">
-                      <span class="font-bold text-slate-800 dark:text-white">
-                        {{ s.data.nome }}
-                      </span>
-                      
-                      <Tag 
-                        v-if="!s.data.ativo" 
-                        value="Aguardando Aprovação" 
-                        class="text-[10px] font-bold uppercase tracking-wider !bg-yellow-600 !text-white" 
-                        rounded
-                      />
-                    </div>
-                  </template>
-                </Column>
-
-                <Column field="cargo" header="Cargo">
-                  <template #body="s">
-                    <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">
-                      {{ s.data.cargo || 'Analista' }}
-                    </span>
-                  </template>
-                </Column>
-
-                <Column header="Perfil">
-                <template #body="s">
-                    <Tag :value="s.data.tipo" 
-                        :severity="s.data.tipo === 'Admin' ? 'danger' : 'info'" 
-                        class="!text-[9px] !font-black !px-3 !py-1 uppercase tracking-widest !rounded-lg" />
-                </template>
-                </Column>
-
-                <Column header="Estado">
-                <template #body="s">
-                    <div class="flex items-center gap-2">
-                    <div :class="['w-2 h-2 rounded-full', s.data.ativo ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-slate-300']"></div>
-                    <span class="text-[10px] font-black uppercase tracking-widest" :class="s.data.ativo ? 'text-emerald-500' : 'text-slate-400'">
-                        {{ s.data.ativo ? 'Ativo' : 'Inativo' }}
-                    </span>
-                    </div>
-                </template>
-                </Column>
-
-                <Column field="ultimo_acesso" header="Último Acesso" sortable>
-                  <template #body="{ data }">
-                    <div class="flex items-center gap-2">
-                      <i class="pi pi-clock text-slate-400 text-[10px]"></i>
-                      <span :class="data.ultimo_acesso ? 'text-slate-600 dark:text-slate-300 font-medium' : 'text-slate-400 italic'">
-                        {{ formatarDataHora(data.ultimo_acesso) }}
-                      </span>
-                    </div>
-                  </template>
-                </Column>
-
-                <Column alignFrozen="right" style="width: 100px">
-                  <template #body="s">
-                    <div class="flex gap-2 justify-end">
-                      <Button 
-                        icon="pi pi-pencil" 
-                        @click="prepararEdicaoUser(s.data)" 
-                        v-tooltip.top="'Editar Utilizador'"
-                        class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" 
-                      />
-                      
-                      <Button 
-                        :icon="s.data.ativo ? 'pi pi-lock' : 'pi pi-unlock'" 
-                        @click="alternarStatus(s.data)" 
-                        v-tooltip.top="s.data.ativo ? 'Bloquear Acesso' : 'Desbloquear Acesso'"
-                        :class="[
-                          'w-8 h-8 !border-none !text-[10px] rounded-lg transition-colors',
-                          s.data.ativo 
-                            ? '!bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 hover:!bg-rose-500 hover:!text-white' 
-                            : '!bg-emerald-50 dark:!bg-emerald-500/10 !text-emerald-500 hover:!bg-emerald-500 hover:!text-white'
-                        ]" 
-                      />
-                    </div>
-                  </template>
-                </Column>
-
-                <template #empty>
-                <div class="text-center p-8 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-                    Nenhum utilizador encontrado na base de dados.
+            <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm h-full">
+              <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                  <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Controlo de Dispositivos</h3>
+                  <p class="text-[9px] text-slate-400 font-bold italic mt-1">Sessões ativas no momento</p>
                 </div>
-                </template>
-            </DataTable>
-            </div>
-        </TabPanel>
-
-        <TabPanel header="Segurança">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            <div class="lg:col-span-4 space-y-6">
-              <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                  <h3 class="text-[11px] font-black uppercase text-slate-800 dark:text-white tracking-widest mb-6 flex items-center gap-2">
-                  <i class="pi pi-key text-orange-500"></i> Alterar Senha
-                  </h3>
-
-                  <div class="space-y-4">
-                  <div class="flex flex-col gap-1.5">
-                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Senha Atual</label>
-                      <Password v-model="formSenha.atual" toggleMask :feedback="false" inputClass="custom-input !text-[12px] w-full" class="w-full" />
-                  </div>
-
-                  <div class="flex flex-col gap-1.5">
-                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nova Senha</label>
-                      <Password v-model="formSenha.nova" toggleMask inputClass="custom-input !text-[12px] w-full" class="w-full" />
-                  </div>
-
-                  <div class="flex flex-col gap-1.5 pb-4">
-                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirmar Nova Senha</label>
-                      <Password v-model="formSenha.confirmacao" toggleMask :feedback="false" inputClass="custom-input !text-[12px] w-full" class="w-full" />
-                  </div>
-
-                  <Button label="Atualizar Senha" @click="alterarMinhaSenha" :loading="loadingSenha"
-                      class="w-full !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 shadow-xl hover:scale-[1.02] transition-transform" />
-                  </div>
+                <Button v-if="sessoesAtivas.length > 1" label="Encerrar Outras Sessões" icon="pi pi-bolt" @click="encerrarTodasAsSessoes" :loading="loadingSessoes" class="w-full md:w-auto !bg-rose-50 dark:!bg-rose-500/10 !text-rose-600 dark:!text-rose-400 !border-none !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 !rounded-xl hover:!bg-rose-600 hover:!text-white transition-all shadow-sm hover:scale-105" />
               </div>
-              
-              <div class="bg-slate-900 rounded-[2rem] p-6 md:p-8 text-white overflow-hidden relative shadow-xl">
-                  <i class="pi pi-shield absolute -right-4 -bottom-4 text-8xl opacity-10"></i>
-                  <h4 class="text-[12px] font-black uppercase tracking-widest mb-3 text-orange-400">Autenticação 2FA</h4>
-                  <p class="text-[11px] text-slate-400 mb-6 font-medium leading-relaxed">Adicione uma camada extra de proteção via Authenticator.</p>
-                  <Button label="Configurar MFA" class="!bg-white !text-slate-900 !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 !rounded-xl !border-none shadow-lg hover:scale-105 transition-transform" />
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div v-for="sessao in sessoesAtivas" :key="sessao.id" class="p-5 rounded-[2rem] border border-slate-50 dark:border-slate-800 flex flex-col gap-4 relative transition-all" :class="sessao.atual ? 'bg-orange-50/30 border-orange-100 shadow-inner' : 'bg-white dark:bg-slate-900 shadow-sm'">
+                  <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm shrink-0" :class="sessao.atual ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'">
+                      <i :class="[sessao.dispositivo.includes('iPhone') ? 'pi pi-mobile' : 'pi pi-desktop']"></i>
+                    </div>
+                    <div class="overflow-hidden">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <h4 class="text-[11px] font-bold text-slate-800 dark:text-white truncate">{{ sessao.dispositivo }}</h4>
+                        <Tag v-if="sessao.atual" value="Este Dispositivo" severity="warning" class="!text-[8px] !px-2 !font-black !uppercase !tracking-widest" />
+                      </div>
+                      <p class="text-[9px] text-slate-400 font-medium tracking-tight truncate">{{ sessao.local }} • {{ sessao.ip }}</p>
+                    </div>
+                  </div>
+                  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-3 border-t border-slate-100 dark:border-slate-800 gap-2">
+                    <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">{{ sessao.data }}</span>
+                    <Button v-if="!sessao.atual" icon="pi pi-sign-out" label="Revogar" @click="encerrarSessao(sessao.id)" class="!text-[9px] !font-black !p-0 !text-rose-400 !bg-transparent !border-none hover:!text-rose-600 uppercase tracking-widest" />
+                  </div>
+                </div>
               </div>
             </div>
-
-            <div class="lg:col-span-8 space-y-6">
-              
-              <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                      <div>
-                          <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Regras de Acesso</h3>
-                          <p class="text-[9px] text-slate-400 font-bold italic mt-1">Tempo limite de inatividade</p>
-                      </div>
-                  </div>
-
-                  <div class="flex flex-col gap-2 max-w-xl">
-                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Tempo de Expiração da Sessão</label>
-                      <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                          <InputNumber 
-                              v-model="configSeguranca.tempo_minutos" 
-                              inputId="tempo_sessao" 
-                              :min="5" 
-                              :max="1440" 
-                              suffix=" minutos" 
-                              class="w-full sm:w-48"
-                              inputClass="custom-input !text-[12px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10" 
-                          />
-                          <Button 
-                              label="Guardar Regra" 
-                              icon="pi pi-save" 
-                              class="w-full sm:w-auto !bg-indigo-600 !border-none hover:!bg-indigo-700 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform px-6 py-4 sm:py-3" 
-                              @click="salvarSeguranca" 
-                              :loading="salvandoSeguranca"
-                          />
-                      </div>
-                      <p class="text-[10px] text-slate-400 font-medium mt-2 leading-relaxed">
-                          <i class="pi pi-info-circle mr-1"></i> Desconecta automaticamente utilizadores inativos. Máximo permitido: 1440 min (24 horas).
-                      </p>
-                  </div>
-              </div>
-
-              <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm h-full">
-                  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                  <div>
-                      <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Controlo de Dispositivos</h3>
-                      <p class="text-[9px] text-slate-400 font-bold italic mt-1">Sessões ativas no momento</p>
-                  </div>
-                  <Button 
-                      v-if="sessoesAtivas.length > 1"
-                      label="Encerrar Outras Sessões" 
-                      icon="pi pi-bolt" 
-                      @click="encerrarTodasAsSessoes"
-                      :loading="loadingSessoes"
-                      class="w-full md:w-auto !bg-rose-50 dark:!bg-rose-500/10 !text-rose-600 dark:!text-rose-400 !border-none !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 !rounded-xl hover:!bg-rose-600 hover:!text-white transition-all shadow-sm hover:scale-105" 
-                  />
-                  </div>
-
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div v-for="sessao in sessoesAtivas" :key="sessao.id" 
-                      class="p-5 rounded-[2rem] border border-slate-50 dark:border-slate-800 flex flex-col gap-4 relative transition-all"
-                      :class="sessao.atual ? 'bg-orange-50/30 border-orange-100 shadow-inner' : 'bg-white dark:bg-slate-900 shadow-sm'">
-                      
-                      <div class="flex items-center gap-4">
-                      <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm shrink-0"
-                          :class="sessao.atual ? 'bg-orange-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'">
-                          <i :class="[sessao.dispositivo.includes('iPhone') ? 'pi pi-mobile' : 'pi pi-desktop']"></i>
-                      </div>
-                      <div class="overflow-hidden">
-                          <div class="flex items-center gap-2 flex-wrap">
-                          <h4 class="text-[11px] font-bold text-slate-800 dark:text-white truncate">{{ sessao.dispositivo }}</h4>
-                          <Tag v-if="sessao.atual" value="Este Dispositivo" severity="warning" class="!text-[8px] !px-2 !font-black !uppercase !tracking-widest" />
-                          </div>
-                          <p class="text-[9px] text-slate-400 font-medium tracking-tight truncate">{{ sessao.local }} • {{ sessao.ip }}</p>
-                      </div>
-                      </div>
-
-                      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-3 border-t border-slate-100 dark:border-slate-800 gap-2">
-                      <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">{{ sessao.data }}</span>
-                      <Button v-if="!sessao.atual" 
-                              icon="pi pi-sign-out" 
-                              label="Revogar"
-                              @click="encerrarSessao(sessao.id)"
-                              class="!text-[9px] !font-black !p-0 !text-rose-400 !bg-transparent !border-none hover:!text-rose-600 uppercase tracking-widest" />
-                      </div>
-                  </div>
-                  </div>
-
-                  <div class="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                  <p class="text-[9px] text-slate-400 font-medium text-center uppercase tracking-widest">
-                      <i class="pi pi-info-circle mr-1"></i> Se encontrar um dispositivo que não reconhece, altere a senha imediatamente.
-                  </p>
-                  </div>
-              </div>
-            </div>
-
+          </div>
         </div>
       </TabPanel>
 
+      <TabPanel header="Integrações">
+        <div class="p-2 space-y-8 animate-fadein">
+          <div>
+            <h3 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest mb-1">Integrações de Sistema</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Ligue o Hub de NPS a ferramentas externas como formulários e canais de comunicação.</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between relative overflow-hidden group">
+              <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="pi pi-file-edit text-9xl text-slate-900 dark:text-white"></i></div>
+              <div>
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-10 h-10 bg-white dark:bg-slate-700 shadow-sm rounded-xl flex items-center justify-center"><span class="text-xl font-black text-slate-800 dark:text-white">F</span></div>
+                  <div><h4 class="text-sm font-black text-slate-800 dark:text-white">Fillout Forms</h4><p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Receção de Respostas</p></div>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">Copie o URL abaixo e cole-o nas configurações do seu formulário Fillout (<strong>Integrations > Webhooks</strong>). Isto fará com que o Fillout envie as respostas diretamente para o nosso sistema.</p>
+                <div class="flex flex-col gap-2">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">URL do Webhook (POST)</label>
+                  <div class="flex relative">
+                    <InputText v-model="webhookFilloutURL" readonly class="custom-input !w-full !pr-12 !bg-white dark:!bg-slate-900 !text-slate-400 !cursor-copy" @click="copiarWebhookFillout" />
+                    <Button icon="pi pi-copy" @click="copiarWebhookFillout" class="!absolute !right-2 !top-2 !w-8 !h-8 !p-0 !bg-slate-100 dark:!bg-slate-800 !text-slate-500 !border-none hover:!bg-orange-50 hover:!text-orange-500" v-tooltip.top="'Copiar URL'" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between relative overflow-hidden group">
+              <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="pi pi-microsoft text-9xl text-slate-900 dark:text-white"></i></div>
+              <div>
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-10 h-10 bg-indigo-50 dark:bg-indigo-500/20 shadow-sm rounded-xl flex items-center justify-center"><i class="pi pi-microsoft text-indigo-500 text-xl"></i></div>
+                  <div><h4 class="text-sm font-black text-slate-800 dark:text-white">Microsoft Teams</h4><p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Notificações e Alertas</p></div>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">Insira o URL do <strong>Incoming Webhook</strong> configurado no canal do seu Microsoft Teams. O sistema enviará "Adaptive Cards" automáticos sempre que houver um novo feedback.</p>
+                <div class="flex flex-col gap-2">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">URL do Webhook (Teams)</label>
+                  <InputText v-model="integracoesConfig.teams_webhook_url" placeholder="https://gauge-team.webhook.office.com/..." class="custom-input !w-full !bg-white dark:!bg-slate-900" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button label="Guardar Integrações" icon="pi pi-save" :loading="savingIntegracoes" @click="salvarIntegracoes" class="!bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none font-black text-xs uppercase tracking-widest px-6 py-3 shadow-xl hover:-translate-y-0.5 transition-transform" />
+          </div>
+        </div>
+      </TabPanel>
     </TabView>
 
-<Dialog v-model:visible="usuarioDialog" :header="editandoUser ? 'Editar Utilizador' : 'Novo Utilizador'" :modal="true" class="custom-dialog w-[95vw] sm:w-[80vw] md:w-[50vw] max-w-lg" @hide="usuarioDialog = false">
-    <div class="p-4 sm:p-6 md:p-8 space-y-5">
+    <Dialog v-model:visible="usuarioDialog" :header="editandoUser ? 'Editar Utilizador' : 'Novo Utilizador'" :modal="true" class="custom-dialog w-[95vw] sm:w-[80vw] md:w-[50vw] max-w-lg">
+      <div class="p-4 sm:p-6 md:p-8 space-y-5">
         <div class="flex flex-col gap-1.5">
-            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nome Completo</label>
-            <InputText v-model="usuario.nome" class="custom-input" placeholder="Ex: Marcelo Mendes" />
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nome Completo</label>
+          <InputText v-model="usuario.nome" class="custom-input" placeholder="Ex: Marcelo Mendes" />
         </div>
-
         <div class="flex flex-col gap-1.5">
-            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">E-mail Corporativo</label>
-            <InputText v-model="usuario.email" class="custom-input" placeholder="nome@empresa.com" />
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">E-mail Corporativo</label>
+          <InputText v-model="usuario.email" class="custom-input" placeholder="nome@empresa.com" />
         </div>
-
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="flex flex-col gap-1.5">
-                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Perfil de Acesso</label>
-                <Dropdown v-model="usuario.tipo" :options="['Admin', 'Editor', 'Viewer']" class="custom-dropdown" />
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Perfil de Acesso</label>
+            <Dropdown v-model="usuario.tipo" :options="opcoesTipo" class="custom-dropdown" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Status</label>
+            <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 h-[42px] px-4 rounded-xl border border-slate-100 dark:border-slate-800">
+              <InputSwitch v-model="usuario.ativo" />
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">{{ usuario.ativo ? 'Ativo' : 'Inativo' }}</span>
             </div>
-
-            <div class="flex flex-col gap-1.5">
-                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Status</label>
-                <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 h-[42px] px-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <InputSwitch v-model="usuario.ativo" />
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                        {{ usuario.ativo ? 'Ativo' : 'Inativo' }}
-                    </span>
-                </div>
-            </div>
+          </div>
         </div>
-
         <div class="flex flex-col gap-1.5">
-            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Cargo / Função na Empresa</label>
-            <InputText v-model="usuario.cargo" class="custom-input w-full" placeholder="Ex: Diretor de Operações" />
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Cargo / Função na Empresa</label>
+          <InputText v-model="usuario.cargo" class="custom-input w-full" placeholder="Ex: Diretor de Operações" />
         </div>
-
         <div v-if="editandoUser && !mostrarTrocaSenha" class="pt-2">
-            <Button 
-                label="Redefinir Palavra-passe" 
-                icon="pi pi-key" 
-                class="p-button-text p-button-sm !text-orange-600 !font-bold" 
-                @click="mostrarTrocaSenha = true" 
-            />
+          <Button label="Redefinir Palavra-passe" icon="pi pi-key" class="p-button-text p-button-sm !text-orange-600 !font-bold" @click="mostrarTrocaSenha = true" />
         </div>
-
         <div v-if="!editandoUser || mostrarTrocaSenha" class="flex flex-col gap-1.5 animate-fade-in">
-            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                {{ editandoUser ? 'Nova Palavra-passe' : 'Palavra-passe Inicial' }}
-            </label>
-            <div class="flex gap-2">
-                <Password v-model="usuario.password" toggleMask :feedback="false" class="flex-1" inputClass="custom-input w-full" placeholder="Mínimo 8 caracteres" />
-                <Button 
-                    icon="pi pi-refresh" 
-                    @click="gerarSenhaAleatoria" 
-                    v-tooltip.top="'Gerar Senha'"
-                    class="!bg-slate-800 !border-none !rounded-xl !w-[48px] !h-[42px] flex-shrink-0" 
-                />
-            </div>
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">{{ editandoUser ? 'Nova Palavra-passe' : 'Palavra-passe Inicial' }}</label>
+          <div class="flex gap-2">
+            <Password v-model="usuario.password" toggleMask :feedback="false" class="flex-1" inputClass="custom-input w-full" placeholder="Mínimo 8 caracteres" />
+            <Button icon="pi pi-refresh" @click="gerarSenhaAleatoria" v-tooltip.top="'Gerar Senha'" class="!bg-slate-800 !border-none !rounded-xl !w-[48px] !h-[42px] flex-shrink-0 text-white" />
+          </div>
         </div>
-    </div>
-
-    <template #footer>
+      </div>
+      <template #footer>
         <div class="flex gap-3 justify-end px-4 sm:px-6 md:px-8 pb-4 sm:pb-6 md:pb-8">
-            <Button label="Cancelar" icon="pi pi-times" class="p-button-text !text-slate-500 !font-bold" @click="usuarioDialog = false" />
-            <Button :label="editandoUser ? 'Atualizar' : 'Criar Utilizador'" icon="pi pi-check" :loading="submetendoUser" class="!bg-orange-600 !border-none !rounded-xl !px-6 !font-black !uppercase !text-[11px] tracking-widest" @click="salvarUtilizador" />
+          <Button label="Cancelar" icon="pi pi-times" class="p-button-text !text-slate-500 !font-bold" @click="usuarioDialog = false" />
+          <Button :label="editandoUser ? 'Atualizar' : 'Criar Utilizador'" icon="pi pi-check" :loading="submetendoUser" class="!bg-orange-600 !text-white !border-none !rounded-xl !px-6 !font-black !uppercase !text-[11px] tracking-widest" @click="salvarUtilizador" />
         </div>
-    </template>
-</Dialog>
+      </template>
+    </Dialog>
 
   </div>
 </template>
