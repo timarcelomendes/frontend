@@ -29,16 +29,11 @@ const gestores = ref([{ label: 'Todos', value: null }]);
 const companhias = ref([{ label: 'Todas', value: null }]); 
 const filtroGestor = ref(null);
 const filtroCompanhia = ref(null); 
+const mostrarApenasAmanha = ref(false);
 
 const enviandoEmail = ref(false);
 const idsEnviando = ref([]); 
 const clientesSelecionados = ref([]);
-
-// Inteligência Artificial
-const planoDialog = ref(false);
-const carregandoPlano = ref(false);
-const planoTexto = ref('');
-const empresaSelecionada = ref('');
 
 // ==========================================
 // 🔍 2. FILTROS E PESQUISA
@@ -86,28 +81,28 @@ const clientesFiltrados = computed(() => {
     
     // 1. Filtro de Status
     let matchesStatus = true;
-    if (filtroStatus.value) {
+    if (typeof filtroStatus !== 'undefined' && filtroStatus.value) {
       const st = (c.status_envio || 'Pendente').trim().toLowerCase();
       matchesStatus = st === filtroStatus.value.toLowerCase();
     }
 
     // 2. Filtro de Gestor
     let matchesGestor = true;
-    if (filtroGestor.value) {
+    if (typeof filtroGestor !== 'undefined' && filtroGestor.value && filtroGestor.value !== 'Todos') {
       matchesGestor = c.gestor === filtroGestor.value;
     }
 
     // 3. Filtro de Companhia
     let matchesCompanhia = true;
-    if (filtroCompanhia.value) {
+    if (typeof filtroCompanhia !== 'undefined' && filtroCompanhia.value && filtroCompanhia.value !== 'Todas') {
       const empresaObj = empresas.value.find(e => e.nome === c.empresa);
       const companhiaDoCliente = empresaObj ? empresaObj.companhia : null;
       matchesCompanhia = companhiaDoCliente === filtroCompanhia.value;
     }
 
-    // 4. Filtro de Datas
+    // 4. Filtro de Datas (Calendário)
     let matchesDate = true;
-    if (filtroDataInicio.value || filtroDataFim.value) {
+    if (typeof filtroDataInicio !== 'undefined' && (filtroDataInicio.value || filtroDataFim.value)) {
       const dataAlvoStr = c[filtroTipoData.value];
       
       if (!dataAlvoStr || dataAlvoStr === 'None' || dataAlvoStr === 'null') {
@@ -128,8 +123,21 @@ const clientesFiltrados = computed(() => {
         }
       }
     }
+
+    // 5. NOVA LÓGICA: Filtro de Lembrete Amanhã (Independente)
+    let matchesAmanha = true;
+    if (typeof mostrarApenasAmanha !== 'undefined' && mostrarApenasAmanha.value) {
+      if ((c.status_envio || '').toLowerCase() === 'enviado' && c.ultimo_envio) {
+        const statusLemb = calcularStatusLembrete(c.ultimo_envio);
+        // Só mantém se o cálculo retornar exatamente "Amanhã"
+        matchesAmanha = statusLemb && statusLemb.texto.includes('Amanhã');
+      } else {
+        matchesAmanha = false; // Se não foi enviado, não tem lembrete para amanhã
+      }
+    }
     
-    return matchesStatus && matchesDate && matchesGestor && matchesCompanhia; 
+    // Retorna o cliente apenas se ele passar em todos os filtros ativos
+    return matchesStatus && matchesDate && matchesGestor && matchesCompanhia && matchesAmanha;
   });
 });
 
@@ -185,26 +193,6 @@ const carregarClientes = async () => {
   } catch (e) {}
   
   loading.value = false;
-};
-
-// Polling Inteligente que OBRIGA a reatividade do Vue
-const sincronizarStatusRealTime = async () => {
-  try {
-    const response = await api.get('/clientes', {
-      params: { _t: new Date().getTime() }, 
-      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' }
-    });
-    
-    const idsSelecionados = clientesSelecionados.value.map(c => c.cliente_id);
-
-    clientes.value = [...response.data];
-
-    if (idsSelecionados.length > 0) {
-      clientesSelecionados.value = clientes.value.filter(c => idsSelecionados.includes(c.cliente_id));
-    }
-  } catch (error) {
-    console.error("Falha ao sincronizar real-time:", error);
-  }
 };
 
 onMounted(() => {
@@ -335,20 +323,40 @@ const gerarIniciais = (nome) => {
   return partes.length > 1 ? (partes[0][0] + partes[partes.length - 1][0]).toUpperCase() : partes[0][0].toUpperCase();
 };
 
-const gerarPlano = async (empresa) => {
-    if (!empresa || empresa === 'Sem Empresa') return toast.add({ severity: 'warn', summary: 'Atenção', detail: 'O cliente precisa de empresa.', life: 3000 });
-    empresaSelecionada.value = empresa; planoDialog.value = true;
-    const chaveCache = `nps_ai_plano_${empresa}`;
-    if (sessionStorage.getItem(chaveCache)) { planoTexto.value = sessionStorage.getItem(chaveCache); return; }
-    carregandoPlano.value = true;
-    try {
-        const res = await api.get(`/audiencia/plano-acao?empresa=${encodeURIComponent(empresa)}`);
-        sessionStorage.setItem(chaveCache, res.data.plano); planoTexto.value = res.data.plano;
-    } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha no Gauge AI', life: 3000 }); planoDialog.value = false; } 
-    finally { carregandoPlano.value = false; }
+// ==========================================
+// ⚡ AÇÕES PENDENTES (Sincronizado com Kanban)
+// ==========================================
+const acoesAtivas = ref([]);
+
+const verificarAcoes = (empresa) => {
+  if (!empresa) return false;
+  // Verifica se a empresa do cliente tem alguma ação pendente ou em andamento no Kanban
+  return acoesAtivas.value.some(a => a.empresa_nome === empresa);
 };
 
-const recarregarPlano = (empresa) => { sessionStorage.removeItem(`nps_ai_plano_${empresa}`); gerarPlano(empresa); };
+// Polling Inteligente que OBRIGA a reatividade do Vue e lê o Kanban
+const sincronizarStatusRealTime = async () => {
+  try {
+    const [response, resAcoes] = await Promise.all([
+      api.get('/clientes', { params: { _t: new Date().getTime() }, headers: { 'Cache-Control': 'no-cache' } }),
+      api.get('/acoes') // 👈 Vai buscar o Kanban em tempo real
+    ]);
+    
+    const idsSelecionados = clientesSelecionados.value.map(c => c.cliente_id);
+    clientes.value = [...response.data];
+
+    if (idsSelecionados.length > 0) {
+      clientesSelecionados.value = clientes.value.filter(c => idsSelecionados.includes(c.cliente_id));
+    }
+    
+    // Filtra apenas as ações que não estão concluídas
+    if (resAcoes.data) {
+      acoesAtivas.value = resAcoes.data.filter(a => a.status !== 'Concluído');
+    }
+  } catch (error) {
+    console.error("Falha ao sincronizar real-time:", error);
+  }
+};
 
 // ==========================================
 // ⏱️ MOTOR DE CÁLCULO DE FOLLOW-UP
@@ -432,47 +440,75 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 no-print relative overflow-hidden mb-6 items-center">
+    <div class="bg-white dark:bg-slate-900 p-3 pl-4 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-nowrap items-center w-full overflow-x-auto hide-scrollbar no-print relative mb-6 gap-4">
       
-      <div class="absolute left-0 top-0 w-1 h-full bg-sky-500"></div>
+      <div class="absolute left-0 top-0 w-1.5 h-full bg-sky-500 rounded-l-[1.5rem]"></div>
       
-      <div class="flex flex-col gap-1 px-2 md:px-3">
+      <div class="flex flex-col gap-1 shrink-0 w-[180px]">
         <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-search text-[8px]"></i> Pesquisa</span>
         <InputText v-model="pesquisa" @input="atualizarFiltro" placeholder="Nome, email..." class="custom-input-minimal w-full" />
       </div>
 
-      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+      <div class="w-px h-8 bg-slate-100 dark:bg-slate-800 shrink-0"></div>
+
+      <div class="flex flex-col gap-1 shrink-0 w-[130px]">
         <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-sitemap text-[8px]"></i> Companhia</span>
         <Dropdown v-model="filtroCompanhia" :options="companhias" optionLabel="label" optionValue="value" placeholder="Todas" class="custom-dropdown-minimal w-full" />
       </div>
 
-      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+      <div class="flex flex-col gap-1 shrink-0 w-[130px]">
         <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-users text-[8px]"></i> Gestor</span>
         <Dropdown v-model="filtroGestor" :options="gestores" optionLabel="label" optionValue="value" placeholder="Todos" class="custom-dropdown-minimal w-full" />
       </div>
 
-      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+      <div class="flex flex-col gap-1 shrink-0 w-[130px]">
         <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-tag text-[8px]"></i> Status</span>
         <Dropdown v-model="filtroStatus" :options="opcoesStatus" optionLabel="label" optionValue="value" placeholder="Todos" class="custom-dropdown-minimal w-full" />
       </div>
 
-      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+      <div class="flex flex-col gap-1 shrink-0 w-[140px]">
         <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-clock text-[8px]"></i> Referência</span>
         <Dropdown v-model="filtroTipoData" :options="opcoesTipoData" optionLabel="label" optionValue="value" class="custom-dropdown-minimal w-full" />
       </div>
 
-      <div class="flex flex-col gap-1 px-2 md:px-3 xl:border-l border-slate-100 dark:border-slate-800">
+      <div class="w-px h-8 bg-slate-100 dark:bg-slate-800 shrink-0"></div>
+
+      <div class="flex flex-col gap-1 shrink-0 w-[110px]">
         <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-calendar text-[8px]"></i> A partir</span>
         <Calendar v-model="filtroDataInicio" dateFormat="dd/mm/yy" placeholder="Início" class="w-full custom-calendar-minimal" inputClass="custom-input-minimal !w-full" />
       </div>
 
-      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
+      <div class="flex flex-col gap-1 shrink-0 w-[110px]">
         <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-calendar text-[8px]"></i> Até</span>
         <Calendar v-model="filtroDataFim" dateFormat="dd/mm/yy" placeholder="Fim" class="w-full custom-calendar-minimal" inputClass="custom-input-minimal !w-full" />
       </div>
 
-      <div class="flex items-center justify-center px-2 md:px-3 border-l border-slate-100 dark:border-slate-800 h-full">
-        <Button @click="limparFiltros" label="Limpar Filtros" icon="pi pi-filter-slash" class="!bg-transparent !text-[10px] !font-black !uppercase !tracking-widest !text-slate-400 hover:!text-rose-500 !border-none transition-all p-0" />
+            <div class="shrink-0">
+        <Button 
+          @click="mostrarApenasAmanha = !mostrarApenasAmanha"
+          :class="[
+            'transition-all duration-300 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-4 !h-[42px] whitespace-nowrap',
+            mostrarApenasAmanha 
+              ? '!bg-sky-500 !text-white !border-sky-500 shadow-lg shadow-sky-500/20' 
+              : '!bg-white dark:!bg-slate-900 !text-slate-400 !border-slate-100 dark:!border-slate-800 hover:!border-sky-500 hover:!text-sky-500'
+          ]"
+          outlined
+        >
+          <div class="flex items-center gap-2">
+            <i class="pi pi-calendar-plus" :class="mostrarApenasAmanha ? 'animate-bounce' : ''"></i>
+            <span>Amanhã</span>
+            <span v-if="mostrarApenasAmanha" class="bg-white/20 px-1.5 rounded-md ml-1">{{ clientesFiltrados.length }}</span>
+          </div>
+        </Button>
+      </div>
+
+      <div class="shrink-0 ml-auto pr-2">
+        <Button 
+          @click="limparFiltros" 
+          icon="pi pi-filter-slash" 
+          class="!bg-slate-50 dark:!bg-slate-800 hover:!bg-rose-50 dark:hover:!bg-rose-500/10 !text-slate-400 hover:!text-rose-500 !border-none transition-all w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer" 
+          v-tooltip.top="'Limpar todos os filtros'" 
+        />
       </div>
 
     </div>
@@ -488,6 +524,21 @@ onMounted(() => {
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-lg bg-orange-50 dark:bg-slate-800 text-orange-500 dark:text-slate-300 font-black flex items-center justify-center shrink-0 border border-orange-100 dark:border-slate-700 text-[10px]">{{ gerarIniciais(slotProps.data.nome) }}</div>
               <div class="flex flex-col leading-tight"><span class="text-[13px] font-bold text-slate-800 dark:text-white">{{ slotProps.data.nome }}</span><span class="text-[10px] text-slate-400 font-medium">{{ slotProps.data.email }}</span></div>
+            </div>
+          </template>
+        </Column>
+
+        <Column header="Ação" class="!py-0 text-center" style="width: 80px">
+          <template #body="slotProps">
+            <div class="flex justify-center items-center h-full">
+              <div v-if="slotProps.data.tem_acao_pendente" 
+                  class="relative flex items-center justify-center"
+                  v-tooltip.top="'Este cliente possui ações pendentes no Kanban.'">
+                <span class="animate-ping absolute inline-flex h-6 w-6 rounded-full bg-amber-400 opacity-30"></span>
+                <i class="pi pi-bolt text-amber-500 text-lg z-10"></i>
+              </div>
+              
+              <i v-else class="pi pi-check-circle text-emerald-500/10 text-xs"></i>
             </div>
           </template>
         </Column>
@@ -513,12 +564,6 @@ onMounted(() => {
           </template>
         </Column>
 
-        <Column header="Estratégia" class="w-[180px]">
-          <template #body="slotProps">
-            <Button label="Ação" icon="pi pi-sparkles" @click="gerarPlano(slotProps.data.empresa)" :loading="carregandoPlano && empresaSelecionada === slotProps.data.empresa" class="p-button-text p-button-sm !text-[10px] !font-black !uppercase !tracking-widest !text-orange-600 !border !border-orange-500/20 !rounded-xl !py-2 !px-3 hover:!bg-orange-500/5 hover:!border-orange-500/40 transition-all duration-300 group"/>
-          </template>
-        </Column>
-
         <Column field="status_envio" header="Status" sortable style="min-width: 140px">
         <template #body="slotProps">
             <div class="flex flex-col gap-1.5 justify-center">
@@ -532,13 +577,16 @@ onMounted(() => {
               </div>
 
               <div v-if="(slotProps.data.status_envio || '').toLowerCase() === 'enviado' && slotProps.data.ultimo_envio" 
-                   class="flex items-center gap-1.5 ml-1 animate-fadein">
-                <i class="pi text-[8px]" 
+                   class="flex items-center gap-0.5 ml-1 animate-fadein">
+                
+                <i class="pi text-[10px] transform scale-75 origin-left mt-[1px]" 
                    :class="[calcularStatusLembrete(slotProps.data.ultimo_envio).icone, calcularStatusLembrete(slotProps.data.ultimo_envio).cor]"></i>
+                
                 <span class="text-[8.5px] font-bold uppercase tracking-wider" 
                       :class="calcularStatusLembrete(slotProps.data.ultimo_envio).cor">
                   {{ calcularStatusLembrete(slotProps.data.ultimo_envio).texto }}
                 </span>
+                
               </div>
 
             </div>
@@ -634,22 +682,6 @@ onMounted(() => {
       </template>
     </Dialog>
     
-    <Dialog v-model:visible="planoDialog" :modal="true" :draggable="false" class="custom-dialog w-full max-w-xl">
-      <template #header>
-        <div class="flex items-center justify-between w-full pr-8">
-          <div class="flex items-center gap-3">
-            <i class="pi pi-sparkles text-orange-500"></i>
-            <span class="text-sm font-black uppercase tracking-widest text-slate-400">Plano de Ação Inteligente</span>
-          </div>
-          <Button v-if="!carregandoPlano" icon="pi pi-refresh" @click="recarregarPlano(empresaSelecionada)" class="p-button-text p-button-secondary !p-2 !rounded-full hover:!bg-slate-100 dark:hover:!bg-slate-800 transition-all" />
-        </div>
-      </template>
-      <div class="p-8 pt-2">
-          <div class="mb-6"><h2 class="text-2xl font-black italic text-slate-800 dark:text-white leading-tight">{{ empresaSelecionada }}</h2></div>
-          <div v-if="carregandoPlano" class="flex flex-col items-center justify-center py-12 gap-4"><i class="pi pi-spin pi-spinner text-3xl text-orange-500"></i><p class="text-[10px] font-black uppercase tracking-tighter text-slate-400">Consultando Gauge AI...</p></div>
-          <div v-else class="relative pl-6 border-l-2 border-orange-500/30 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">{{ planoTexto }}</div>
-      </div>
-    </Dialog>
   </div>
 </template>
 
@@ -703,6 +735,15 @@ onMounted(() => {
 }
 :deep(.p-dropdown-panel .p-dropdown-item.p-highlight) {
     @apply bg-sky-500/10 text-sky-600 dark:text-sky-400 !important;
+
+/* Esconde a barra de scroll horizontal mas mantém a funcionalidade */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 }
 
 /* ==========================================

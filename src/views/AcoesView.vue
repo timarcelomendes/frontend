@@ -340,46 +340,46 @@ onMounted(() => {
 
     <div class="flex flex-wrap lg:flex-nowrap gap-4 mb-8 p-4 bg-white dark:bg-slate-900 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm items-end">
       
-      <div class="flex flex-col gap-1.5 flex-1 min-w-[180px]">
+      <div class="flex flex-col gap-1.5 flex-1 min-w-[160px]">
         <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Companhia</label>
-        <Dropdown v-model="filtroCompanhia" :options="companhiasLista" placeholder="Todas as companhias" showClear filter class="custom-input !py-1.5" />
+        <Dropdown v-model="filtroCompanhia" :options="companhiasLista" placeholder="Todas as companhias" showClear filter class="custom-input !h-[46px] flex items-center" />
       </div>
 
-      <div class="flex flex-col gap-1.5 flex-1 min-w-[220px]">
+      <div class="flex flex-col gap-1.5 flex-1 min-w-[160px]">
         <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Responsável</label>
-        <Dropdown v-model="filtroGestor" :options="gestoresLista" optionLabel="nome" optionValue="id" filter placeholder="Todos os gestores" showClear class="custom-input !py-0.5">
+        <Dropdown v-model="filtroGestor" :options="gestoresLista" optionLabel="nome" optionValue="id" filter placeholder="Todos os gestores" showClear class="custom-input !h-[46px] flex items-center">
           <template #value="slotProps">
-            <div v-if="slotProps.value" class="flex items-center gap-2 py-1">
+            <div v-if="slotProps.value" class="flex items-center gap-2">
               <Avatar :label="gerarIniciais(getGestor(slotProps.value)?.nome)" shape="circle" class="!w-5 !h-5 !text-[8px] !font-black !bg-slate-200 dark:!bg-slate-700 !text-slate-600 dark:!text-slate-300" />
               <span class="text-xs font-bold">{{ getGestor(slotProps.value)?.nome }}</span>
             </div>
-            <span v-else class="text-slate-400 py-1 inline-block">Todos os gestores</span>
+            <span v-else class="text-slate-400">Todos os gestores</span>
           </template>
           <template #item="slotProps">
             <div class="flex items-center gap-3">
               <Avatar :label="gerarIniciais(slotProps.option.nome)" shape="circle" class="!w-8 !h-8 !text-[10px] !font-black !bg-slate-100 dark:!bg-slate-700 !text-slate-600 dark:!text-slate-300" />
               <div class="flex flex-col">
                 <span class="text-xs font-bold text-slate-700 dark:text-slate-200">{{ slotProps.option.nome }}</span>
-                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{{ slotProps.option.papel || 'Gestor' }} <span v-if="slotProps.option.email">• {{ slotProps.option.email }}</span></span>
+                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{{ slotProps.option.papel || 'Gestor' }}</span>
               </div>
             </div>
           </template>
         </Dropdown>
       </div>
       
-      <div class="flex flex-col gap-1.5 flex-1 min-w-[180px]">
+      <div class="flex flex-col gap-1.5 flex-1 min-w-[160px]">
         <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Empresa</label>
-        <Dropdown v-model="filtroEmpresa" :options="empresasLista" placeholder="Todas as empresas" showClear filter class="custom-input !py-1.5" />
+        <Dropdown v-model="filtroEmpresa" :options="empresasLista" placeholder="Todas as empresas" showClear filter class="custom-input !h-[46px] flex items-center" />
       </div>
 
-      <div class="flex flex-col gap-1.5 flex-1 min-w-[180px]">
+      <div class="flex flex-col gap-1.5 flex-1 min-w-[160px]">
         <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Contexto (NPS)</label>
-        <Dropdown v-model="filtroNota" :options="opcoesNota" optionLabel="label" optionValue="value" placeholder="Todas as notas" showClear class="custom-input !py-1.5" />
+        <Dropdown v-model="filtroNota" :options="opcoesNota" optionLabel="label" optionValue="value" placeholder="Todas as notas" showClear class="custom-input !h-[46px] flex items-center" />
       </div>
 
-      <div class="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+      <div class="flex flex-col gap-1.5 flex-1 min-w-[160px]">
         <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Data de Criação</label>
-        <Calendar v-model="filtroData" selectionMode="range" :manualInput="false" placeholder="Período" showIcon showClear class="custom-calendar w-full" />
+        <Calendar v-model="filtroData" selectionMode="range" :manualInput="false" placeholder="Período" showIcon showClear class="custom-calendar w-full !h-[46px] flex items-center" />
       </div>
 
       <Button icon="pi pi-filter-slash" @click="limparFiltros" class="!bg-slate-50 dark:!bg-slate-800 !text-slate-400 hover:!text-orange-500 !border-none !rounded-xl h-[46px] w-[46px] shrink-0 transition-colors" v-tooltip.top="'Limpar Filtros'" />
