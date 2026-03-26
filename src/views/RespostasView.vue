@@ -418,6 +418,18 @@ onMounted(async () => {
           </template>
         </Column>
 
+        <Column field="acao_vinculada" header="Ação" sortable>
+          <template #body="slotProps">
+            <Tag v-if="slotProps.data.acao_vinculada" 
+                severity="warning" 
+                :value="'Ação #' + String(slotProps.data.acao_vinculada).padStart(3, '0')" 
+                class="!bg-orange-100 dark:!bg-orange-500/20 !text-orange-600 dark:!text-orange-400 !font-black !text-[10px] shadow-sm cursor-pointer hover:scale-105 transition-transform" 
+                v-tooltip.top="'Ver plano de ação no Kanban'" />
+            
+            <span v-else class="text-slate-300 dark:text-slate-700 font-bold text-xs">-</span>
+          </template>
+        </Column>
+
         <Column field="cliente_nome" header="Autoria" style="min-width: 220px">
           <template #body="s">
             <div class="flex flex-col">

@@ -285,6 +285,8 @@ const getNpsDot = (nota) => {
   return 'text-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]';
 };
 
+const formatarId = (id) => id ? `#${String(id).padStart(3, '0')}` : '#---';
+
 const getPrioDot = (prio) => {
   if (prio === 'Alta') return 'text-rose-500';
   if (prio === 'Média') return 'text-yellow-500';
@@ -406,8 +408,13 @@ onMounted(() => {
               <button @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
             </div>
             
-            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug mb-2">{{ acao.titulo }}</h4>
-            <p v-if="acao.resposta_comentario" class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-4 leading-relaxed border-l-2 border-slate-100 dark:border-slate-700 pl-2">"{{ acao.resposta_comentario }}"</p>
+            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug mb-2">
+                <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
+                {{ acao.titulo }}
+            </h4>
+            <p v-if="acao.descricao || acao.resposta_comentario" class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-4 whitespace-pre-line leading-relaxed border-l-2 border-orange-500/50 pl-2">
+                {{ acao.descricao || acao.resposta_comentario }}
+            </p>
             
             <div class="flex items-center gap-3 pt-3 border-t border-slate-50 dark:border-slate-700/50 mt-auto">
               <Avatar :label="gerarIniciais(getGestor(acao.gestor_id)?.nome)" shape="circle" class="!w-6 !h-6 !text-[9px] !font-black !bg-slate-100 dark:!bg-slate-700 !text-slate-600 dark:!text-slate-300" v-tooltip.top="getGestor(acao.gestor_id)?.nome || 'Sem gestor atribuído'" />
@@ -445,8 +452,13 @@ onMounted(() => {
               <button @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-sky-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
             </div>
             
-            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug mb-2">{{ acao.titulo }}</h4>
-            <p v-if="acao.resposta_comentario" class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-4 leading-relaxed border-l-2 border-slate-100 dark:border-slate-700 pl-2">"{{ acao.resposta_comentario }}"</p>
+            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug mb-2">
+                <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
+                {{ acao.titulo }}
+            </h4>
+            <p v-if="acao.descricao || acao.resposta_comentario" class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-4 whitespace-pre-line leading-relaxed border-l-2 border-orange-500/50 pl-2">
+                {{ acao.descricao || acao.resposta_comentario }}
+            </p>
             
             <div class="flex items-center gap-3 pt-3 border-t border-slate-50 dark:border-slate-700/50 mt-auto">
               <Avatar :label="gerarIniciais(getGestor(acao.gestor_id)?.nome)" shape="circle" class="!w-6 !h-6 !text-[9px] !font-black !bg-slate-100 dark:!bg-slate-700 !text-slate-600 dark:!text-slate-300" v-tooltip.top="getGestor(acao.gestor_id)?.nome || 'Sem gestor atribuído'" />
@@ -484,7 +496,10 @@ onMounted(() => {
               <button @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-emerald-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
             </div>
             
-            <h4 class="text-sm font-bold text-slate-500 line-through decoration-slate-300 dark:decoration-slate-600 leading-snug mb-2">{{ acao.titulo }}</h4>
+            <h4 class="text-sm font-bold text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600 leading-snug mb-2">
+                <span class="text-orange-500/60 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
+                {{ acao.titulo }}
+            </h4>
             
             <div class="flex items-center gap-3 pt-3 mt-auto">
               <Avatar :label="gerarIniciais(getGestor(acao.gestor_id)?.nome)" shape="circle" class="!w-6 !h-6 !text-[9px] !font-black !bg-slate-100 dark:!bg-slate-800 !text-slate-400" v-tooltip.top="getGestor(acao.gestor_id)?.nome || 'Sem gestor atribuído'" />
