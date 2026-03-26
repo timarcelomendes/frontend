@@ -471,7 +471,9 @@ const carregarIntegracoes = async () => {
   try {
     const res = await api.get('/config/integracoes');
     if (res.data) {
-      integracoesConfig.value.teams_webhook_url = res.data.teams_webhook_url || '';
+      integracoesConfig.value = {
+        teams_webhook_url: res.data.teams_webhook_url || ''
+      };
     }
   } catch (error) {
     console.error("Erro ao carregar integrações", error);
@@ -739,6 +741,7 @@ onMounted(() => {
   carregarSeguranca();
   carregarElegiveisNPS();
   carregarRegras();
+  carregarIntegracoes();
 });
 
 </script>
@@ -793,51 +796,6 @@ onMounted(() => {
               icon="pi pi-refresh" 
               @click="limparCacheNavegador" 
               class="!bg-white dark:!bg-slate-800 !text-orange-600 dark:!text-orange-400 !border-orange-200 dark:!border-orange-500/30 hover:!bg-orange-50 dark:hover:!bg-orange-500/20 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 w-full md:w-auto shrink-0 shadow-sm transition-all"
-            />
-          </div>
-        </div>
-      </TabPanel>
-
-      <TabPanel header="Motor NPS">
-        <div class="p-2 space-y-8 animate-fadein">
-          <div>
-            <h3 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest mb-1">Robô de Disparos</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Faça a gestão dos disparos automáticos de pesquisas de satisfação (NPS).</p>
-          </div>
-
-          <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <div class="flex items-center gap-5">
-              <div class="w-14 h-14 bg-white dark:bg-slate-700 shadow-sm rounded-2xl flex items-center justify-center">
-                <i class="pi pi-users text-2xl text-orange-500"></i>
-              </div>
-              <div>
-                <div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Fila de Espera Atual</div>
-                <div class="text-3xl font-black text-slate-800 dark:text-white flex items-center gap-3">
-                  <Skeleton v-if="loadingElegiveis" width="3rem" height="2rem" />
-                  <span v-else>{{ totalElegiveisNPS }}</span>
-                  <span class="text-xs font-bold text-slate-400 bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded-lg">Clientes Elegíveis</span>
-                </div>
-              </div>
-            </div>
-            
-            <Button icon="pi pi-refresh" @click="carregarElegiveisNPS" :loading="loadingElegiveis" class="!bg-white dark:!bg-slate-700 !text-slate-500 dark:!text-slate-300 !border-slate-200 dark:!border-slate-600 shadow-sm" v-tooltip.top="'Atualizar Fila'" />
-          </div>
-
-          <div class="border-t border-slate-100 dark:border-slate-800 pt-8 flex items-start gap-6">
-            <div class="flex-1">
-              <h4 class="text-sm font-bold text-slate-800 dark:text-white mb-2">Forçar Disparo Imediato</h4>
-              <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-xl">
-                O sistema dispara os convites automaticamente a cada 6 horas. Se precisar de adiantar o processo, clique no botão ao lado. O robô irá processar a fila de espera atual imediatamente em segundo plano.
-              </p>
-            </div>
-            
-            <Button 
-              label="Disparar Agora" 
-              icon="pi pi-send" 
-              @click="forcarDisparoNPS" 
-              :loading="disparandoNPS"
-              :disabled="totalElegiveisNPS === 0"
-              class="!bg-orange-500 !border-none !text-white font-black text-xs uppercase tracking-widest px-6 py-3 shadow-lg shadow-orange-500/30 hover:!bg-orange-600 transition-all hover:-translate-y-0.5" 
             />
           </div>
         </div>
@@ -1116,8 +1074,45 @@ onMounted(() => {
         </div>
       </TabPanel>
 
-      <TabPanel header="Regras & Operação">
-        <div class="p-2 space-y-8 animate-fadein">
+      <TabPanel>
+      <template #header>
+        <div class="flex items-center gap-2 px-2">
+          <i class="pi pi-cog text-slate-400"></i> <span class="font-bold">Regras & Operação</span>
+        </div>
+      </template>
+
+      <div class="space-y-8 animate-fadein py-4">
+        
+        <div class="bg-slate-900 dark:bg-slate-950 rounded-[2rem] p-6 md:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
+          <div class="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+          
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center relative z-10 gap-6">
+            <div>
+              <h3 class="text-xl font-black italic tracking-tight mb-1 flex items-center gap-3">
+                <i class="pi pi-bolt text-orange-500"></i> Motor de Disparo <span class="text-orange-500">.</span>
+              </h3>
+              <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Controlo da fila de espera e execução manual</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-4 bg-white/5 border border-white/10 p-3 md:p-4 rounded-2xl backdrop-blur-sm">
+              <div class="flex flex-col px-4">
+                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Na Fila de Espera</span>
+                <div class="flex items-baseline gap-1.5 mt-0.5">
+                  <span class="text-3xl font-black text-white leading-none">{{ totalElegiveisNPS ?? 0 }}</span>
+                  <span class="text-[10px] font-bold text-slate-500">clientes</span>
+                </div>
+              </div>
+              <div class="hidden md:block w-px h-10 bg-white/10"></div>
+              <Button label="Forçar Disparo Agora" icon="pi pi-play" @click="forcarDisparoNPS" :loading="disparandoNPS" class="!bg-orange-500 !text-white !border-none !rounded-xl !font-black !uppercase !tracking-widest !text-[10px] !px-6 !py-3 shadow-lg shadow-orange-500/20 hover:!bg-orange-600 hover:-translate-y-0.5 transition-transform" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4 py-2">
+           <div class="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
+           <span class="text-[9px] font-black uppercase tracking-widest text-slate-400"><i class="pi pi-sliders-h mr-1"></i> Parâmetros do Robô & SLA</span>
+           <div class="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
+        </div>
           
           <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
             <div>
