@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
 import api from '../services/api';
+import { useRouter } from 'vue-router';
+
 import { useToast } from 'primevue/usetoast';
 
 import DataTable from 'primevue/datatable';
@@ -17,6 +19,15 @@ import Skeleton from 'primevue/skeleton';
 const toast = useToast();
 const respostas = ref([]);
 const loading = ref(true);
+
+const router = useRouter();
+
+// Função que encaminha o utilizador para o Kanban com o ID da ação
+const irParaAcao = (acaoId) => {
+  if (acaoId) {
+    router.push({ path: '/acoes', query: { abrir: acaoId } });
+  }
+};
 
 // ==========================================
 // 🏢 DADOS PARA OS COMBOS DE FILTRO
@@ -421,10 +432,11 @@ onMounted(async () => {
         <Column field="acao_vinculada" header="Ação" sortable>
           <template #body="slotProps">
             <Tag v-if="slotProps.data.acao_vinculada" 
+                @click="irParaAcao(slotProps.data.acao_vinculada)"
                 severity="warning" 
                 :value="'Ação #' + String(slotProps.data.acao_vinculada).padStart(3, '0')" 
-                class="!bg-orange-100 dark:!bg-orange-500/20 !text-orange-600 dark:!text-orange-400 !font-black !text-[10px] shadow-sm cursor-pointer hover:scale-105 transition-transform" 
-                v-tooltip.top="'Ver plano de ação no Kanban'" />
+                class="cursor-pointer hover:scale-110 hover:!bg-orange-200 dark:hover:!bg-orange-500/40 transition-all !bg-orange-100 dark:!bg-orange-500/20 !text-orange-600 dark:!text-orange-400 !font-black !text-[10px] !px-3 shadow-sm border border-orange-200 dark:border-orange-500/30" 
+                v-tooltip.top="'Abrir esta Ação no Kanban'" />
             
             <span v-else class="text-slate-300 dark:text-slate-700 font-bold text-xs">-</span>
           </template>

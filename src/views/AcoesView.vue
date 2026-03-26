@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
+import { useRoute, useRouter } from 'vue-router';
 
 import Menu from 'primevue/menu';
 import Button from 'primevue/button';
@@ -18,11 +19,14 @@ const acoes = ref([]);
 const loading = ref(true);
 const regrasSLA = ref({ sla_detrator_dias: 2, sla_neutro_dias: 5, sla_promotor_dias: 7 });
 
+const route = useRoute();
+const router = useRouter();
+
 // ==========================================
 // 📂 LISTAS DE DOMÍNIO (APOIO)
 // ==========================================
 const gestoresLista = ref([]);
-const empresasDetalhes = ref([]); // Guarda os detalhes (incluindo a relação com a Companhia)
+const empresasDetalhes = ref([]);
 const empresasLista = ref([]);
 const companhiasLista = ref([]);
 
@@ -110,13 +114,23 @@ const estatisticas = computed(() => ({
 // 💾 CARREGAMENTO DE DADOS (API)
 // ==========================================
 const carregarAcoes = async () => {
-  loading.value = true;
   try {
-    const res = await api.get('/acoes');
-    acoes.value = Array.isArray(res.data) ? res.data : [];
-    extrairListasFallback();
+    loading.value = true;
+    const response = await api.get('/acoes');
+    acoes.value = response.data;
+
+    if (route.query.abrir) {
+      const acaoAlvo = acoes.value.find(a => String(a.id) === String(route.query.abrir));
+      
+      if (acaoAlvo) {
+        abrirEdicao(acaoAlvo);
+        
+        router.replace({ path: route.path });
+      }
+    }
+
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar ações.' });
+    console.error("Erro ao carregar ações:", error);
   } finally {
     loading.value = false;
   }
