@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
 
@@ -8,20 +8,23 @@ import ProgressBar from 'primevue/progressbar';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import InputSwitch from 'primevue/inputswitch';
+import MultiSelect from 'primevue/multiselect'; // 🟢 Importado
 
 const toast = useToast();
 
 // --- ESTADOS DO WIZARD ---
 const passoAtual = ref(1); 
-const tipoImportacao = ref('clientes'); // 🟢 NOVO: 'clientes' ou 'respostas'
+const tipoImportacao = ref('clientes'); 
 const fileInput = ref(null);
 const ficheiroSelecionado = ref(null);
 const isProcessando = ref(false);
 const progresso = ref(0);
 
-// --- ESTADOS DE DADOS ---
+// --- ESTADOS DE DADOS & CHAVES DINÂMICAS ---
 const dadosPreview = ref([]);
-const colunasExtra = ref([]);
+const colunasDisponiveis = ref([]); // 🟢 Guarda os cabeçalhos do Excel
+const chavesCliente = ref([]); // 🟢 Chaves escolhidas pelo usuário para identificar o cliente
+const chavesResposta = ref([]); // 🟢 Chaves para evitar duplicar respostas (ex: data)
 const configuracaoImportacao = ref({ overwrite: true });
 const resumoFinal = ref(null);
 
@@ -54,6 +57,42 @@ const baixarTemplate = () => {
 };
 
 // ==========================================
+// 🧠 LÓGICA DE VALIDAÇÃO DINÂMICA
+// ==========================================
+const revalidarDados = () => {
+  dadosPreview.value = dadosPreview.value.map(item => {
+    let valido = true;
+    if (tipoImportacao.value === 'clientes') {
+      if (!item.nome || !item.email || !item.empresa) valido = false;
+    } else {
+      // Importação de Respostas: Valida usando as chaves que o usuário escolheu no ecrã!
+      if (chavesCliente.value.length === 0) valido = false;
+      for (const key of chavesCliente.value) {
+        if (!item[key] || item[key].toString().trim() === '') valido = false;
+      }
+      if (item.nota === undefined || item.nota === '') valido = false;
+    }
+    return { ...item, valido };
+  });
+};
+
+// Se o utilizador alterar os Dropdowns de Chave, a tabela revalida imediatamente.
+watch([chavesCliente, chavesResposta], () => {
+  if (dadosPreview.value.length > 0) revalidarDados();
+});
+
+const colunasExtra = computed(() => {
+  if (!colunasDisponiveis.value.length) return [];
+  const ignorarClientes = ['nome', 'email', 'empresa', 'valido'];
+  const ignorarRespostas = ['nota', 'valido', ...chavesCliente.value, ...chavesResposta.value];
+  
+  const ignorar = tipoImportacao.value === 'clientes' ? ignorarClientes : ignorarRespostas;
+  return colunasDisponiveis.value.filter(c => !ignorar.includes(c));
+});
+
+const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).length);
+
+// ==========================================
 // PASSO 1: SELEÇÃO E PREVIEW
 // ==========================================
 const selecionarFicheiro = () => fileInput.value.click();
@@ -79,31 +118,27 @@ const gerarPreview = async (file) => {
   formData.append('file', file);
 
   try {
-    // A rota preview é universal, apenas transforma o ficheiro em JSON
     const response = await api.post('/importar/preview', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (p) => progresso.value = Math.round((p.loaded * 100) / p.total)
     });
 
-    // 🟢 Validação Dinâmica baseada no tipo de importação
-    dadosPreview.value = response.data.map(item => {
-      let valido = false;
-      if (tipoImportacao.value === 'clientes') {
-        valido = !!(item.nome && item.email && item.empresa);
-      } else {
-        valido = !!(item.email_cliente && item.nota !== undefined && item.nota !== '');
-      }
-      return { ...item, valido };
-    });
-
-    if (dadosPreview.value.length > 0) {
-      const chavesCSV = Object.keys(dadosPreview.value[0]);
-      const chavesIgnorar = tipoImportacao.value === 'clientes' 
-        ? ['nome', 'email', 'empresa', 'valido'] 
-        : ['email_cliente', 'nota', 'valido'];
+    const dadosBase = response.data;
+    if (dadosBase.length > 0) {
+      colunasDisponiveis.value = Object.keys(dadosBase[0]);
+      
+      // 🟢 Auto-seleção inteligente de Chaves (Para facilitar a vida do utilizador)
+      if (tipoImportacao.value === 'respostas') {
+        const mailKey = colunasDisponiveis.value.find(c => c.toLowerCase().includes('email') || c.toLowerCase().includes('cliente'));
+        if (mailKey) chavesCliente.value = [mailKey];
         
-      colunasExtra.value = chavesCSV.filter(c => !chavesIgnorar.includes(c));
+        const dateKey = colunasDisponiveis.value.find(c => c.toLowerCase().includes('data'));
+        if (dateKey) chavesResposta.value = [dateKey];
+      }
     }
+
+    dadosPreview.value = dadosBase;
+    revalidarDados();
 
     toast.add({ severity: 'info', summary: 'Leitura Concluída', detail: `Foram encontrados ${dadosPreview.value.length} registos.`, life: 3000 });
     passoAtual.value = 2;
@@ -116,7 +151,9 @@ const gerarPreview = async (file) => {
 const removerFicheiro = () => {
   ficheiroSelecionado.value = null;
   dadosPreview.value = [];
-  colunasExtra.value = [];
+  colunasDisponiveis.value = [];
+  chavesCliente.value = [];
+  chavesResposta.value = [];
   passoAtual.value = 1;
   if (fileInput.value) fileInput.value.value = '';
 };
@@ -127,15 +164,17 @@ const removerFicheiro = () => {
 const confirmarImportacaoBase = async () => {
   isProcessando.value = true;
   try {
+    // 🟢 O Payload agora carrega as chaves escolhidas
     const payload = { 
       overwrite: configuracaoImportacao.value.overwrite, 
+      chaves_cliente: chavesCliente.value,
+      chaves_resposta: chavesResposta.value,
       dados: dadosPreview.value 
     };
     
-    // 🟢 Roteamento dinâmico da API
     const endpoint = tipoImportacao.value === 'clientes' 
       ? '/importar/confirmar' 
-      : '/importar/respostas'; // Rota nova que vamos criar no main.py
+      : '/importar/respostas'; 
 
     const response = await api.post(endpoint, payload);
     
@@ -154,8 +193,6 @@ const reiniciarProcesso = () => {
   resumoFinal.value = null;
   passoAtual.value = 1;
 };
-
-const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).length);
 </script>
 
 <template>
@@ -172,7 +209,7 @@ const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).
       <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-300">
         <span :class="{'text-orange-500': passoAtual >= 1}">1. <span class="hidden sm:inline">Upload</span></span>
         <i class="pi pi-angle-right"></i>
-        <span :class="{'text-orange-500': passoAtual >= 2}">2. <span class="hidden sm:inline">Validação</span></span>
+        <span :class="{'text-orange-500': passoAtual >= 2}">2. <span class="hidden sm:inline">Mapeamento & Validação</span></span>
         <i class="pi pi-angle-right"></i>
         <span :class="{'text-orange-500': passoAtual === 3}">3. <span class="hidden sm:inline">Conclusão</span></span>
       </div>
@@ -233,24 +270,41 @@ const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).
     <div v-if="passoAtual === 2" class="space-y-6 animate-fadein">
       <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4 md:p-8 shadow-sm">
         
-        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6 pb-6 border-b border-slate-50 dark:border-slate-800">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-6 pb-6 border-b border-slate-50 dark:border-slate-800">
           <div>
-            <h3 class="text-sm font-black uppercase text-slate-800 dark:text-white">Pré-visualização de Dados</h3>
+            <h3 class="text-sm font-black uppercase text-slate-800 dark:text-white">Pré-visualização e Mapeamento</h3>
             <p class="text-[10px] text-slate-400 font-bold mt-1">
-              Importando para: <strong :class="tipoImportacao === 'clientes' ? 'text-orange-500' : 'text-emerald-500'">{{ tipoImportacao.toUpperCase() }}</strong>
+              Importando para a base de: <strong :class="tipoImportacao === 'clientes' ? 'text-orange-500' : 'text-emerald-500'">{{ tipoImportacao.toUpperCase() }}</strong>
             </p>
           </div>
-          <div v-if="tipoImportacao === 'clientes'" class="flex items-center gap-4 bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-2xl w-full lg:w-auto">
-            <span class="text-[10px] font-black uppercase text-slate-500 flex-1 lg:flex-none">Substituir existentes?</span>
+          <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-2xl w-full lg:w-auto">
+            <span class="text-[10px] font-black uppercase text-slate-500 flex-1 lg:flex-none">Atualizar existentes se detetar duplicidade?</span>
             <InputSwitch v-model="configuracaoImportacao.overwrite" />
           </div>
+        </div>
+
+        <div v-if="tipoImportacao === 'respostas'" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-5 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black uppercase text-slate-500">
+                    <i class="pi pi-key text-orange-500 mr-1"></i> Chave de Identificação (Obrigatório)
+                </label>
+                <MultiSelect v-model="chavesCliente" :options="colunasDisponiveis" placeholder="Ex: email" display="chip" class="custom-input !py-2 !px-3 shadow-sm border-none bg-white dark:bg-slate-900 w-full" />
+                <p class="text-[9px] font-medium text-slate-400">Colunas do ficheiro usadas para encontrar o Cliente associado à resposta.</p>
+            </div>
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black uppercase text-slate-500">
+                    <i class="pi pi-filter text-emerald-500 mr-1"></i> Chave de Deduplicação (Opcional)
+                </label>
+                <MultiSelect v-model="chavesResposta" :options="colunasDisponiveis" placeholder="Ex: data_resposta" display="chip" class="custom-input !py-2 !px-3 shadow-sm border-none bg-white dark:bg-slate-900 w-full" />
+                <p class="text-[9px] font-medium text-slate-400">Usado para evitar importar exatamente a mesma resposta duas vezes (Apenas atualiza).</p>
+            </div>
         </div>
 
         <div v-if="totalInvalidos > 0" class="mb-6 bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl flex items-center gap-4 border border-rose-100 dark:border-rose-800/50">
           <i class="pi pi-exclamation-triangle text-rose-500 text-xl"></i>
           <div>
             <h4 class="text-[11px] font-black uppercase text-rose-700 dark:text-rose-400">Atenção aos Dados</h4>
-            <p class="text-[10px] text-rose-600/80 font-medium">Existem {{ totalInvalidos }} registos ignorados por falta de campos obrigatórios.</p>
+            <p class="text-[10px] text-rose-600/80 font-medium">Existem {{ totalInvalidos }} registos ignorados por falta de chaves obrigatórias.</p>
           </div>
         </div>
 
@@ -258,7 +312,7 @@ const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).
           <Column header="Status" style="width: 70px">
             <template #body="s">
               <i v-if="s.data.valido" class="pi pi-check-circle text-emerald-500"></i>
-              <i v-else class="pi pi-times-circle text-rose-500" v-tooltip.top="'Faltam dados obrigatórios'"></i>
+              <i v-else class="pi pi-times-circle text-rose-500" v-tooltip.top="'Faltam dados nas chaves selecionadas'"></i>
             </template>
           </Column>
           
@@ -275,9 +329,10 @@ const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).
           </template>
 
           <template v-else>
-            <Column field="email_cliente" header="E-mail do Cliente (Chave)">
-              <template #body="s"><span class="text-[11px] font-bold">{{ s.data.email_cliente || '---' }}</span></template>
+            <Column v-for="key in chavesCliente" :key="'k_'+key" :field="key" :header="key + ' (ID Cliente)'">
+              <template #body="s"><span class="text-[11px] font-bold text-orange-500">{{ s.data[key] || '---' }}</span></template>
             </Column>
+            
             <Column field="nota" header="Nota NPS">
               <template #body="s"><span class="text-[11px] font-black text-indigo-500">{{ s.data.nota || '---' }}</span></template>
             </Column>
@@ -292,7 +347,7 @@ const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).
 
         <div class="flex flex-col sm:flex-row gap-4 mt-8 pt-6 border-t border-slate-50 dark:border-slate-800">
           <Button label="Cancelar e Voltar" icon="pi pi-arrow-left" text @click="removerFicheiro" class="flex-1 p-4 rounded-2xl font-black text-[11px] uppercase text-slate-400" />
-          <Button label="Confirmar e Gravar Dados" icon="pi pi-database" @click="confirmarImportacaoBase" :loading="isProcessando" 
+          <Button label="Confirmar e Gravar Dados" icon="pi pi-database" @click="confirmarImportacaoBase" :loading="isProcessando" :disabled="chavesCliente.length === 0 && tipoImportacao === 'respostas'"
                   class="flex-1 p-4 border-none text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl hover:-translate-y-1 transition-all"
                   :class="tipoImportacao === 'clientes' ? 'bg-orange-500 shadow-orange-500/30' : 'bg-emerald-500 shadow-emerald-500/30'" />
         </div>
@@ -305,20 +360,20 @@ const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).
           <i class="pi pi-check text-4xl font-black"></i>
         </div>
         <h2 class="text-2xl font-black text-slate-800 dark:text-white tracking-tight italic mb-2">Importação Finalizada!</h2>
-        <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-10">Os dados foram carregados para o sistema.</p>
+        <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-10">Os dados foram processados no sistema.</p>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto mb-10">
           <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 flex flex-col items-center">
             <span class="text-3xl font-black text-emerald-500">{{ resumoFinal?.inserted || 0 }}</span>
-            <span class="text-[9px] font-black uppercase text-slate-400 mt-2">Novos Registos</span>
+            <span class="text-[9px] font-black uppercase text-slate-400 mt-2">Novos Registos (Insert)</span>
           </div>
-          <div v-if="tipoImportacao === 'clientes'" class="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 flex flex-col items-center">
+          <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 flex flex-col items-center">
             <span class="text-3xl font-black text-blue-500">{{ resumoFinal?.updated || 0 }}</span>
-            <span class="text-[9px] font-black uppercase text-slate-400 mt-2">Atualizados</span>
+            <span class="text-[9px] font-black uppercase text-slate-400 mt-2">Atualizados (Update)</span>
           </div>
           <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 flex flex-col items-center">
             <span class="text-3xl font-black text-slate-400">{{ resumoFinal?.ignored || 0 }}</span>
-            <span class="text-[9px] font-black uppercase text-slate-400 mt-2">Ignorados / Sem Vínculo</span>
+            <span class="text-[9px] font-black uppercase text-slate-400 mt-2">Ignorados / Erros</span>
           </div>
         </div>
 
@@ -337,19 +392,19 @@ const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).
           <li class="flex items-center gap-3"><i class="pi pi-check-circle text-orange-500"></i> empresa</li>
         </ul>
         <ul v-else class="text-[11px] text-slate-600 dark:text-slate-300 space-y-3 font-bold">
-          <li class="flex items-center gap-3"><i class="pi pi-check-circle text-emerald-500"></i> email_cliente <span class="text-[9px] text-slate-400 font-medium">(O cliente já deve existir no sistema)</span></li>
+          <li class="flex items-center gap-3"><i class="pi pi-check-circle text-emerald-500"></i> Uma Chave de Identificação do Cliente <span class="text-[9px] text-slate-400 font-medium">(Ex: email, cliente_id)</span></li>
           <li class="flex items-center gap-3"><i class="pi pi-check-circle text-emerald-500"></i> nota <span class="text-[9px] text-slate-400 font-medium">(0 a 10)</span></li>
         </ul>
       </div>
       <div class="p-6 border border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900">
         <h4 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-          <i class="pi pi-star"></i> Campos Extras Permitidos
+          <i class="pi pi-star"></i> Campos Extras & Poderes
         </h4>
         <p v-if="tipoImportacao === 'clientes'" class="text-[11px] text-slate-500 font-medium leading-relaxed">
           Pode mapear colunas como: <span class="font-bold text-slate-700 dark:text-white">telefone, cargo, segmento, valor_contrato</span> e a flag <span class="font-bold text-slate-700 dark:text-white">ativo (true/false)</span>.
         </p>
         <p v-else class="text-[11px] text-slate-500 font-medium leading-relaxed">
-          Pode adicionar contextos à resposta como: <span class="font-bold text-slate-700 dark:text-white">motivo</span> (o comentário escrito), <span class="font-bold text-slate-700 dark:text-white">categoria</span> e a <span class="font-bold text-slate-700 dark:text-white">data_resposta</span> (formato AAAA-MM-DD).
+          Você será capaz de selecionar QUAIS colunas devem atuar como Chave de Match do Cliente, e se desejar, chaves para impedir importação duplicada (Ex: data_resposta). Pode injetar também o <span class="font-bold text-slate-700 dark:text-white">motivo</span> e a <span class="font-bold text-slate-700 dark:text-white">categoria</span>.
         </p>
       </div>
     </div>
@@ -364,6 +419,10 @@ const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 :deep(.p-progressbar-value) { @apply bg-orange-500 transition-all duration-300; }
+
+:deep(.custom-input) { 
+    @apply bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-slate-800 dark:text-white; 
+}
 
 :deep(.custom-table), :deep(.custom-table .p-datatable-wrapper) { @apply bg-white dark:bg-slate-900; }
 :deep(.custom-table .p-datatable-thead > tr > th) { @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4; }
