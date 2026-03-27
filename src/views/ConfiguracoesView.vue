@@ -352,33 +352,51 @@ const salvarSeguranca = async () => {
 // --- ESTADO: INTEGRAÇÕES ---
 const loadingIntegracoes = ref(false);
 const savingIntegracoes = ref(false);
-const integracoesConfig = ref({ teams_webhook_url: '' });
+const integracoesConfig = ref({ 
+  webhook_global: '', 
+  webhook_tecnico: '' 
+});
 
-const webhookFilloutURL = computed(() => `${config.value.base_url_frontend}/api/webhooks/fillout`);
+const webhookFilloutURL = computed(() => `${config.value.base_url_frontend}/webhooks/fillout`);
 
 const copiarWebhookFillout = async () => {
   try {
     await navigator.clipboard.writeText(webhookFilloutURL.value);
     toast.add({ severity: 'success', summary: 'Copiado!', detail: 'URL do Webhook copiado.', life: 3000 });
-  } catch (err) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível copiar o URL.' }); }
+  } catch (err) { 
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível copiar o URL.' }); 
+  }
 };
 
 const carregarIntegracoes = async () => {
   loadingIntegracoes.value = true;
   try {
-    const res = await api.get('/config/integracoes');
-    if (res.data) integracoesConfig.value = { teams_webhook_url: res.data.teams_webhook_url || '' };
-  } catch (error) { console.error(error); } finally { loadingIntegracoes.value = false; }
+    // Aponta para a nova rota que criámos no main.py
+    const res = await api.get('/configuracoes/integracoes');
+    if (res.data) {
+      integracoesConfig.value = { 
+        webhook_global: res.data.webhook_global || '',
+        webhook_tecnico: res.data.webhook_tecnico || ''
+      };
+    }
+  } catch (error) { 
+    console.error(error); 
+  } finally { 
+    loadingIntegracoes.value = false; 
+  }
 };
 
 const salvarIntegracoes = async () => {
   savingIntegracoes.value = true;
   try {
-    await api.post('/config/integracoes', integracoesConfig.value);
+    // Aponta para o novo PUT que faz o UPSERT no banco
+    await api.put('/configuracoes/integracoes', integracoesConfig.value);
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Integrações atualizadas com sucesso!', life: 3000 });
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar configurações de integração.', life: 5000 });
-  } finally { savingIntegracoes.value = false; }
+  } finally { 
+    savingIntegracoes.value = false; 
+  }
 };
 
 const limparCacheNavegador = () => {
@@ -827,14 +845,40 @@ onMounted(() => {
             <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between relative overflow-hidden group">
               <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="pi pi-microsoft text-9xl text-slate-900 dark:text-white"></i></div>
               <div>
-                <div class="flex items-center gap-3 mb-4">
+                <div class="flex items-center gap-3 mb-4 relative z-10">
                   <div class="w-10 h-10 bg-indigo-50 dark:bg-indigo-500/20 shadow-sm rounded-xl flex items-center justify-center"><i class="pi pi-microsoft text-indigo-500 text-xl"></i></div>
                   <div><h4 class="text-sm font-black text-slate-800 dark:text-white">Microsoft Teams</h4><p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Notificações e Alertas</p></div>
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">Insira o URL do <strong>Incoming Webhook</strong> configurado no canal do seu Microsoft Teams. O sistema enviará "Adaptive Cards" automáticos sempre que houver um novo feedback.</p>
-                <div class="flex flex-col gap-2">
-                  <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">URL do Webhook (Teams)</label>
-                  <InputText v-model="integracoesConfig.teams_webhook_url" placeholder="https://gauge-team.webhook.office.com/..." class="custom-input !w-full !bg-white dark:!bg-slate-900" />
+                
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6 relative z-10">
+                  Configure os canais do <strong>Incoming Webhook</strong> para receber os alertas operacionais e técnicos diretamente na sua equipa.
+                </p>
+                
+                <div class="space-y-5 relative z-10">
+                  <div class="flex flex-col gap-2">
+                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                      Canal Global (Feedbacks) <span class="text-orange-500">*</span>
+                    </label>
+                    <InputText 
+                      v-model="integracoesConfig.webhook_global" 
+                      placeholder="https://gauge-team.webhook.office.com/..." 
+                      class="custom-input !w-full !bg-white dark:!bg-slate-900 !text-[11px]" 
+                    />
+                  </div>
+
+                  <div class="flex flex-col gap-2 pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
+                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                      Canal Técnico (DevOps / TI)
+                    </label>
+                    <InputText 
+                      v-model="integracoesConfig.webhook_tecnico" 
+                      placeholder="https://gauge-team.webhook.office.com/..." 
+                      class="custom-input !w-full !bg-white dark:!bg-slate-900 !text-[11px]" 
+                    />
+                    <p class="text-[9px] text-slate-400 font-medium ml-1 mt-0.5 leading-relaxed">
+                      Recebe notificações de falhas críticas (ex: Timeout na Azure, Banco Offline).
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
