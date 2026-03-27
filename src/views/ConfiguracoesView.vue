@@ -357,7 +357,7 @@ const integracoesConfig = ref({
   webhook_tecnico: '' 
 });
 
-const webhookFilloutURL = computed(() => `${config.value.base_url_frontend}/webhooks/fillout`);
+const webhookFilloutURL = computed(() => `${config.value.base_url_frontend}/api/webhook/fillout`);
 
 const copiarWebhookFillout = async () => {
   try {
@@ -854,23 +854,6 @@ onMounted(() => {
             <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Ligue o Hub de NPS a ferramentas externas como formulários e canais de comunicação.</p>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between relative overflow-hidden group">
-              <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="pi pi-file-edit text-9xl text-slate-900 dark:text-white"></i></div>
-              <div>
-                <div class="flex items-center gap-3 mb-4">
-                  <div class="w-10 h-10 bg-white dark:bg-slate-700 shadow-sm rounded-xl flex items-center justify-center"><span class="text-xl font-black text-slate-800 dark:text-white">F</span></div>
-                  <div><h4 class="text-sm font-black text-slate-800 dark:text-white">Fillout Forms</h4><p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Receção de Respostas</p></div>
-                </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">Copie o URL abaixo e cole-o nas configurações do seu formulário Fillout (<strong>Integrations > Webhooks</strong>). Isto fará com que o Fillout envie as respostas diretamente para o nosso sistema.</p>
-                <div class="flex flex-col gap-2">
-                  <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">URL do Webhook (POST)</label>
-                  <div class="flex relative">
-                    <InputText v-model="webhookFilloutURL" readonly class="custom-input !w-full !pr-12 !bg-white dark:!bg-slate-900 !text-slate-400 !cursor-copy" @click="copiarWebhookFillout" />
-                    <Button icon="pi pi-copy" @click="copiarWebhookFillout" class="!absolute !right-2 !top-2 !w-8 !h-8 !p-0 !bg-slate-100 dark:!bg-slate-800 !text-slate-500 !border-none hover:!bg-orange-50 hover:!text-orange-500" v-tooltip.top="'Copiar URL'" />
-                  </div>
-                </div>
-              </div>
-            </div>
 
             <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 flex flex-col justify-between relative overflow-hidden group mb-8 shadow-lg">
               <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
@@ -881,7 +864,7 @@ onMounted(() => {
                     <i class="pi pi-download text-emerald-400 text-xl"></i>
                   </div>
                   <div>
-                    <h4 class="text-sm font-black text-white">Webhook de Receção</h4>
+                    <h4 class="text-sm font-black text-white">Webhook de Recepção</h4>
                     <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Ponto de Entrada (Fillout)</p>
                   </div>
                 </div>
