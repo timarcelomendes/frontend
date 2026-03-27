@@ -3,13 +3,12 @@
     <Toast />
     
     <div class="flex flex-col justify-center items-center px-6 py-12 md:px-20 bg-slate-50/50 dark:bg-slate-950/20 relative">
-      
       <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 to-rose-500 md:hidden"></div>
       
       <div class="w-full max-w-sm animate-fadein">
         
         <div class="flex flex-col items-center mb-10 text-center">
-          <div class="relative flex items-center justify-center w-16 h-16 mb-4 rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 shadow-xl shadow-slate-900/10 shrink-0 overflow-hidden border border-slate-700/50">
+          <div class="relative flex items-center justify-center w-16 h-16 mb-4 rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 shadow-xl border border-slate-700/50">
             <div class="absolute inset-0 bg-gradient-to-tr from-orange-500/10 to-indigo-500/10 opacity-70"></div>
             <i class="pi pi-sparkles text-transparent bg-clip-text bg-gradient-to-br from-orange-400 to-rose-400 text-3xl z-10"></i>
             <div class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-slate-800 dark:border-slate-900 animate-pulse z-20"></div>
@@ -18,8 +17,8 @@
           <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tighter leading-none mb-2">
             {{ isLoginMode ? 'Acesse a plataforma' : 'Crie sua conta' }}
           </h1>
-          <p class="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">
-            Hub NPS Gauge Intelligence
+          <p class="text-[11px] font-black uppercase tracking-[0.2em] text-orange-500 dark:text-orange-400 mt-1">
+            NPS Intelligence
           </p>
         </div>
 
@@ -27,9 +26,9 @@
           
           <div v-if="!isLoginMode" class="flex flex-col gap-1.5 animate-fadein">
             <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome Completo</label>
-            <span class="p-input-icon-left w-full">
-              <i class="pi pi-user !text-slate-400" />
-              <InputText v-model="registro.nome" type="text" placeholder="Seu nome" class="custom-input w-full py-3 pl-11 rounded-xl shadow-inner bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700" required />
+            <span class="p-input-icon-left w-full relative">
+              <i class="pi pi-user !text-slate-400 z-20" />
+              <InputText v-model="registro.nome" type="text" placeholder="Seu nome" class="custom-input w-full" required />
             </span>
           </div>
 
@@ -37,60 +36,28 @@
             <label class="text-[10px] font-black uppercase text-slate-500 ml-1">E-mail Corporativo</label>
             <span class="p-input-icon-left w-full relative">
               <i class="pi pi-envelope !text-slate-400 z-20" />
-              <InputText 
-                v-if="isLoginMode" 
-                v-model="credenciais.email" 
-                type="email" 
-                placeholder="nome@suaempresa.com" 
-                class="custom-input w-full" 
-                :class="{ 'p-invalid': temErro }" 
-                required 
-              />
-              <InputText 
-                v-else 
-                v-model="registro.email" 
-                type="email" 
-                placeholder="nome@suaempresa.com" 
-                class="custom-input w-full" 
-                required 
-              />
+              <InputText v-if="isLoginMode" v-model="credenciais.email" type="email" placeholder="nome@suaempresa.com" class="custom-input w-full" :class="{ 'p-invalid': temErro }" @input="temErro = false" required />
+              <InputText v-else v-model="registro.email" type="email" placeholder="nome@suaempresa.com" class="custom-input w-full" required />
             </span>
           </div>
 
           <div class="flex flex-col gap-1.5">
             <div class="flex justify-between items-center ml-1">
               <label class="text-[10px] font-black uppercase text-slate-500">Palavra-passe</label>
-              <router-link v-if="isLoginMode" to="/forgot-password" class="text-[10px] font-bold text-sky-600 hover:text-orange-500">Esqueci a senha</router-link>
+              <router-link v-if="isLoginMode" to="/forgot-password" class="text-[10px] font-bold text-sky-600 dark:text-sky-400 hover:text-orange-500 transition-colors">
+                Esqueci a minha senha
+              </router-link>
             </div>
             <span class="p-input-icon-left w-full relative">
               <i class="pi pi-lock !text-slate-400 z-20" />
-              <Password 
-                v-if="isLoginMode" 
-                v-model="credenciais.password" 
-                :feedback="false" 
-                toggleMask 
-                placeholder="••••••••" 
-                class="w-full"
-                inputClass="custom-input w-full" 
-                :class="{ 'p-invalid': temErro }" 
-                required 
-              />
-              <Password 
-                v-else 
-                v-model="registro.password" 
-                :feedback="true" 
-                toggleMask 
-                placeholder="••••••••" 
-                class="w-full"
-                inputClass="custom-input w-full" 
-                required 
-              />
+              <Password v-if="isLoginMode" v-model="credenciais.password" :feedback="false" toggleMask placeholder="••••••••" inputClass="custom-input w-full" class="w-full" :class="{ 'p-invalid': temErro }" @input="temErro = false" required />
+              <Password v-else v-model="registro.password" :feedback="true" toggleMask placeholder="••••••••" inputClass="custom-input w-full" class="w-full" required />
             </span>
           </div>
 
           <div v-if="isLoginMode" class="flex items-center justify-between px-1">
             <div class="flex items-center gap-2">
-              <Checkbox v-model="lembrarDeMim" :binary="true" inputId="rememberMe" class="custom-checkbox" />
+              <Checkbox v-model="lembrarDeMim" :binary="true" inputId="rememberMe" />
               <label for="rememberMe" class="text-[11px] font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none">Lembrar de mim</label>
             </div>
           </div>
@@ -105,11 +72,10 @@
               {{ isLoginMode ? 'Ainda não tem acesso? Criar conta.' : 'Já possui uma conta? Fazer login.' }}
             </button>
           </div>
-          
         </form>
 
-        <div class="mt-12 text-center text-[10px] text-slate-400 dark:text-slate-600 select-none">
-          © 2026 Gauge Intelligence. Todos os direitos reservados.
+        <div class="mt-12 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-600 select-none">
+          © 2026 NPS Intelligence.
         </div>
         
       </div>
@@ -128,58 +94,49 @@
       
       <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/20 to-orange-500/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
 
-      <div class="flex items-center gap-4 py-4 px-2 mb-6 cursor-default z-10">
-        <div class="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 shadow-xl shrink-0 overflow-hidden border border-slate-700/50">
-          <div class="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-indigo-500/20 opacity-50"></div>
-          <img src="/NPS-Gauge.png" alt="Logo" class="w-8 h-8 object-contain z-10" />
-          <div class="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-800 animate-pulse z-20"></div>
+      <div class="z-10 mt-10">
+         <div class="flex items-center gap-4 mb-8">
+            <img src="/nps.png" alt="Logo NPS Intelligence" class="w-14 h-14 object-contain drop-shadow-[0_10px_15px_rgba(249,115,22,0.2)]" />
+            <span class="text-4xl font-black uppercase tracking-tighter italic text-white leading-none">
+              NPS <br><span class="text-2xl text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500">Intelligence</span>
+            </span>
+         </div>
+         
+         <h2 class="text-5xl font-extrabold leading-[1.05] tracking-tighter max-w-md">
+           Transforme feedbacks em <br>
+           <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-rose-400 font-black italic">inteligência ativa.</span>
+         </h2>
+         <div class="w-20 h-1.5 bg-gradient-to-r from-orange-500 to-rose-500 rounded-full mt-6 mb-8"></div>
+         <p class="text-lg text-slate-300 leading-relaxed font-normal max-w-sm">Aceda à plataforma para processar, analisar e atuar proativamente sobre a experiência dos seus clientes em tempo real.</p>
+      </div>
+
+      <div class="grid grid-cols-3 gap-6 pt-8 border-t border-slate-700/50 z-10 animate-fadein delay-200">
+        <div class="flex flex-col gap-1">
+          <span class="text-[10px] font-black uppercase text-indigo-400 tracking-wider">Monitoramento</span>
+          <span class="text-2xl font-extrabold text-white tracking-tighter italic">Real-time</span>
         </div>
-        <div class="flex flex-col select-none">
-          <div class="flex items-baseline gap-1">
-            <span class="text-3xl font-black tracking-tighter text-white leading-none">Gauge</span>
-            <span class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500 leading-none">NPS</span>
-          </div>
-          <div class="flex items-center gap-1.5 mt-1.5">
-            <span class="h-[1.5px] w-3 bg-indigo-500/70 rounded-full"></span>
-            <span class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 leading-none">Intelligence Hub</span>
-          </div>
+        <div class="flex flex-col gap-1">
+          <span class="text-[10px] font-black uppercase text-rose-400 tracking-wider">Visão Cliente</span>
+          <span class="text-2xl font-extrabold text-white tracking-tighter italic">360º</span>
+        </div>
+        <div class="flex flex-col gap-1">
+          <span class="text-[10px] font-black uppercase text-orange-400 tracking-wider">Tecnologia CS</span>
+          <span class="text-2xl font-extrabold text-white tracking-tighter italic">GAUGE AI</span>
         </div>
       </div>
 
-      <div class="w-full max-w-lg mb-20 z-10 animate-fadein">
-        <h2 class="text-5xl font-extrabold text-white leading-[0.95] tracking-tighter mb-6">Transforme feedbacks em inteligência competitiva e retenção ativa.</h2>
-        <div class="w-24 h-1.5 bg-gradient-to-r from-orange-500 to-rose-500 rounded-full mb-8"></div>
-        <p class="text-lg text-slate-300 leading-relaxed font-normal">Aceda ao Hub de NPS da Gauge e utilize a nossa plataforma de inteligência para processar, analisar e atuar proativamente sobre a experiência dos seus clientes em tempo real.</p>
-      </div>
-
-      <div class="grid grid-cols-3 gap-6 pt-6 border-t border-slate-700/50 z-10 animate-fadein delay-100">
-        <div class="flex flex-col gap-1.5">
-          <div class="text-[10px] font-black uppercase text-indigo-400 tracking-wider">Monitoramento</div>
-          <div class="text-3xl font-extrabold text-white tracking-tighter">Real-time</div>
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <div class="text-[10px] font-black uppercase text-rose-400 tracking-wider">Visão do Cliente</div>
-          <div class="text-3xl font-extrabold text-white tracking-tighter">360º</div>
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <div class="text-[10px] font-black uppercase text-orange-400 tracking-wider">Tecnologia CS</div>
-          <div class="text-3xl font-extrabold text-white tracking-tighter">Gauge AI</div>
-        </div>
-      </div>
-      
+      <div class="absolute bottom-10 right-10 text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] z-10">NPS Intelligence © 2026</div>
     </div>
 
   </div>
 </template>
 
 <script setup>
-// 👇 A SUA LÓGICA ORIGINAL INTACTA 👇
 import { ref, onMounted } from 'vue'; 
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import api from '../services/api';
 
-// Componentes PrimeVue
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
@@ -199,25 +156,15 @@ const lembrarDeMim = ref(false);
 
 onMounted(() => {
   const emailSalvo = localStorage.getItem('nps_remember_email');
-  console.log('Tentando carregar e-mail salvo:', emailSalvo); // Debug no console
-
   if (emailSalvo) {
-    credenciais.value = { 
-      ...credenciais.value, 
-      email: emailSalvo 
-    };
+    credenciais.value = { ...credenciais.value, email: emailSalvo };
     lembrarDeMim.value = true;
   }
 });
 
 const fazerLogin = async () => {
   if (!credenciais.value.email || !credenciais.value.password) {
-      toast.add({ 
-        severity: 'success', 
-        summary: '🚀 Conexão Estabelecida', 
-        detail: `Bem-vindo(a), ${response.data.nome.split(' ')[0]}! A preparar o seu ambiente de inteligência...`, 
-        life: 2500 
-      });
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha o e-mail e a palavra-passe.', life: 3000 });
     return;
   }
 
@@ -230,17 +177,12 @@ const fazerLogin = async () => {
       password: credenciais.value.password,
       remember: lembrarDeMim.value
     }); 
-    
-    console.log("Dados do Servidor:", response.data);
 
     const token = response.data.access_token;
 
     if (token) {
-
       const emailSalvo = credenciais.value.email;
-
       localStorage.clear(); 
-
       localStorage.setItem('token', token);
       localStorage.setItem('usuario_id', response.data.usuario_id);
       localStorage.setItem('usuario_nome', response.data.nome);
@@ -251,43 +193,22 @@ const fazerLogin = async () => {
         localStorage.setItem('nps_remember_email', emailSalvo);
       }
 
-      toast.add({ 
-        severity: 'success', 
-        summary: 'Acesso Autorizado', 
-        detail: `Bem-vindo, ${response.data.nome}!`, 
-        life: 2000 
-      });
+      toast.add({ severity: 'success', summary: '🚀 Conexão Estabelecida', detail: `Bem-vindo, ${response.data.nome.split(' ')[0]}! Sincronizando dados...`, life: 2500 });
       
-      setTimeout(() => {
-        window.location.href = '/'; 
-      }, 700); 
-
+      setTimeout(() => { window.location.href = '/'; }, 700); 
     } else {
       throw new Error("O servidor não devolveu um token de acesso.");
     }
 
   } catch (error) {
     temErro.value = true;
-    console.error("Erro no processo de login:", error);
-
     const msgErro = error.response?.data?.detail || 'Não foi possível conectar ao servidor.';
-    
     const erroNormalizado = msgErro.toLowerCase();
     
     if (erroNormalizado.includes('inativa') || erroNormalizado.includes('aprovação')) {
-      toast.add({ 
-        severity: 'warn', 
-        summary: 'Acesso Pendente', 
-        detail: msgErro, 
-        life: 6000 
-      });
+      toast.add({ severity: 'warn', summary: 'Acesso Pendente', detail: msgErro, life: 6000 });
     } else {
-      toast.add({ 
-        severity: 'error', 
-        summary: 'Erro de Autenticação', 
-        detail: msgErro, 
-        life: 4000 
-      });
+      toast.add({ severity: 'error', summary: 'Erro de Autenticação', detail: msgErro, life: 4000 });
     }
   } finally {
     loading.value = false;
@@ -303,12 +224,9 @@ const fazerRegistro = async () => {
   loading.value = true;
   try {
     const response = await api.post('/register', registro.value); 
-    
     toast.add({ severity: 'success', summary: 'Sucesso!', detail: response.data.mensagem, life: 5000 });
-    
     registro.value = { nome: '', email: '', password: '' };
     isLoginMode.value = true; 
-    
   } catch (error) {
     const msgErro = error.response?.data?.detail || 'Erro ao solicitar acesso. Tente novamente.';
     toast.add({ severity: 'error', summary: 'Erro no Registo', detail: msgErro, life: 5000 });
@@ -318,52 +236,38 @@ const fazerRegistro = async () => {
 };
 
 const handleSubmit = () => {
-  if (isLoginMode.value) {
-    fazerLogin();
-  } else {
-    fazerRegistro();
-  }
+  if (isLoginMode.value) { fazerLogin(); } else { fazerRegistro(); }
 };
 </script>
 
 <style scoped lang="postcss">
 @reference "tailwindcss";
 
-/* 1. ANIMAÇÕES */
-.animate-fadein { 
-  animation: fadeIn 0.4s ease-out; 
-}
+.animate-fadein { animation: fadeIn 0.4s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-@keyframes fadeIn { 
-  from { opacity: 0; transform: translateY(10px); } 
-  to { opacity: 1; transform: translateY(0); } 
-}
-
-/* 2. ESTRUTURA DO CONTAINER (O SPAN) */
 .p-input-icon-left {
   display: flex !important;
-  align-items: center !important; /* Centraliza o ícone verticalmente */
+  align-items: center !important;
   position: relative !important;
   width: 100%;
 }
 
-/* 3. POSICIONAMENTO DO ÍCONE (ENVELOPE E CADEADO) */
 .p-input-icon-left > i {
   position: absolute !important;
-  left: 1.1rem !important; /* Distância da borda esquerda */
+  left: 1.1rem !important;
   top: 50% !important;
-  transform: translateY(-50%) !important; /* Alinhamento vertical perfeito */
+  transform: translateY(-50%) !important;
   z-index: 30 !important;
-  pointer-events: none; /* Garante que o clique passe para o input */
+  pointer-events: none;
   font-size: 1rem !important;
 }
 
-/* 4. PADRONIZAÇÃO DOS INPUTS (EMAIL E PASSWORD) */
 :deep(.custom-input),
 :deep(.p-password input) {
   width: 100% !important;
-  border-radius: 1.2rem !important; /* Um pouco mais arredondado para o design premium */
-  padding: 0.9rem 1rem 0.9rem 3.2rem !important; /* 3.2rem de respiro para o ícone à esquerda */
+  border-radius: 1.2rem !important;
+  padding: 0.9rem 1rem 0.9rem 3.2rem !important;
   border: 1.5px solid #e2e8f0 !important;
   background-color: #f8fafc !important;
   color: #1e293b !important;
@@ -373,7 +277,6 @@ const handleSubmit = () => {
   outline: none !important;
 }
 
-/* 5. EFEITO DE FOCO (FOCUS) */
 :deep(.custom-input:focus),
 :deep(.p-password input:focus) {
   border-color: #f97316 !important;
@@ -381,18 +284,9 @@ const handleSubmit = () => {
   box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1) !important;
 }
 
-/* 6. AJUSTES DO COMPONENTE PASSWORD */
-:deep(.p-password) {
-  width: 100% !important;
-}
+:deep(.p-password) { width: 100% !important; }
+:deep(.p-password-reveal-icon) { right: 1.2rem !important; color: #94a3b8 !important; }
 
-/* Ícone de revelar senha (olho) */
-:deep(.p-password-reveal-icon) {
-  right: 1.2rem !important;
-  color: #94a3b8 !important;
-}
-
-/* 7. DARK MODE */
 :global(.dark) :deep(.custom-input),
 :global(.dark) :deep(.p-password input) {
   background-color: #1e293b !important;
@@ -406,7 +300,6 @@ const handleSubmit = () => {
   border-color: #f97316 !important;
 }
 
-/* 8. TRATAMENTO DE ERRO */
 :deep(.p-invalid) .custom-input,
 :deep(.p-invalid) input {
   border-color: #ef4444 !important;

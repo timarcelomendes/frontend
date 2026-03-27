@@ -20,9 +20,8 @@ const isDark = ref(false);
 
 // Lógica para esconder menus em páginas de login/senha
 const exibirLayout = computed(() => {
-  const paginasSemMenu = ['Login', 'ForgotPassword', 'ResetPassword'];
-  // Verifica pelo nome da rota (definido no seu router/index.js)
-  return !paginasSemMenu.includes(route.name);
+  const rotasSemMenu = ['Login', 'ForgotPassword', 'redefinir-senha'];
+  return !rotasSemMenu.includes(route.name);
 });
 
 const toggleSidebar = () => {

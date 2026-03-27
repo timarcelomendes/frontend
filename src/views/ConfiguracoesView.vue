@@ -15,7 +15,6 @@ import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import InputSwitch from 'primevue/inputswitch';
-import Skeleton from 'primevue/skeleton';
 import InputNumber from 'primevue/inputnumber';
 import MultiSelect from 'primevue/multiselect';
 import Textarea from 'primevue/textarea';
@@ -62,55 +61,27 @@ const submetendoUser = ref(false);
 
 const opcoesTipo = ['Admin', 'Manager', 'Viewer'];
 
-// Função para formatar a data de último acesso
 const formatarDataHora = (dataString) => {
   if (!dataString) return 'Nunca acedeu';
-  
   const data = new Date(dataString);
   return data.toLocaleString('pt-PT', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
   }).replace(',', ' às');
 };
 
-// 🎲 MOTOR DE GERAÇÃO DE SENHA
 const gerarSenhaAleatoria = () => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
   let pass = "";
-  for (let i = 0; i < 12; i++) {
-    pass += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
+  for (let i = 0; i < 12; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
   usuario.value.password = pass;
-  
-  toast.add({ 
-    severity: 'info', 
-    summary: 'Senha Gerada', 
-    detail: 'Uma nova senha foi gerada. Copie antes de salvar.', 
-    life: 3000 
-  });
-};
-
-// 📋 Função para Copiar
-const copiarSenha = () => {
-  if (!usuario.value.password) return;
-  
-  navigator.clipboard.writeText(usuario.value.password);
-  toast.add({ 
-    severity: 'success', 
-    summary: 'Copiado', 
-    detail: 'Senha copiada para a área de transferência.', 
-    life: 2000 
-  });
+  toast.add({ severity: 'info', summary: 'Senha Gerada', detail: 'Uma nova senha foi gerada. Copie antes de salvar.', life: 3000 });
 };
 
 // --- ESTADOS DE SEGURANÇA ---
 const loadingSenha = ref(false);
 const formSenha = ref({ atual: '', nova: '', confirmacao: '' });
 
-// 🔐 Alterar Senha
 const alterarMinhaSenha = async () => {
   if (formSenha.value.nova !== formSenha.value.confirmacao) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'As senhas não coincidem.', life: 3000 });
@@ -119,8 +90,7 @@ const alterarMinhaSenha = async () => {
   loadingSenha.value = true;
   try {
     await api.post('/usuarios/alterar-senha', {
-      senha_atual: formSenha.value.atual,
-      nova_senha: formSenha.value.nova
+      senha_atual: formSenha.value.atual, nova_senha: formSenha.value.nova
     });
     toast.add({ severity: 'success', summary: 'Segurança Atualizada', detail: 'Sua senha foi alterada.', life: 3000 });
     formSenha.value = { atual: '', nova: '', confirmacao: '' };
@@ -152,8 +122,7 @@ const carregarSessoesReais = async () => {
     const response = await api.get('/usuarios/sessoes?usuario_id=1');
     if (response.data) {
       sessoesAtivas.value = response.data.map((sessao, index) => ({
-        ...sessao,
-        atual: index === 0
+        ...sessao, atual: index === 0
       }));
     }
   } catch (error) {
@@ -175,13 +144,10 @@ const encerrarSessao = async (id) => {
 
 const encerrarTodasAsSessoes = async () => {
   if (!confirm('Isto irá desconectar a sua conta de todos os outros computadores e telemóveis. Confirmar?')) return;
-  
   loadingSessoes.value = true;
   try {
     const sessoesAntigas = sessoesAtivas.value.filter(s => !s.atual);
-    for (const sessao of sessoesAntigas) {
-      await api.delete(`/usuarios/sessoes/${sessao.id}`);
-    }
+    for (const sessao of sessoesAntigas) await api.delete(`/usuarios/sessoes/${sessao.id}`);
     sessoesAtivas.value = sessoesAtivas.value.filter(s => s.atual);
     toast.add({ severity: 'warn', summary: 'Segurança Máxima', detail: 'Todas as outras sessões foram encerradas.', life: 5000 });
   } catch (error) {
@@ -216,7 +182,6 @@ const salvarConfiguracoes = async () => {
   try {
     const payload = { ...config.value };
     delete payload.base_url_frontend; 
-    
     await api.post('/config/email', payload);
     toast.add({ severity: 'success', summary: 'Guardado', detail: 'Configurações salvas no banco.', life: 3000 });
     carregarDadosConfig();
@@ -238,7 +203,7 @@ const carregarConfiguracoesAI = async () => {
       formConfigAI.value = { ...formConfigAI.value, ...response.data.data };
     }
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Aviso', detail: 'Não foi possível carregar as chaves de IA (verifique se a tabela existe).', life: 3000 });
+    toast.add({ severity: 'error', summary: 'Aviso', detail: 'Não foi possível carregar as chaves de IA.', life: 3000 });
   } finally {
     loadingAIConfig.value = false;
   }
@@ -248,10 +213,8 @@ const salvarConfiguracoesAI = async () => {
   savingAIConfig.value = true;
   try {
     const payload = Object.keys(formConfigAI.value).map(key => ({
-      chave: key,
-      valor: String(formConfigAI.value[key] || '')
+      chave: key, valor: String(formConfigAI.value[key] || '')
     }));
-
     await api.post('/configuracoes', payload);
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Integração de Inteligência Artificial guardada.', life: 3000 });
   } catch (error) {
@@ -262,26 +225,22 @@ const salvarConfiguracoesAI = async () => {
 };
 
 // ==========================================
-// 🔐 MICROSOFT OAUTH2 (FRONTEND)
+// 🔐 MICROSOFT OAUTH2
 // ==========================================
 const autorizarMicrosoft = () => {
   if (!config.value.tenant_id || !config.value.client_id) {
     toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha o Tenant ID e o Client ID primeiro.', life: 4000 });
     return;
   }
-
   const redirectUri = `${window.location.origin}/configuracoes`;
   const scope = encodeURIComponent("offline_access mail.send");
-  
   const authUrl = `https://login.microsoftonline.com/${config.value.tenant_id}/oauth2/v2.0/authorize?client_id=${config.value.client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&response_mode=query&scope=${scope}`;
-  
   window.location.href = authUrl;
 };
 
 const processarCallbackMicrosoft = async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
-
   if (code) {
     verificandoConexao.value = true;
     try {
@@ -298,7 +257,6 @@ const processarCallbackMicrosoft = async () => {
 };
 
 const enviandoTeste = ref(false);
-
 const enviarTeste = async () => {
   enviandoTeste.value = true;
   try {
@@ -314,32 +272,15 @@ const enviarTeste = async () => {
 // ==========================================
 // 💾 GESTÃO DE UTILIZADORES
 // ==========================================
+const usuario = ref({ nome: '', email: '', cargo: '', tipo: 'Viewer', ativo: true, password: '' });
 
-const usuario = ref({ 
-  nome: '', 
-  email: '', 
-  cargo: '',
-  tipo: 'Viewer', 
-  ativo: true, 
-  password: '' 
-});
-
-// 🚀 Carregar e Ordenar Utilizadores
 const carregarUtilizadores = async () => {
   carregandoUtilizadores.value = true;
   try {
     const response = await api.get('/usuarios'); 
-    
     let lista = Array.isArray(response.data) ? response.data : [response.data];
-    
-    const utilizadoresOrdenados = lista.sort((a, b) => {
-      return Number(a.ativo) - Number(b.ativo); 
-    });
-
-    utilizadores.value = utilizadoresOrdenados;
-
+    utilizadores.value = lista.sort((a, b) => Number(a.ativo) - Number(b.ativo));
   } catch (error) {
-    console.error("Erro ao carregar utilizadores", error);
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao listar utilizadores.', life: 5000 });
   } finally {
     carregandoUtilizadores.value = false;
@@ -367,45 +308,24 @@ const salvarUtilizador = async () => {
 
 const alternarStatus = async (user_data) => {
   const novoStatus = !user_data.ativo; 
-  
   try {
-    await api.put(`/usuarios/${user_data.usuario_id}`, {
-      ...user_data,
-      ativo: novoStatus 
-    });
-
+    await api.put(`/usuarios/${user_data.usuario_id}`, { ...user_data, ativo: novoStatus });
     user_data.ativo = novoStatus; 
-
-    toast.add({ 
-      severity: 'success', 
-      summary: 'Acesso Atualizado', 
-      detail: novoStatus ? 'Utilizador ativado com sucesso!' : 'Acesso bloqueado com sucesso.', 
-      life: 3000 
-    });
-
+    toast.add({ severity: 'success', summary: 'Acesso Atualizado', detail: novoStatus ? 'Utilizador ativado!' : 'Acesso bloqueado.', life: 3000 });
     utilizadores.value.sort((a, b) => Number(a.ativo) - Number(b.ativo));
-
   } catch (error) {
-    console.error("Erro ao alterar status:", error);
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível alterar o status.', life: 3000 });
   }
 };
 
 const abrirNovoUser = () => {
-  usuario.value = { 
-    nome: '', 
-    email: '', 
-    cargo: '',
-    tipo: 'Viewer', 
-    ativo: true, 
-    password: '' 
-  };
+  usuario.value = { nome: '', email: '', cargo: '', tipo: 'Viewer', ativo: true, password: '' };
   editandoUser.value = false;
   usuarioDialog.value = true;
 };
 
 // ==========================================
-// 🔒 ESTADOS: SEGURANÇA (Sessão)
+// 🔒 ESTADOS: SEGURANÇA
 // ==========================================
 const configSeguranca = ref({ tempo_minutos: 60 });
 const salvandoSeguranca = ref(false);
@@ -413,73 +333,42 @@ const salvandoSeguranca = ref(false);
 const carregarSeguranca = async () => {
   try {
     const response = await api.get('/config/seguranca');
-    if (response.data && response.data.tempo_minutos) {
-      configSeguranca.value.tempo_minutos = response.data.tempo_minutos;
-    }
-  } catch (error) {
-    console.error("Erro ao carregar configurações de segurança:", error);
-  }
+    if (response.data && response.data.tempo_minutos) configSeguranca.value.tempo_minutos = response.data.tempo_minutos;
+  } catch (error) { console.error(error); }
 };
 
 const salvarSeguranca = async () => {
   salvandoSeguranca.value = true;
   try {
-    await api.put('/config/seguranca', { 
-      tempo_minutos: configSeguranca.value.tempo_minutos 
-    });
-    toast.add({ 
-      severity: 'success', 
-      summary: 'Segurança Atualizada', 
-      detail: 'O tempo de expiração da sessão foi alterado com sucesso!', 
-      life: 3000 
-    });
+    await api.put('/config/seguranca', { tempo_minutos: configSeguranca.value.tempo_minutos });
+    toast.add({ severity: 'success', summary: 'Segurança Atualizada', detail: 'Tempo de expiração alterado.', life: 3000 });
   } catch (error) {
-    toast.add({ 
-      severity: 'error', 
-      summary: 'Erro', 
-      detail: 'Falha ao salvar a configuração de segurança.', 
-      life: 3000 
-    });
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao salvar a configuração de segurança.', life: 3000 });
   } finally {
     salvandoSeguranca.value = false;
   }
 };
 
-// --- ESTADO: INTEGRAÇÕES (FILLOUT & TEAMS) ---
+// --- ESTADO: INTEGRAÇÕES ---
 const loadingIntegracoes = ref(false);
 const savingIntegracoes = ref(false);
+const integracoesConfig = ref({ teams_webhook_url: '' });
 
-const integracoesConfig = ref({
-  teams_webhook_url: '',
-});
-
-const webhookFilloutURL = computed(() => {
-  return `${config.value.base_url_frontend}/api/webhooks/fillout`;
-});
+const webhookFilloutURL = computed(() => `${config.value.base_url_frontend}/api/webhooks/fillout`);
 
 const copiarWebhookFillout = async () => {
   try {
     await navigator.clipboard.writeText(webhookFilloutURL.value);
-    toast.add({ severity: 'success', summary: 'Copiado!', detail: 'URL do Webhook copiado para a área de transferência.', life: 3000 });
-  } catch (err) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível copiar o URL.', life: 3000 });
-  }
+    toast.add({ severity: 'success', summary: 'Copiado!', detail: 'URL do Webhook copiado.', life: 3000 });
+  } catch (err) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível copiar o URL.' }); }
 };
 
 const carregarIntegracoes = async () => {
   loadingIntegracoes.value = true;
   try {
     const res = await api.get('/config/integracoes');
-    if (res.data) {
-      integracoesConfig.value = {
-        teams_webhook_url: res.data.teams_webhook_url || ''
-      };
-    }
-  } catch (error) {
-    console.error("Erro ao carregar integrações", error);
-  } finally {
-    loadingIntegracoes.value = false;
-  }
+    if (res.data) integracoesConfig.value = { teams_webhook_url: res.data.teams_webhook_url || '' };
+  } catch (error) { console.error(error); } finally { loadingIntegracoes.value = false; }
 };
 
 const salvarIntegracoes = async () => {
@@ -489,27 +378,13 @@ const salvarIntegracoes = async () => {
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Integrações atualizadas com sucesso!', life: 3000 });
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar configurações de integração.', life: 5000 });
-  } finally {
-    savingIntegracoes.value = false;
-  }
+  } finally { savingIntegracoes.value = false; }
 };
 
-// ==========================================
-// 🧹 LIMPEZA DE CACHE
-// ==========================================
 const limparCacheNavegador = () => {
   localStorage.removeItem('nps_ver_arquivados');
-  
-  toast.add({ 
-    severity: 'success', 
-    summary: 'Cache Limpo', 
-    detail: 'A recarregar o sistema com dados frescos...', 
-    life: 2000 
-  });
-
-  setTimeout(() => {
-    window.location.reload(true);
-  }, 1500);
+  toast.add({ severity: 'success', summary: 'Cache Limpo', detail: 'A recarregar o sistema com dados frescos...', life: 2000 });
+  setTimeout(() => { window.location.reload(true); }, 1500);
 };
 
 // --- ESTADO: MOTOR NPS ---
@@ -522,24 +397,18 @@ const carregarElegiveisNPS = async () => {
   try {
     const res = await api.get('/config/nps/elegiveis');
     totalElegiveisNPS.value = res.data.total;
-  } catch (error) {
-    console.error("Erro ao contar elegíveis", error);
-  } finally {
-    loadingElegiveis.value = false;
-  }
+  } catch (error) { console.error(error); } finally { loadingElegiveis.value = false; }
 };
 
 const forcarDisparoNPS = async () => {
   disparandoNPS.value = true;
   try {
     await api.post('/config/nps/forcar-disparo');
-    toast.add({ severity: 'success', summary: 'Motor Iniciado', detail: 'Os e-mails estão a ser processados em segundo plano. Verifique os relatórios em breve.', life: 5000 });
+    toast.add({ severity: 'success', summary: 'Motor Iniciado', detail: 'Processamento em segundo plano.', life: 5000 });
     setTimeout(() => carregarElegiveisNPS(), 3000); 
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao iniciar disparo.', life: 5000 });
-  } finally {
-    disparandoNPS.value = false;
-  }
+  } finally { disparandoNPS.value = false; }
 };
 
 // ==========================================
@@ -549,187 +418,89 @@ const loadingRegras = ref(false);
 const savingRegras = ref(false);
 const abaEmailAgradecimento = ref('promotor');
 
+// Variável regrasConfig ATUALIZADA com teams_horario_resumo
 const regrasConfig = ref({
-  scheduler_hora_inicio: '09:00',
+  scheduler_hora_inicio: '09:00', 
   scheduler_horas: 6,
-  sla_detrator_dias: 2,
-  sla_neutro_dias: 5,
+  teams_horario_resumo: '08:00',
+  sla_detrator_dias: 2, 
+  sla_neutro_dias: 5, 
   sla_promotor_dias: 7,
   fillout_campos: ['clienteId', 'email', 'nome', 'empresa', 'empresa_id'],
-  email_template_html: '',
+  email_template_html: '', 
   email_agradecimento_promotor: '',
-  email_agradecimento_neutro: '',
+  email_agradecimento_neutro: '', 
   email_agradecimento_detrator: '',
-  lembrete_dias: 3,
+  lembrete_dias: 3, 
   email_template_lembrete: ''
 });
 
 const opcoesCamposFillout = ref([
-  { label: 'ID do Cliente', value: 'clienteId' },
-  { label: 'E-mail', value: 'email' },
-  { label: 'Nome', value: 'nome' },
-  { label: 'Empresa', value: 'empresa' },
-  { label: 'ID da Empresa', value: 'empresa_id' },
-  { label: 'Gestor', value: 'gestor' },
-  { label: 'Segmento', value: 'segmento' }
+  { label: 'ID do Cliente', value: 'clienteId' }, { label: 'E-mail', value: 'email' },
+  { label: 'Nome', value: 'nome' }, { label: 'Empresa', value: 'empresa' },
+  { label: 'ID da Empresa', value: 'empresa_id' }, { label: 'Gestor', value: 'gestor' }, { label: 'Segmento', value: 'segmento' }
 ]);
 
 const carregarRegras = async () => {
   loadingRegras.value = true;
   try {
     const res = await api.get('/config/regras');
-    regrasConfig.value = {
-      ...res.data,
-      fillout_campos: res.data.fillout_campos ? res.data.fillout_campos.split(',') : []
-    };
-  } catch (error) {
-    console.error("Erro ao carregar regras", error);
-  } finally {
-    loadingRegras.value = false;
-  }
+    regrasConfig.value = { ...res.data, fillout_campos: res.data.fillout_campos ? res.data.fillout_campos.split(',') : [] };
+  } catch (error) { console.error(error); } finally { loadingRegras.value = false; }
 };
 
 const salvarRegras = async () => {
   savingRegras.value = true;
   try {
-    const payload = {
-      ...regrasConfig.value,
-      fillout_campos: regrasConfig.value.fillout_campos.join(',')
-    };
+    const payload = { ...regrasConfig.value, fillout_campos: regrasConfig.value.fillout_campos.join(',') };
     await api.post('/config/regras', payload);
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Regras de negócio atualizadas!', life: 3000 });
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar configurações.', life: 5000 });
-  } finally {
-    savingRegras.value = false;
-  }
+  } finally { savingRegras.value = false; }
 };
 
 // ==========================================
-// 🧪 MÓDULO DE TESTE: E-MAIL DE CONVITE
+// 🧪 MÓDULOS DE TESTE DE EMAIL (CONVITE, AGRADECIMENTO, LEMBRETE)
 // ==========================================
 const loadingTesteConvite = ref(false);
 const emailTesteConvite = ref('');
-
-const modeloBaseConvite = `<!DOCTYPE html>
-<html>
-<body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;">
-    <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto; text-align: center;">
-        <h2 style="color: #333;">Olá, {nome}!</h2>
-        <p style="color: #555; font-size: 16px;">Como avalia a sua parceria com a <strong>{empresa}</strong>?</p>
-        <a href="{survey_url}" style="display: inline-block; padding: 14px 28px; background-color: #F97316; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 25px;">Responder Pesquisa</a>
-    </div>
-</body>
-</html>`;
-
+const modeloBaseConvite = `<!DOCTYPE html><html><body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;"><div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto; text-align: center;"><h2 style="color: #333;">Olá, {nome}!</h2><p style="color: #555; font-size: 16px;">Como avalia a sua parceria com a <strong>{empresa}</strong>?</p><a href="{survey_url}" style="display: inline-block; padding: 14px 28px; background-color: #F97316; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 25px;">Responder Pesquisa</a></div></body></html>`;
 const testarTemplateConvite = async () => {
-  if (!emailTesteConvite.value) {
-    return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail para receber o teste.', life: 3000 });
-  }
-  if (!regrasConfig.value.email_template_html) {
-    return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole algum código HTML antes de testar.', life: 3000 });
-  }
-
+  if (!emailTesteConvite.value) return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail.' });
+  if (!regrasConfig.value.email_template_html) return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole o HTML.' });
   loadingTesteConvite.value = true;
   try {
-    await api.post('/config/testar-template', {
-      email_destino: emailTesteConvite.value,
-      html_content: regrasConfig.value.email_template_html,
-      categoria: 'convite'
-    });
+    await api.post('/config/testar-template', { email_destino: emailTesteConvite.value, html_content: regrasConfig.value.email_template_html, categoria: 'convite' });
     toast.add({ severity: 'success', summary: 'Enviado! 🚀', detail: 'Preview do convite enviado com sucesso.', life: 5000 });
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Falha no Teste', detail: 'Não foi possível enviar o preview.', life: 5000 });
-  } finally {
-    loadingTesteConvite.value = false;
-  }
+  } catch (error) { toast.add({ severity: 'error', summary: 'Falha no Teste', detail: 'Não foi possível enviar o preview.' }); } finally { loadingTesteConvite.value = false; }
 };
 
-// ==========================================
-// 🧪 MÓDULO DE TESTE: E-MAIL DE AGRADECIMENTO
-// ==========================================
 const loadingTesteAgradecimento = ref(false);
 const emailTesteAgradecimento = ref('');
-
-const modeloBaseAgradecimento = `<!DOCTYPE html>
-<html>
-<body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;">
-    <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Obrigado, {nome}!</h2>
-        <p>A sua avaliação da parceria com a <strong>{empresa}</strong> é muito importante.</p>
-        <p>A sua nota final foi: <strong style="font-size: 18px; color: #F97316;">{nota}/10</strong></p>
-        
-        <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #F97316; margin: 20px 0;">
-            <p style="margin: 0; font-style: italic; color: #555;">"{motivo}"</p>
-        </div>
-        
-        <p>A nossa equipa já está a analisar o seu feedback.</p>
-    </div>
-</body>
-</html>`;
-
+const modeloBaseAgradecimento = `<!DOCTYPE html><html><body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;"><div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;"><h2 style="color: #333;">Obrigado, {nome}!</h2><p>A sua avaliação da parceria com a <strong>{empresa}</strong> é muito importante.</p><p>A sua nota final foi: <strong style="font-size: 18px; color: #F97316;">{nota}/10</strong></p><div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #F97316; margin: 20px 0;"><p style="margin: 0; font-style: italic; color: #555;">"{motivo}"</p></div><p>A nossa equipa já está a analisar o seu feedback.</p></div></body></html>`;
 const testarTemplateAgradecimento = async () => {
-  if (!emailTesteAgradecimento.value) {
-    return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail para receber o teste.', life: 3000 });
-  }
-
-  // Descobre qual é a aba ativa para pegar no HTML correto
-  let htmlAlvo = '';
-  if (abaEmailAgradecimento.value === 'promotor') htmlAlvo = regrasConfig.value.email_agradecimento_promotor;
-  else if (abaEmailAgradecimento.value === 'neutro') htmlAlvo = regrasConfig.value.email_agradecimento_neutro;
-  else htmlAlvo = regrasConfig.value.email_agradecimento_detrator;
-
-  if (!htmlAlvo) {
-    return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole algum código HTML antes de testar.', life: 3000 });
-  }
-
+  if (!emailTesteAgradecimento.value) return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail.' });
+  let htmlAlvo = abaEmailAgradecimento.value === 'promotor' ? regrasConfig.value.email_agradecimento_promotor : abaEmailAgradecimento.value === 'neutro' ? regrasConfig.value.email_agradecimento_neutro : regrasConfig.value.email_agradecimento_detrator;
+  if (!htmlAlvo) return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole o HTML.' });
   loadingTesteAgradecimento.value = true;
   try {
-    await api.post('/config/testar-template', {
-      email_destino: emailTesteAgradecimento.value,
-      html_content: htmlAlvo,
-      categoria: abaEmailAgradecimento.value
-    });
-    toast.add({ severity: 'success', summary: 'Enviado! 🚀', detail: 'Preview do agradecimento enviado com sucesso.', life: 5000 });
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Falha no Teste', detail: 'Não foi possível enviar o preview.', life: 5000 });
-  } finally {
-    loadingTesteAgradecimento.value = false;
-  }
+    await api.post('/config/testar-template', { email_destino: emailTesteAgradecimento.value, html_content: htmlAlvo, categoria: abaEmailAgradecimento.value });
+    toast.add({ severity: 'success', summary: 'Enviado! 🚀', detail: 'Preview enviado com sucesso.' });
+  } catch (error) { toast.add({ severity: 'error', summary: 'Falha no Teste', detail: 'Erro.' }); } finally { loadingTesteAgradecimento.value = false; }
 };
 
-// variáveis de teste do lembrete:
 const loadingTesteLembrete = ref(false);
 const emailTesteLembrete = ref('');
-
-const modeloBaseLembrete = `<!DOCTYPE html>
-<html>
-<body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;">
-    <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto; text-align: center;">
-        <h2 style="color: #333;">Olá novamente, {nome}!</h2>
-        <p style="color: #555; font-size: 16px;">Ainda não recebemos o seu feedback sobre a <strong>{empresa}</strong>. Leva menos de 1 minuto!</p>
-        <a href="{survey_url}" style="display: inline-block; padding: 14px 28px; background-color: #F97316; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 25px;">Responder Agora</a>
-    </div>
-</body>
-</html>`;
-
+const modeloBaseLembrete = `<!DOCTYPE html><html><body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;"><div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto; text-align: center;"><h2 style="color: #333;">Olá novamente, {nome}!</h2><p style="color: #555; font-size: 16px;">Ainda não recebemos o seu feedback sobre a <strong>{empresa}</strong>. Leva menos de 1 minuto!</p><a href="{survey_url}" style="display: inline-block; padding: 14px 28px; background-color: #F97316; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 25px;">Responder Agora</a></div></body></html>`;
 const testarTemplateLembrete = async () => {
   if (!emailTesteLembrete.value) return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail.' });
   if (!regrasConfig.value.email_template_lembrete) return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole o HTML.' });
-
   loadingTesteLembrete.value = true;
   try {
-    await api.post('/config/testar-template', {
-      email_destino: emailTesteLembrete.value,
-      html_content: regrasConfig.value.email_template_lembrete,
-      categoria: 'convite' // Usa a mesma lógica de gerar o {survey_url} fictício
-    });
+    await api.post('/config/testar-template', { email_destino: emailTesteLembrete.value, html_content: regrasConfig.value.email_template_lembrete, categoria: 'convite' });
     toast.add({ severity: 'success', summary: 'Enviado!', detail: 'Preview do lembrete enviado.' });
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha no teste.' });
-  } finally {
-    loadingTesteLembrete.value = false;
-  }
+  } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha no teste.' }); } finally { loadingTesteLembrete.value = false; }
 };
 
 onMounted(() => {
@@ -867,7 +638,7 @@ onMounted(() => {
               </div>
               <div class="flex flex-col justify-center">
                 <h2 class="text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Integração OpenAI</h2>
-                <p class="text-[10px] md:text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Motor Preditivo do Magic AI Dashboard</p>
+                <p class="text-[10px] md:text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Motor Preditivo do Magic AI</p>
               </div>
             </div>
             <Button label="Guardar" icon="pi pi-save" @click="salvarConfiguracoesAI" :loading="savingAIConfig" class="w-full lg:w-auto !bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform" />
@@ -948,7 +719,7 @@ onMounted(() => {
               </template>
             </Column>
             <template #empty>
-              <div class="text-center p-8 text-slate-400 text-[10px] font-black uppercase tracking-widest">Nenhum utilizador encontrado na base de dados.</div>
+              <div class="text-center p-8 text-slate-400 text-[10px] font-black uppercase tracking-widest">Nenhum utilizador encontrado.</div>
             </template>
           </DataTable>
         </div>
@@ -1075,45 +846,45 @@ onMounted(() => {
       </TabPanel>
 
       <TabPanel>
-      <template #header>
-        <div class="flex items-center gap-2 px-2">
-          <i class="pi pi-cog text-slate-400"></i> <span class="font-bold">Regras & Operação</span>
-        </div>
-      </template>
+        <template #header>
+          <div class="flex items-center gap-2 px-2">
+            <i class="pi pi-cog text-slate-400"></i> <span class="font-bold">Regras & Operação</span>
+          </div>
+        </template>
 
-      <div class="space-y-8 animate-fadein py-4">
-        
-        <div class="bg-slate-900 dark:bg-slate-950 rounded-[2rem] p-6 md:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
-          <div class="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+        <div class="space-y-8 animate-fadein py-4">
           
-          <div class="flex flex-col md:flex-row justify-between items-start md:items-center relative z-10 gap-6">
-            <div>
-              <h3 class="text-xl font-black italic tracking-tight mb-1 flex items-center gap-3">
-                <i class="pi pi-bolt text-orange-500"></i> Motor de Disparo <span class="text-orange-500">.</span>
-              </h3>
-              <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Controlo da fila de espera e execução manual</p>
-            </div>
+          <div class="bg-slate-900 dark:bg-slate-950 rounded-[2rem] p-6 md:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
             
-            <div class="flex flex-wrap items-center gap-4 bg-white/5 border border-white/10 p-3 md:p-4 rounded-2xl backdrop-blur-sm">
-              <div class="flex flex-col px-4">
-                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Na Fila de Espera</span>
-                <div class="flex items-baseline gap-1.5 mt-0.5">
-                  <span class="text-3xl font-black text-white leading-none">{{ totalElegiveisNPS ?? 0 }}</span>
-                  <span class="text-[10px] font-bold text-slate-500">clientes</span>
-                </div>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center relative z-10 gap-6">
+              <div>
+                <h3 class="text-xl font-black italic tracking-tight mb-1 flex items-center gap-3">
+                  <i class="pi pi-bolt text-orange-500"></i> Motor de Disparo <span class="text-orange-500">.</span>
+                </h3>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Controlo da fila de espera e execução manual</p>
               </div>
-              <div class="hidden md:block w-px h-10 bg-white/10"></div>
-              <Button label="Forçar Disparo Agora" icon="pi pi-play" @click="forcarDisparoNPS" :loading="disparandoNPS" class="!bg-orange-500 !text-white !border-none !rounded-xl !font-black !uppercase !tracking-widest !text-[10px] !px-6 !py-3 shadow-lg shadow-orange-500/20 hover:!bg-orange-600 hover:-translate-y-0.5 transition-transform" />
+              
+              <div class="flex flex-wrap items-center gap-4 bg-white/5 border border-white/10 p-3 md:p-4 rounded-2xl backdrop-blur-sm">
+                <div class="flex flex-col px-4">
+                  <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Na Fila de Espera</span>
+                  <div class="flex items-baseline gap-1.5 mt-0.5">
+                    <span class="text-3xl font-black text-white leading-none">{{ totalElegiveisNPS ?? 0 }}</span>
+                    <span class="text-[10px] font-bold text-slate-500">clientes</span>
+                  </div>
+                </div>
+                <div class="hidden md:block w-px h-10 bg-white/10"></div>
+                <Button label="Forçar Disparo Agora" icon="pi pi-play" @click="forcarDisparoNPS" :loading="disparandoNPS" class="!bg-orange-500 !text-white !border-none !rounded-xl !font-black !uppercase !tracking-widest !text-[10px] !px-6 !py-3 shadow-lg shadow-orange-500/20 hover:!bg-orange-600 hover:-translate-y-0.5 transition-transform" />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="flex items-center gap-4 py-2">
-           <div class="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
-           <span class="text-[9px] font-black uppercase tracking-widest text-slate-400"><i class="pi pi-sliders-h mr-1"></i> Parâmetros do Robô & SLA</span>
-           <div class="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
-        </div>
-          
+          <div class="flex items-center gap-4 py-2">
+             <div class="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
+             <span class="text-[9px] font-black uppercase tracking-widest text-slate-400"><i class="pi pi-sliders-h mr-1"></i> Parâmetros do Robô & SLA</span>
+             <div class="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
+          </div>
+            
           <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
             <div>
               <h3 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest mb-1 flex items-center gap-2">
@@ -1121,12 +892,12 @@ onMounted(() => {
               </h3>
               <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Controlo absoluto sobre os tempos de resposta, formulários e comunicação com o cliente.</p>
             </div>
-            <Button label="Guardar Regras" icon="pi pi-save" :loading="savingRegras" @click="salvarRegras" class="!bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none font-black text-xs uppercase tracking-widest px-6 py-3 shadow-xl hover:-translate-y-0.5 transition-transform" />
+            <Button label="Guardar Regras" icon="pi pi-save" :loading="savingRegras" @click="salvarRegras" class="!bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none font-black text-[10px] uppercase tracking-widest px-6 py-3 rounded-xl shadow-xl hover:-translate-y-0.5 transition-transform" />
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-          <div class="md:col-span-2 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col lg:flex-row">
+            <div class="md:col-span-2 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col lg:flex-row">
               
               <div class="p-6 lg:p-8 flex-1 border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                 <div class="flex items-center gap-3 mb-8">
@@ -1205,7 +976,36 @@ onMounted(() => {
                   </div>
                 </div>
               </div>
-              
+            </div>
+
+            <div class="md:col-span-2 bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm mt-4 flex flex-col lg:flex-row gap-8 items-start lg:items-center justify-between group hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+              <div class="flex items-center gap-4 w-full lg:w-auto">
+                <div class="w-12 h-12 rounded-[1.2rem] bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center shadow-sm shrink-0 border border-indigo-100 dark:border-indigo-500/20 group-hover:scale-105 transition-transform">
+                  <i class="pi pi-microsoft text-indigo-500 text-xl"></i>
+                </div>
+                <div>
+                  <h4 class="text-[12px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Resumo Matinal (Teams)</h4>
+                  <p class="text-[10px] text-slate-400 font-medium mt-0.5">Horário de envio automático do Kanban de pendências aos gestores.</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-4 w-full lg:w-auto">
+                <div class="flex-1 lg:w-48 relative">
+                  <i class="pi pi-clock absolute left-4 top-1/2 -translate-y-1/2 z-20 text-slate-400" />
+                  <input
+                    type="time"
+                    v-model="regrasConfig.teams_horario_resumo"
+                    class="custom-input w-full cursor-pointer pl-11 py-3 text-[12px] font-black text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
+                  />
+                </div>
+                <Button
+                  @click="salvarRegras"
+                  :loading="savingRegras"
+                  icon="pi pi-save"
+                  label="Guardar"
+                  class="w-full sm:w-auto !bg-indigo-600 !text-white !border-none hover:!bg-indigo-700 !px-6 !py-3 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform shrink-0"
+                />
+              </div>
             </div>
 
             <div class="md:col-span-2 bg-white dark:bg-slate-900 p-2 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
@@ -1339,11 +1139,11 @@ onMounted(() => {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="flex flex-col gap-1.5">
             <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Perfil de Acesso</label>
-            <Dropdown v-model="usuario.tipo" :options="opcoesTipo" class="custom-dropdown" />
+            <Dropdown v-model="usuario.tipo" :options="opcoesTipo" class="custom-input !p-0" />
           </div>
           <div class="flex flex-col gap-1.5">
             <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Status</label>
-            <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 h-[42px] px-4 rounded-xl border border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 h-[56px] px-4 rounded-xl border border-slate-100 dark:border-slate-800">
               <InputSwitch v-model="usuario.ativo" />
               <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">{{ usuario.ativo ? 'Ativo' : 'Inativo' }}</span>
             </div>
@@ -1360,14 +1160,14 @@ onMounted(() => {
           <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">{{ editandoUser ? 'Nova Palavra-passe' : 'Palavra-passe Inicial' }}</label>
           <div class="flex gap-2">
             <Password v-model="usuario.password" toggleMask :feedback="false" class="flex-1" inputClass="custom-input w-full" placeholder="Mínimo 8 caracteres" />
-            <Button icon="pi pi-refresh" @click="gerarSenhaAleatoria" v-tooltip.top="'Gerar Senha'" class="!bg-slate-800 !border-none !rounded-xl !w-[48px] !h-[42px] flex-shrink-0 text-white" />
+            <Button icon="pi pi-refresh" @click="gerarSenhaAleatoria" v-tooltip.top="'Gerar Senha'" class="!bg-slate-800 hover:!bg-slate-700 !border-none !rounded-xl !w-[56px] !h-[56px] flex-shrink-0 text-white transition-colors" />
           </div>
         </div>
       </div>
       <template #footer>
         <div class="flex gap-3 justify-end px-4 sm:px-6 md:px-8 pb-4 sm:pb-6 md:pb-8">
           <Button label="Cancelar" icon="pi pi-times" class="p-button-text !text-slate-500 !font-bold" @click="usuarioDialog = false" />
-          <Button :label="editandoUser ? 'Atualizar' : 'Criar Utilizador'" icon="pi pi-check" :loading="submetendoUser" class="!bg-orange-600 !text-white !border-none !rounded-xl !px-6 !font-black !uppercase !text-[11px] tracking-widest" @click="salvarUtilizador" />
+          <Button :label="editandoUser ? 'Atualizar' : 'Criar Utilizador'" icon="pi pi-check" :loading="submetendoUser" class="!bg-orange-600 !text-white !border-none !rounded-xl !px-6 !py-3 !font-black !uppercase !text-[10px] tracking-widest hover:scale-105 transition-transform" @click="salvarUtilizador" />
         </div>
       </template>
     </Dialog>
@@ -1381,59 +1181,27 @@ onMounted(() => {
 .animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Custom Scrollbar for the horizontal tags */
-.custom-scrollbar::-webkit-scrollbar {
-  height: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(30, 41, 59, 0.5); /* slate-800/50 */
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.8); /* slate-600/80 */
-  border-radius: 4px;
+.custom-scrollbar::-webkit-scrollbar { height: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.5); }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.8); border-radius: 4px; }
+
+:deep(.p-tabview), :deep(.p-tabview-nav-container), :deep(.p-tabview-nav-content), :deep(.p-tabview-nav) {
+    background: transparent !important; background-color: transparent !important; border: none !important;
 }
 
-/* ==========================================
-   🌟 TABS: REMOÇÃO DE MARGENS E FUNDOS
-   ========================================== */
-
-:deep(.p-tabview), 
-:deep(.p-tabview-nav-container), 
-:deep(.p-tabview-nav-content), 
-:deep(.p-tabview-nav) {
-    background: transparent !important;
-    background-color: transparent !important;
-    border: none !important;
-}
-
-:deep(.p-tabview-panels) {
-    background: transparent !important;
-    padding: 0 !important;   
-    margin-top: -10px !important; 
-}
-
-:deep(.p-tabview-nav li) {
-    background: transparent !important;
-    border: none !important;
-    margin-right: 6px !important;
-    margin-bottom: 0 !important; 
-}
+:deep(.p-tabview-panels) { background: transparent !important; padding: 0 !important; margin-top: -10px !important; }
+:deep(.p-tabview-nav li) { background: transparent !important; border: none !important; margin-right: 6px !important; margin-bottom: 0 !important; }
 
 :deep(.p-tabview-nav li .p-tabview-nav-link) {
     @apply bg-slate-100 dark:bg-slate-800 text-slate-500 !important;
-    border: none !important;
-    border-radius: 12px !important;
-    padding: 10px 18px !important; 
-    transition: all 0.2s ease !important;
+    border: none !important; border-radius: 12px !important; padding: 10px 18px !important; transition: all 0.2s ease !important;
 }
 
 :deep(.p-tabview-nav li.p-highlight .p-tabview-nav-link) {
     @apply bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md !important;
 }
 
-:deep(.p-tabview .p-tabview-nav) {
-    border-bottom: none !important;
-}
+:deep(.p-tabview .p-tabview-nav) { border-bottom: none !important; }
 
 :deep(.custom-input) { 
     @apply bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 p-4 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-slate-800 dark:text-white; 

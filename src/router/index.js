@@ -17,8 +17,8 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
-    path: '/reset-password',
-    name: 'ResetPassword', 
+    path: '/redefinir-senha',
+    name: 'redefinir-senha', 
     component: () => import('../views/RedefinirSenhaView.vue'),
     meta: { requiresAuth: false }
   },
@@ -42,7 +42,7 @@ const routes = [
     path: '/acoes',
     name: 'Acoes',
     component: () => import('../views/AcoesView.vue'),
-    meta: { requiresAuth: true } // 👈 CORREÇÃO: Faltava a proteção aqui!
+    meta: { requiresAuth: true }
   },
   {
     path: '/audiencia',
@@ -52,14 +52,14 @@ const routes = [
   },
   {
     path: '/clientes',
-    name: 'Clientes', // 👈 CORREÇÃO: Nome padronizado para maiúscula
-    component: () => import('../views/ClientesView.vue'), // 👈 CORREÇÃO: Transformado em Lazy Loading
+    name: 'Clientes', 
+    component: () => import('../views/ClientesView.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/relatorios',
     name: 'Relatorios',
-    component: () => import('../views/RelatoriosView.vue'), // 👈 CORREÇÃO: Transformado em Lazy Loading
+    component: () => import('../views/RelatoriosView.vue'),
     meta: { requiresAuth: true }
   },
 
