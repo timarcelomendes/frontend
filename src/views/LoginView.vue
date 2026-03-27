@@ -1,135 +1,161 @@
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2 min-h-screen bg-white dark:bg-slate-900 font-sans overflow-hidden">
+  <div class="grid grid-cols-1 md:grid-cols-2 min-h-screen bg-white dark:bg-slate-950 font-sans overflow-hidden">
     <Toast />
     
-    <div class="flex flex-col justify-center items-center px-6 py-12 md:px-20 bg-slate-50/50 dark:bg-slate-950/20 relative">
-      <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 to-rose-500 md:hidden"></div>
+    <div class="hidden md:flex flex-col justify-between p-16 lg:p-24 bg-slate-900 text-white relative overflow-hidden group">
       
-      <div class="w-full max-w-sm animate-fadein">
-        
-        <div class="flex flex-col items-center mb-10 text-center">
-          <div class="relative flex items-center justify-center w-16 h-16 mb-4 rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 shadow-xl border border-slate-700/50">
-            <div class="absolute inset-0 bg-gradient-to-tr from-orange-500/10 to-indigo-500/10 opacity-70"></div>
-            <i class="pi pi-sparkles text-transparent bg-clip-text bg-gradient-to-br from-orange-400 to-rose-400 text-3xl z-10"></i>
-            <div class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-slate-800 dark:border-slate-900 animate-pulse z-20"></div>
-          </div>
-          
-          <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tighter leading-none mb-2">
-            {{ isLoginMode ? 'Acesse a plataforma' : 'Crie sua conta' }}
-          </h1>
-          <p class="text-[11px] font-black uppercase tracking-[0.2em] text-orange-500 dark:text-orange-400 mt-1">
-            NPS Intelligence
-          </p>
-        </div>
-
-        <form @submit.prevent="handleSubmit" class="flex flex-col gap-5">
-          
-          <div v-if="!isLoginMode" class="flex flex-col gap-1.5 animate-fadein">
-            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome Completo</label>
-            <span class="p-input-icon-left w-full relative">
-              <i class="pi pi-user !text-slate-400 z-20" />
-              <InputText v-model="registro.nome" type="text" placeholder="Seu nome" class="custom-input w-full" required />
-            </span>
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">E-mail Corporativo</label>
-            <span class="p-input-icon-left w-full relative">
-              <i class="pi pi-envelope !text-slate-400 z-20" />
-              <InputText v-if="isLoginMode" v-model="credenciais.email" type="email" placeholder="nome@suaempresa.com" class="custom-input w-full" :class="{ 'p-invalid': temErro }" @input="temErro = false" required />
-              <InputText v-else v-model="registro.email" type="email" placeholder="nome@suaempresa.com" class="custom-input w-full" required />
-            </span>
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <div class="flex justify-between items-center ml-1">
-              <label class="text-[10px] font-black uppercase text-slate-500">Palavra-passe</label>
-              <router-link v-if="isLoginMode" to="/forgot-password" class="text-[10px] font-bold text-sky-600 dark:text-sky-400 hover:text-orange-500 transition-colors">
-                Esqueci a minha senha
-              </router-link>
-            </div>
-            <span class="p-input-icon-left w-full relative">
-              <i class="pi pi-lock !text-slate-400 z-20" />
-              <Password v-if="isLoginMode" v-model="credenciais.password" :feedback="false" toggleMask placeholder="••••••••" inputClass="custom-input w-full" class="w-full" :class="{ 'p-invalid': temErro }" @input="temErro = false" required />
-              <Password v-else v-model="registro.password" :feedback="true" toggleMask placeholder="••••••••" inputClass="custom-input w-full" class="w-full" required />
-            </span>
-          </div>
-
-          <div v-if="isLoginMode" class="flex items-center justify-between px-1">
-            <div class="flex items-center gap-2">
-              <Checkbox v-model="lembrarDeMim" :binary="true" inputId="rememberMe" />
-              <label for="rememberMe" class="text-[11px] font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none">Lembrar de mim</label>
-            </div>
-          </div>
-
-          <div class="mt-4 flex flex-col gap-4">
-            <Button type="submit" :loading="loading" class="w-full !bg-gradient-to-r !from-sky-500 !via-sky-600 !to-sky-500 !text-white !py-4 !rounded-2xl !font-bold !text-[12px] uppercase tracking-[0.25em] !shadow-lg !shadow-sky-500/20 !border-none hover:scale-[1.02] transition-transform duration-300">
-              <span v-if="!loading">{{ isLoginMode ? 'Entrar Agora' : 'Solicitar Acesso' }}</span>
-              <span v-else>A Autenticar...</span>
-            </Button>
-            
-            <button type="button" @click="isLoginMode = !isLoginMode" class="text-[11px] font-bold text-slate-500 hover:text-sky-500 transition-colors bg-transparent border-none cursor-pointer">
-              {{ isLoginMode ? 'Ainda não tem acesso? Criar conta.' : 'Já possui uma conta? Fazer login.' }}
-            </button>
-          </div>
-        </form>
-
-        <div class="mt-12 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-600 select-none">
-          © 2026 NPS Intelligence.
-        </div>
-        
-      </div>
-    </div>
-
-    <div class="hidden md:flex flex-col justify-between p-20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white relative overflow-hidden group">
-      
-      <div class="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-1000 scale-125 group-hover:scale-110 transition-transform duration-1000">
-        <svg width="100%" h="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" stroke-width="0.1"/></pattern></defs>
-          <rect width="100" h="100" fill="url(#grid)" />
-          <circle cx="20" cy="30" r="1" fill="currentColor"/><circle cx="50" cy="15" r="1" fill="currentColor"/><circle cx="80" cy="40" r="1" fill="currentColor"/><circle cx="35" cy="65" r="1" fill="currentColor"/><circle cx="70" cy="85" r="1" fill="currentColor"/>
-          <line x1="20" y1="30" x2="50" y2="15" stroke="currentColor" stroke-width="0.1"/><line x1="50" y1="15" x2="80" y2="40" stroke="currentColor" stroke-width="0.1"/><line x1="80" y1="40" x2="70" y2="85" stroke="currentColor" stroke-width="0.1"/><line x1="20" y1="30" x2="35" y2="65" stroke="currentColor" stroke-width="0.1"/>
+      <div class="absolute inset-0 opacity-[0.03] transition-opacity duration-1000 scale-125 group-hover:scale-110">
+        <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <defs>
+            <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" stroke-width="0.1"/>
+            </pattern>
+          </defs>
+          <rect width="100" height="100" fill="url(#grid)" />
         </svg>
       </div>
       
-      <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/20 to-orange-500/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
+      <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/20 to-orange-500/10 rounded-full blur-[120px] -mr-32 -mt-32"></div>
 
       <div class="z-10 mt-10">
-         <div class="flex items-center gap-4 mb-8">
-            <img src="/nps.png" alt="Logo NPS Intelligence" class="w-14 h-14 object-contain drop-shadow-[0_10px_15px_rgba(249,115,22,0.2)]" />
-            <span class="text-4xl font-black uppercase tracking-tighter italic text-white leading-none">
+         <div class="flex items-center gap-5 mb-12 animate-fadein">
+            <img src="/nps.png" alt="Logo" class="w-16 h-16 object-contain drop-shadow-[0_10px_15px_rgba(249,115,22,0.3)] transition-transform duration-500 group-hover:scale-110" />
+            <div class="h-10 w-px bg-slate-700"></div>
+            <span class="text-4xl font-black uppercase tracking-tighter italic text-white leading-[0.8]">
               NPS <br><span class="text-2xl text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500">Intelligence</span>
             </span>
          </div>
          
-         <h2 class="text-5xl font-extrabold leading-[1.05] tracking-tighter max-w-md">
+         <h2 class="text-5xl lg:text-6xl font-black leading-[0.95] tracking-tighter max-w-md mb-8 animate-fadein">
            Transforme feedbacks em <br>
-           <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-rose-400 font-black italic">inteligência ativa.</span>
+           <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-rose-400 italic">inteligência ativa.</span>
          </h2>
-         <div class="w-20 h-1.5 bg-gradient-to-r from-orange-500 to-rose-500 rounded-full mt-6 mb-8"></div>
-         <p class="text-lg text-slate-300 leading-relaxed font-normal max-w-sm">Aceda à plataforma para processar, analisar e atuar proativamente sobre a experiência dos seus clientes em tempo real.</p>
+
+         <div class="w-20 h-1.5 bg-gradient-to-r from-orange-500 to-rose-500 rounded-full mb-10 animate-fadein"></div>
+         
+         <p class="text-lg text-slate-400 leading-relaxed font-normal max-w-sm animate-fadein">
+           Processe, analise e atue proativamente sobre a experiência dos seus clientes em tempo real.
+         </p>
       </div>
 
-      <div class="grid grid-cols-3 gap-6 pt-8 border-t border-slate-700/50 z-10 animate-fadein delay-200">
-        <div class="flex flex-col gap-1">
-          <span class="text-[10px] font-black uppercase text-indigo-400 tracking-wider">Monitoramento</span>
-          <span class="text-2xl font-extrabold text-white tracking-tighter italic">Real-time</span>
+      <div class="grid grid-cols-3 gap-8 pt-10 border-t border-slate-800/60 z-10 animate-fadein">
+        <div class="flex flex-col gap-1.5">
+          <span class="text-[10px] font-black uppercase text-indigo-400 tracking-[0.2em]">Monitoramento</span>
+          <span class="text-2xl font-black text-white italic tracking-tighter">Real-time</span>
         </div>
-        <div class="flex flex-col gap-1">
-          <span class="text-[10px] font-black uppercase text-rose-400 tracking-wider">Visão Cliente</span>
-          <span class="text-2xl font-extrabold text-white tracking-tighter italic">360º</span>
+        <div class="flex flex-col gap-1.5">
+          <span class="text-[10px] font-black uppercase text-rose-400 tracking-[0.2em]">Visão Cliente</span>
+          <span class="text-2xl font-black text-white italic tracking-tighter">360º</span>
         </div>
-        <div class="flex flex-col gap-1">
-          <span class="text-[10px] font-black uppercase text-orange-400 tracking-wider">Tecnologia CS</span>
-          <span class="text-2xl font-extrabold text-white tracking-tighter italic">GAUGE AI</span>
+        <div class="flex flex-col gap-1.5">
+          <span class="text-[10px] font-black uppercase text-orange-400 tracking-[0.2em]">Tecnologia</span>
+          <span class="text-2xl font-black text-white italic tracking-tighter">GAUGE AI</span>
         </div>
       </div>
 
-      <div class="absolute bottom-10 right-10 text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] z-10">NPS Intelligence © 2026</div>
+      <div class="absolute bottom-10 right-10 text-slate-600 text-[10px] font-black uppercase tracking-[0.4em] z-10 italic">
+        © 2026 NPS Intelligence
+      </div>
     </div>
 
+    <div class="flex flex-col justify-center items-center px-8 py-12 md:px-20 bg-slate-50/50 dark:bg-slate-950 relative">
+      
+      <div class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-orange-500 to-rose-500 md:hidden"></div>
+      
+      <div class="w-full max-w-sm animate-fadein">
+        
+        <div class="flex flex-col items-center md:items-start mb-12 text-center md:text-left">
+          <img src="/nps.png" class="w-16 h-16 mb-6 md:hidden drop-shadow-lg" />
+          <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight italic leading-tight">
+            {{ isLoginMode ? 'Bem-vindo de volta' : 'Solicitar Acesso' }}<span class="text-orange-500">.</span>
+          </h1>
+          <div class="h-1 w-10 bg-orange-500 mt-3 mb-2 rounded-full hidden md:block"></div>
+          <p class="text-sm text-slate-400 font-medium">
+            {{ isLoginMode ? 'Introduza os seus dados para aceder ao painel.' : 'Preencha os dados abaixo para criar a sua conta.' }}
+          </p>
+        </div>
+
+        <form @submit.prevent="handleSubmit" class="flex flex-col gap-6">
+          
+          <div v-if="!isLoginMode" class="flex flex-col gap-2 animate-fadein">
+            <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Nome Completo</label>
+            <div class="relative flex items-center group">
+              <i class="pi pi-user absolute left-4 text-slate-400 z-10 group-focus-within:text-orange-500 transition-colors" />
+              <InputText v-model="registro.nome" type="text" placeholder="Seu nome" class="custom-input w-full" required />
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">E-mail Corporativo</label>
+            <div class="relative flex items-center group">
+              <i class="pi pi-envelope absolute left-4 text-slate-400 z-10 group-focus-within:text-orange-500 transition-colors" />
+              <InputText v-if="isLoginMode" v-model="credenciais.email" type="email" placeholder="nome@empresa.com" class="custom-input w-full" :class="{ 'p-invalid': temErro }" required />
+              <InputText v-else v-model="registro.email" type="email" placeholder="nome@empresa.com" class="custom-input w-full" required />
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <div class="flex justify-between items-center ml-1">
+              <label class="text-[10px] font-black uppercase tracking-widest text-slate-500">Palavra-passe</label>
+              <router-link v-if="isLoginMode" to="/forgot-password" class="text-[10px] font-black text-orange-500 hover:text-orange-600 transition-colors uppercase tracking-widest">
+                Esqueceu a senha?
+              </router-link>
+            </div>
+            <div class="relative flex items-center group">
+              <i class="pi pi-lock absolute left-4 text-slate-400 z-20 group-focus-within:text-orange-500 transition-colors" />
+              <Password v-if="isLoginMode" v-model="credenciais.password" :feedback="false" toggleMask placeholder="••••••••" inputClass="custom-input w-full !pl-12" class="w-full" :class="{ 'p-invalid': temErro }" required />
+              <Password v-else v-model="registro.password" :feedback="true" toggleMask placeholder="••••••••" inputClass="custom-input w-full !pl-12" class="w-full" required />
+            </div>
+          </div>
+
+          <div v-if="isLoginMode" class="flex items-center gap-3 px-1">
+            <Checkbox v-model="lembrarDeMim" :binary="true" inputId="rememberMe" />
+            <label for="rememberMe" class="text-[11px] font-bold text-slate-500 uppercase cursor-pointer select-none">Lembrar acesso</label>
+          </div>
+
+          <div class="mt-4 flex flex-col gap-6">
+            <Button 
+              type="submit" 
+              :loading="loading" 
+              class="w-full !bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 !py-4.5 !rounded-2xl !font-black !text-[11px] uppercase tracking-[0.2em] !shadow-2xl !border-none hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+            >
+              <span v-if="!loading">{{ isLoginMode ? 'Entrar na Plataforma' : 'Solicitar Registro' }}</span>
+              <span v-else>A processar...</span>
+            </Button>
+            
+            <button type="button" @click="isLoginMode = !isLoginMode" class="text-[11px] font-black text-slate-400 hover:text-orange-500 uppercase tracking-[0.1em] bg-transparent border-none cursor-pointer transition-colors text-center">
+              {{ isLoginMode ? 'Não tem acesso? Criar conta' : 'Já possui conta? Fazer login' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped lang="postcss">
+@reference "tailwindcss";
+
+.animate-fadein { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+:deep(.custom-input) { 
+  @apply bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 p-4 pl-12 rounded-xl outline-none focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10 transition-all font-bold text-sm text-slate-800 dark:text-white placeholder:text-slate-300; 
+}
+
+/* Ajuste específico para o ícone de olho do Password do PrimeVue */
+:deep(.p-password-reveal-icon) {
+  @apply text-slate-400 hover:text-orange-500 transition-colors;
+}
+
+:deep(.p-checkbox .p-checkbox-box) {
+  @apply border-2 border-slate-200 dark:border-slate-800 rounded-md w-5 h-5 transition-all;
+}
+
+:deep(.p-checkbox.p-checkbox-checked .p-checkbox-box) {
+  @apply bg-orange-500 border-orange-500;
+}
+</style>
 
 <script setup>
 import { ref, onMounted } from 'vue'; 

@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
+import { useRouter } from 'vue-router';
 
 import Chart from 'primevue/chart';
 import Button from 'primevue/button';
@@ -11,6 +12,7 @@ import Calendar from 'primevue/calendar';
 import Tooltip from 'primevue/tooltip';
 import Dropdown from 'primevue/dropdown';
 
+const router = useRouter();
 const vTooltip = Tooltip;
 const toast = useToast();
 const loading = ref(true);
@@ -52,6 +54,15 @@ const smartInsights = ref({
   valor_em_risco: "€ 0",
   nivel_alerta: "Baixo"
 });
+
+const abrirDetalhesCliente = (item) => {
+  if (!item.nome) return;
+
+  router.push({ 
+    path: '/acoes', 
+    query: { empresa: item.nome } 
+  });
+};
 
 const topRisco = computed(() => {
   if (!ranking.value || ranking.value.length === 0) return null;
@@ -105,6 +116,14 @@ const dispararEmailGestor = async () => {
     acionandoGestor.value = false;
   }
 };
+
+const alertasCriticos = computed(() => {
+  if (!ranking.value || ranking.value.length === 0) return [];
+  
+  return ranking.value
+    .filter(item => item.nps <= 0)
+    .slice(0, 5);
+});
 
 // --- GRÁFICOS ---
 const chartDataLine = ref(null);
@@ -227,6 +246,23 @@ const obterParametrosFiltro = () => {
   
   const queryStr = params.toString();
   return queryStr ? `?${queryStr}` : '';
+};
+
+const formatarData = (dataString) => {
+  if (!dataString) return 'Sem data';
+  const data = new Date(dataString);
+  
+  // Opção A: Formato simples (15/03/2026)
+  // return data.toLocaleDateString('pt-PT');
+
+  // Opção B: Formato "Há X dias" (Mais comum em dashboards de alerta)
+  const hoje = new Date();
+  const diffTempo = Math.abs(hoje - data);
+  const diffDias = Math.floor(diffTempo / (1000 * 60 * 60 * 24));
+  
+  if (diffDias === 0) return 'Hoje';
+  if (diffDias === 1) return 'Ontem';
+  return `Há ${diffDias} dias`;
 };
 
 // ==========================================
@@ -600,37 +636,45 @@ onMounted(() => {
 
         </div>
 
-        <div v-if="topRisco && topRisco.nps <= 30" class="relative overflow-hidden bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 p-6 lg:p-8 rounded-[2rem] flex flex-col md:flex-row items-center gap-6 lg:gap-8 group animate-fadein">
-          <div class="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-rose-500/5 to-transparent pointer-events-none"></div>
-          
-          <div class="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-rose-400 to-rose-600 rounded-[1.2rem] flex items-center justify-center shadow-lg shadow-rose-500/30 shrink-0 group-hover:scale-105 transition-transform duration-300">
-            <i class="pi pi-bolt text-white text-2xl lg:text-3xl"></i>
+        <div v-if="alertasCriticos.length > 0" class="flex flex-col gap-4 animate-fadein">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-1.5 h-4 bg-rose-500 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.4)]"></div>
+            <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-rose-500">Atenção Prioritária (Mais Antigos)</h3>
           </div>
-          
-          <div class="flex-1 text-center md:text-left z-10">
-            <div class="flex flex-col md:flex-row items-center gap-3 mb-2">
-                <h4 class="text-rose-600 dark:text-rose-400 font-black uppercase text-[10px] lg:text-[11px] tracking-[0.2em]">Atenção Prioritária</h4>
-                <span v-if="topRisco.gestor" class="px-2 py-0.5 bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 text-[9px] font-black uppercase tracking-widest rounded-md border border-rose-200 dark:border-rose-500/30 flex items-center gap-1">
-                    <i class="pi pi-briefcase text-[8px]"></i> Gestor: {{ topRisco.gestor }}
-                </span>
-            </div>
+
+          <div v-for="item in alertasCriticos" :key="item.nome" 
+              class="bg-white dark:bg-slate-900 border-l-4 border-rose-500 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all group border border-slate-100 dark:border-slate-800">
             
-            <p class="text-slate-700 dark:text-slate-300 text-sm lg:text-base font-medium leading-relaxed">
-              O cliente <strong class="text-slate-900 dark:text-white font-black">{{ topRisco.nome }}</strong> 
-              <span v-if="topRisco.empresa" class="text-slate-500 text-xs font-bold uppercase tracking-widest mx-1">({{ topRisco.empresa }})</span>
-              registou um NPS crítico de <strong class="text-rose-500">{{ topRisco.nps }} pts</strong>. 
-              Ação de retenção aconselhada nas próximas 24h.
-            </p>
+            <div class="flex flex-col md:flex-row items-center gap-5">
+              <div class="w-14 h-14 bg-rose-50 dark:bg-rose-500/10 rounded-2xl flex flex-col items-center justify-center shrink-0 border border-rose-100 dark:border-rose-500/20">
+                <span class="text-[9px] font-black text-rose-400 uppercase leading-none mb-1">NPS</span>
+                <span class="text-xl font-black text-rose-600 leading-none">{{ item.nps }}</span>
+              </div>
+
+              <div class="flex-1 text-center md:text-left">
+                <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2">
+                  <span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 text-[9px] font-black uppercase tracking-widest rounded-md">
+                    {{ formatarData(item.data_ultima_resposta) }}
+                  </span>
+                  <span v-if="item.gestor" class="px-2 py-0.5 bg-rose-500 text-white text-[9px] font-black uppercase tracking-widest rounded-md">
+                    Gestor: {{ item.gestor }}
+                  </span>
+                </div>
+                
+                <p class="text-slate-600 dark:text-slate-400 text-sm font-medium leading-relaxed">
+                  O cliente <strong class="text-slate-900 dark:text-white">{{ item.nome }}</strong> 
+                  registou um NPS crítico. Ação de retenção aconselhada imediatamente.
+                </p>
+              </div>
+
+              <Button 
+                icon="pi pi-chevron-right" 
+                class="!bg-slate-100 dark:!bg-slate-800 !text-slate-600 !border-none !rounded-xl hover:!bg-rose-500 hover:!text-white transition-all shadow-sm"
+                @click="abrirDetalhesCliente(item)"
+                v-tooltip.top="'Abrir no Kanban'"
+              />
+            </div>
           </div>
-          
-          <Button 
-            label="Acionar Gestor" 
-            icon="pi pi-envelope" 
-            iconPos="right" 
-            :loading="acionandoGestor"
-            @click="dispararEmailGestor"
-            class="w-full md:w-auto !bg-rose-600 hover:!bg-rose-700 !border-none !text-[10px] !font-black !px-6 !py-3 !rounded-xl shadow-md hover:shadow-rose-500/40 hover:-translate-y-1 transition-all duration-300 z-10 uppercase tracking-widest" 
-          />
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

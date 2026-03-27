@@ -322,13 +322,34 @@ const obterSLA = (acao) => {
 
 const gerarIniciais = (nome) => nome ? nome.split(' ').map((n, i, a) => i === 0 || i === a.length - 1 ? n[0] : '').join('').toUpperCase() : 'G';
 
-onMounted(() => { 
-  carregarRegrasSLA(); 
-  carregarAcoes(); 
-  carregarGestores(); 
-  carregarEmpresas();
-  carregarCompanhias();
+onMounted(async () => {
+  // 1. Carrega todos os dados necessários primeiro
+  await Promise.all([
+    carregarRegrasSLA(),
+    carregarAcoes(),
+    carregarGestores(),
+    carregarEmpresas(),
+    carregarCompanhias()
+  ]);
+
+  // 2. Verifica se existe uma empresa na URL para filtrar
+  if (route.query.empresa) {
+    const empresaUrl = route.query.empresa;
+    
+    // Se a empresa vinda da URL existir na nossa lista de opções, ativa o filtro
+    if (empresasLista.value.includes(empresaUrl)) {
+      filtroEmpresa.value = [empresaUrl]; // Define como array pois o filtro agora é MultiSelect
+      
+      toast.add({ 
+        severity: 'info', 
+        summary: 'Filtro Aplicado', 
+        detail: `A exibir ações para: ${empresaUrl}`, 
+        life: 3000 
+      });
+    }
+  }
 });
+
 </script>
 
 <template>
