@@ -399,6 +399,35 @@ const salvarIntegracoes = async () => {
   }
 };
 
+// --- ESTADO: WEBHOOK DE RECEÇÃO (FILLOUT) ---
+const testingIncoming = ref(false);
+
+const testarWebhookRecebimento = async () => {
+  testingIncoming.value = true;
+  try {
+    // Faz um GET simples à nossa própria rota para ver se ela responde
+    const res = await api.get('/webhooks/fillout');
+    
+    if (res.data && res.data.status === 'success') {
+      toast.add({ 
+        severity: 'success', 
+        summary: 'Webhook Online! 🟢', 
+        detail: 'O endpoint está ativo e pronto para receber dados.', 
+        life: 5000 
+      });
+    }
+  } catch (error) {
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Webhook Offline 🔴', 
+      detail: 'O endpoint não respondeu. Verifique se o servidor está online.', 
+      life: 5000 
+    });
+  } finally {
+    testingIncoming.value = false;
+  }
+};
+
 const limparCacheNavegador = () => {
   localStorage.removeItem('nps_ver_arquivados');
   toast.add({ severity: 'success', summary: 'Cache Limpo', detail: 'A recarregar o sistema com dados frescos...', life: 2000 });
@@ -842,6 +871,56 @@ onMounted(() => {
                 </div>
               </div>
             </div>
+
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 flex flex-col justify-between relative overflow-hidden group mb-8 shadow-lg">
+              <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+
+              <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center border border-emerald-500/30">
+                    <i class="pi pi-download text-emerald-400 text-xl"></i>
+                  </div>
+                  <div>
+                    <h4 class="text-sm font-black text-white">Webhook de Receção</h4>
+                    <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Ponto de Entrada (Fillout)</p>
+                  </div>
+                </div>
+                
+                <p class="text-xs text-slate-400 leading-relaxed mb-6">
+                  Este é o endereço oficial da sua API. Cole-o na plataforma de formulários para que as respostas cheguem automaticamente ao seu painel.
+                </p>
+                
+                <div class="flex flex-col gap-2">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">URL de Escuta (Endpoint)</label>
+                  <div class="flex items-center gap-2">
+                    <div class="relative flex-1">
+                      <i class="pi pi-link absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 z-10" />
+                      <InputText 
+                        :value="webhookFilloutURL" 
+                        readonly 
+                        class="custom-input !w-full !bg-slate-950 !border-slate-800 !text-slate-300 !text-[11px] !pl-10 !font-mono" 
+                      />
+                    </div>
+                    
+                    <Button 
+                      icon="pi pi-copy" 
+                      @click="copiarWebhookFillout" 
+                      class="!bg-slate-800 !text-slate-300 !border-none !rounded-xl !w-11 !h-11 hover:!bg-slate-700 hover:!text-white transition-all shrink-0" 
+                      v-tooltip.top="'Copiar URL'" 
+                    />
+                    
+                    <Button 
+                      icon="pi pi-bolt" 
+                      :loading="testingIncoming"
+                      @click="testarWebhookRecebimento" 
+                      class="!bg-emerald-500/20 !text-emerald-400 !border-none !rounded-xl !w-11 !h-11 hover:!bg-emerald-500 hover:!text-white transition-all shrink-0" 
+                      v-tooltip.top="'Testar Status da Escuta'" 
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between relative overflow-hidden group">
               <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="pi pi-microsoft text-9xl text-slate-900 dark:text-white"></i></div>
               <div>
