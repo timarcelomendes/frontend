@@ -12,6 +12,7 @@ import Dropdown from 'primevue/dropdown';
 import Textarea from 'primevue/textarea';
 import Avatar from 'primevue/avatar';
 import Calendar from 'primevue/calendar';
+import MultiSelect from 'primevue/multiselect';
 
 const toast = useToast();
 
@@ -30,28 +31,27 @@ const empresasDetalhes = ref([]);
 const empresasLista = ref([]);
 const companhiasLista = ref([]);
 
-// ==========================================
-// 🔎 FILTROS INTELIGENTES (LÓGICA E ORDEM)
-// ==========================================
-const filtroCompanhia = ref(null);
-const filtroGestor = ref(null);
-const filtroEmpresa = ref(null);
-const filtroNota = ref(null);
-const filtroData = ref(null);
-
-const opcoesNota = ref([
-  { label: 'Todas as Notas', value: null },
+const opcoesContexto = ref([
   { label: 'Promotores (9-10)', value: 'promotor' },
   { label: 'Neutros (7-8)', value: 'neutro' },
   { label: 'Detratores (0-6)', value: 'detrator' },
   { label: 'Ações Manuais', value: 'manual' }
 ]);
 
+// ==========================================
+// 🔎 FILTROS INTELIGENTES (MULTISELECT)
+// ==========================================
+const filtroCompanhia = ref([]);
+const filtroResponsavel = ref([]);
+const filtroEmpresa = ref([]);
+const filtroContexto = ref([]);
+const filtroData = ref(null);
+
 const limparFiltros = () => {
-  filtroCompanhia.value = null;
-  filtroGestor.value = null;
-  filtroEmpresa.value = null;
-  filtroNota.value = null;
+  filtroCompanhia.value = [];
+  filtroResponsavel.value = [];
+  filtroEmpresa.value = [];
+  filtroContexto.value = [];
   filtroData.value = null;
 };
 
@@ -62,27 +62,43 @@ const getCompanhiaDaAcao = (acao) => {
   return emp ? emp.companhia : null;
 };
 
-// Filtra a lista principal antes de a enviar para as colunas do Kanban
+// Filtra a lista principal cruzando com os arrays de MultiSeleção
 const acoesFiltradas = computed(() => {
   return acoes.value.filter(acao => {
-    // 1. Filtro Companhia
-    if (filtroCompanhia.value && getCompanhiaDaAcao(acao) !== filtroCompanhia.value) return false;
     
-    // 2. Filtro Gestor
-    if (filtroGestor.value && acao.gestor_id !== filtroGestor.value) return false;
+    // 1. Filtro Companhia (Array)
+    if (filtroCompanhia.value.length > 0) {
+      const companhiaAtual = getCompanhiaDaAcao(acao);
+      if (!filtroCompanhia.value.includes(companhiaAtual)) return false;
+    }
     
-    // 3. Filtro Empresa
-    if (filtroEmpresa.value && acao.empresa_nome !== filtroEmpresa.value) return false;
+    // 2. Filtro Gestor / Responsável (Array)
+    if (filtroResponsavel.value.length > 0) {
+      if (!filtroResponsavel.value.includes(acao.gestor_id)) return false;
+    }
     
-    // 4. Filtro Nota (Contexto)
-    if (filtroNota.value) {
-      if (filtroNota.value === 'manual' && acao.resposta_nota !== null) return false;
-      if (filtroNota.value === 'promotor' && (acao.resposta_nota === null || acao.resposta_nota < 9)) return false;
-      if (filtroNota.value === 'neutro' && (acao.resposta_nota === null || acao.resposta_nota < 7 || acao.resposta_nota > 8)) return false;
-      if (filtroNota.value === 'detrator' && (acao.resposta_nota === null || acao.resposta_nota > 6)) return false;
+    // 3. Filtro Empresa (Array)
+    if (filtroEmpresa.value.length > 0) {
+      if (!filtroEmpresa.value.includes(acao.empresa_nome)) return false;
+    }
+    
+    // 4. Filtro Contexto / NPS (Array)
+    if (filtroContexto.value.length > 0) {
+      const isManual = acao.resposta_nota === null;
+      const isPromotor = acao.resposta_nota >= 9;
+      const isNeutro = acao.resposta_nota >= 7 && acao.resposta_nota <= 8;
+      const isDetrator = acao.resposta_nota !== null && acao.resposta_nota <= 6;
+
+      let passouContexto = false;
+      if (filtroContexto.value.includes('manual') && isManual) passouContexto = true;
+      if (filtroContexto.value.includes('promotor') && isPromotor) passouContexto = true;
+      if (filtroContexto.value.includes('neutro') && isNeutro) passouContexto = true;
+      if (filtroContexto.value.includes('detrator') && isDetrator) passouContexto = true;
+
+      if (!passouContexto) return false;
     }
 
-    // 5. Filtro Data
+    // 5. Filtro Data (Range Calendar)
     if (filtroData.value && filtroData.value[0] && filtroData.value[1]) {
       const dataAcao = new Date(acao.created_at || new Date());
       dataAcao.setHours(0,0,0,0);
@@ -124,7 +140,6 @@ const carregarAcoes = async () => {
       
       if (acaoAlvo) {
         abrirEdicao(acaoAlvo);
-        
         router.replace({ path: route.path });
       }
     }
@@ -140,13 +155,10 @@ const carregarCompanhias = async () => {
   try {
     const res = await api.get('/dashboard/companhias'); 
     if (res.data && Array.isArray(res.data)) {
-      // Remove o item genérico da API
       const nomes = res.data.filter(c => c && c !== "Todas as Companhias");
       companhiasLista.value = [...new Set(nomes)].sort();
     }
-  } catch (error) {
-    // Tratado no fallback
-  }
+  } catch (error) {}
 };
 
 const carregarEmpresas = async () => {
@@ -157,21 +169,7 @@ const carregarEmpresas = async () => {
       const nomes = res.data.map(e => e.empresa || e.nome || e).filter(Boolean);
       empresasLista.value = [...new Set(nomes)].sort();
     }
-  } catch (error) {
-    // Tratado no fallback
-  }
-};
-
-// Fallback: Se alguma rota falhar, o sistema preenche as listas baseando-se no que já existe no Kanban
-const extrairListasFallback = () => {
-  if (companhiasLista.value.length === 0 && acoes.value.length > 0) {
-    const nomesC = acoes.value.map(a => getCompanhiaDaAcao(a)).filter(Boolean);
-    companhiasLista.value = [...new Set(nomesC)].sort();
-  }
-  if (empresasLista.value.length === 0 && acoes.value.length > 0) {
-    const nomesE = acoes.value.map(a => a.empresa_nome).filter(Boolean);
-    empresasLista.value = [...new Set(nomesE)].sort();
-  }
+  } catch (error) {}
 };
 
 const carregarRegrasSLA = async () => {
@@ -185,9 +183,7 @@ const carregarGestores = async () => {
   try {
     const res = await api.get('/cadastros/gestores');
     gestoresLista.value = Array.isArray(res.data) ? res.data : [];
-  } catch (error) {
-    console.error("Erro ao carregar gestores:", error);
-  }
+  } catch (error) {}
 };
 
 // ==========================================
@@ -233,7 +229,6 @@ const abrirEdicao = (acao) => {
   dialogAcao.value = true;
 };
 
-// Ouve a mudança no modal para tentar preencher o gestor e a companhia automaticamente
 const aoMudarEmpresa = () => {
   if (!acaoAtual.value.empresa_nome) return;
   const emp = empresasDetalhes.value.find(e => (e.empresa || e.nome) === acaoAtual.value.empresa_nome);
@@ -275,7 +270,7 @@ const excluirAcao = async (id) => {
 };
 
 // ==========================================
-// ⚙️ MENU & HELPERS DE UI (DOT UI)
+// ⚙️ MENU & HELPERS DE UI
 // ==========================================
 const menuOpcoes = ref();
 const acaoSelecionada = ref(null);
@@ -354,47 +349,65 @@ onMounted(() => {
 
     <div class="flex flex-wrap lg:flex-nowrap gap-4 mb-8 p-4 bg-white dark:bg-slate-900 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm items-end">
       
-      <div class="flex flex-col gap-1.5 flex-1 min-w-[160px]">
-        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Companhia</label>
-        <Dropdown v-model="filtroCompanhia" :options="companhiasLista" placeholder="Todas as companhias" showClear filter class="custom-input !h-[46px] flex items-center" />
+      <div class="flex flex-col gap-2 flex-1 min-w-[200px]">
+        <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Companhia</label>
+        <MultiSelect 
+            v-model="filtroCompanhia" 
+            :options="companhiasLista" 
+            placeholder="Todas as companhias" 
+            display="chip" 
+            class="custom-input !p-1.5 shadow-sm border-none bg-slate-50 dark:bg-slate-800 w-full" 
+        />
       </div>
 
-      <div class="flex flex-col gap-1.5 flex-1 min-w-[160px]">
-        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Responsável</label>
-        <Dropdown v-model="filtroGestor" :options="gestoresLista" optionLabel="nome" optionValue="id" filter placeholder="Todos os gestores" showClear class="custom-input !h-[46px] flex items-center">
-          <template #value="slotProps">
-            <div v-if="slotProps.value" class="flex items-center gap-2">
-              <Avatar :label="gerarIniciais(getGestor(slotProps.value)?.nome)" shape="circle" class="!w-5 !h-5 !text-[8px] !font-black !bg-slate-200 dark:!bg-slate-700 !text-slate-600 dark:!text-slate-300" />
-              <span class="text-xs font-bold">{{ getGestor(slotProps.value)?.nome }}</span>
-            </div>
-            <span v-else class="text-slate-400">Todos os gestores</span>
-          </template>
-          <template #item="slotProps">
-            <div class="flex items-center gap-3">
-              <Avatar :label="gerarIniciais(slotProps.option.nome)" shape="circle" class="!w-8 !h-8 !text-[10px] !font-black !bg-slate-100 dark:!bg-slate-700 !text-slate-600 dark:!text-slate-300" />
-              <div class="flex flex-col">
-                <span class="text-xs font-bold text-slate-700 dark:text-slate-200">{{ slotProps.option.nome }}</span>
-                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{{ slotProps.option.papel || 'Gestor' }}</span>
-              </div>
-            </div>
-          </template>
-        </Dropdown>
-      </div>
-      
-      <div class="flex flex-col gap-1.5 flex-1 min-w-[160px]">
-        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Empresa</label>
-        <Dropdown v-model="filtroEmpresa" :options="empresasLista" placeholder="Todas as empresas" showClear filter class="custom-input !h-[46px] flex items-center" />
+      <div class="flex flex-col gap-2 flex-1 min-w-[200px]">
+        <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Responsável</label>
+        <MultiSelect 
+            v-model="filtroResponsavel" 
+            :options="gestoresLista" 
+            optionLabel="nome" 
+            optionValue="id" 
+            placeholder="Todos os gestores" 
+            display="chip" 
+            class="custom-input !p-1.5 shadow-sm border-none bg-slate-50 dark:bg-slate-800 w-full" 
+        />
       </div>
 
-      <div class="flex flex-col gap-1.5 flex-1 min-w-[160px]">
-        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Contexto (NPS)</label>
-        <Dropdown v-model="filtroNota" :options="opcoesNota" optionLabel="label" optionValue="value" placeholder="Todas as notas" showClear class="custom-input !h-[46px] flex items-center" />
+      <div class="flex flex-col gap-2 flex-1 min-w-[200px]">
+        <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Empresa</label>
+        <MultiSelect 
+            v-model="filtroEmpresa" 
+            :options="empresasLista" 
+            placeholder="Todas as empresas" 
+            display="chip" 
+            class="custom-input !p-1.5 shadow-sm border-none bg-slate-50 dark:bg-slate-800 w-full" 
+        />
       </div>
 
-      <div class="flex flex-col gap-1.5 flex-1 min-w-[160px]">
-        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Data de Criação</label>
-        <Calendar v-model="filtroData" selectionMode="range" :manualInput="false" placeholder="Período" showIcon showClear class="custom-calendar w-full !h-[46px] flex items-center" />
+      <div class="flex flex-col gap-2 flex-1 min-w-[200px]">
+        <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Contexto (NPS)</label>
+        <MultiSelect 
+            v-model="filtroContexto" 
+            :options="opcoesContexto" 
+            optionLabel="label" 
+            optionValue="value" 
+            placeholder="Todas as notas" 
+            display="chip" 
+            class="custom-input !p-1.5 shadow-sm border-none bg-slate-50 dark:bg-slate-800 w-full" 
+        />
       </div>
+
+        <div class="flex flex-col gap-2 flex-1 min-w-[200px]">
+        <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Data de Criação</label>
+        <Calendar 
+            v-model="filtroData" 
+            selectionMode="range" 
+            :manualInput="false" 
+            placeholder="Todos os períodos" 
+            showIcon 
+            class="custom-calendar-filter" 
+        />
+        </div>
 
       <Button icon="pi pi-filter-slash" @click="limparFiltros" class="!bg-slate-50 dark:!bg-slate-800 !text-slate-400 hover:!text-orange-500 !border-none !rounded-xl h-[46px] w-[46px] shrink-0 transition-colors" v-tooltip.top="'Limpar Filtros'" />
     </div>
@@ -607,12 +620,36 @@ onMounted(() => {
 
 .animate-spin-slow { animation: spin 3s linear infinite; }
 
-:deep(.custom-input), :deep(.custom-calendar .p-inputtext) {
-  @apply bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 p-3.5 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-slate-700 dark:text-slate-200 border w-full;
+/* Ajuste sutil para o MultiSelect (Padding interno dos chips) */
+:deep(.p-multiselect-label) {
+  @apply py-1.5 px-3 flex flex-wrap gap-1.5;
+}
+:deep(.p-multiselect-token) {
+  @apply bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-md px-2 py-0.5 text-[11px] font-bold;
 }
 
-:deep(.custom-calendar .p-button) {
-  @apply bg-transparent text-slate-400 border-none hover:text-orange-500 transition-colors right-1 relative;
+/* Padronização Total do Filtro de Calendário */
+:deep(.custom-calendar-filter) {
+  @apply w-full !h-[46px] flex items-center; 
+}
+
+:deep(.custom-calendar-filter .p-inputtext) {
+  @apply bg-slate-50 dark:bg-slate-800 border-none rounded-xl shadow-sm 
+         text-[12px] font-bold text-slate-700 dark:text-slate-200 
+         w-full pl-4 pr-10 !h-[46px] flex items-center
+         outline-none focus:ring-2 focus:ring-orange-500/20 transition-all;
+  line-height: normal !important; /* Resolve o desalinhamento de altura */
+}
+
+:deep(.custom-calendar-filter .p-datepicker-trigger) {
+  @apply absolute right-0 top-0 h-full w-10 bg-transparent border-none 
+         text-slate-400 hover:text-orange-500 transition-colors 
+         rounded-r-xl p-0 m-0 flex items-center justify-center;
+}
+
+/* Remove a borda que o PrimeVue às vezes coloca no foco do span pai */
+:deep(.p-calendar.custom-calendar-filter:not(.p-calendar-disabled).p-focus > .p-inputtext) {
+    @apply ring-2 ring-orange-500/20;
 }
 
 :deep(.custom-dialog-no-header .p-dialog-header) { display: none !important; }
