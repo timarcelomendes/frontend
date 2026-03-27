@@ -23,8 +23,9 @@ const segmentos = ref([]);
 const perfis = ref([]);
 const cargos = ref([]); 
 const gestores = ref([]); 
-const companhias = ref([]); // 👈 ESTADO PARA COMPANHIAS
+const companhias = ref([]);
 const loading = ref(true);
+
 
 const dialogVisivel = ref(false);
 const editando = ref(false);
@@ -56,7 +57,7 @@ const cargoForm = ref({ id: null, nome: '' });
 
 const dialogGestor = ref(false);
 const editandoGestor = ref(false);
-const gestorForm = ref({ id: null, nome: '', papel: '', email: '' });
+const gestorForm = ref({ id: null, nome: '', papel: '', email: '', teams_webhook: '' });
 
 // 👈 MÉTODOS PARA COMPANHIAS
 const dialogCompanhia = ref(false);
@@ -206,7 +207,11 @@ const salvarCargo = async () => {
   } catch (e) {} finally { saving.value = false; }
 };
 
-const abrirNovoGestor = () => { gestorForm.value = { id: null, nome: '', papel: '', email: '' }; editandoGestor.value = false; dialogGestor.value = true; };
+const abrirNovoGestor = () => { 
+  gestorForm.value = { id: null, nome: '', papel: '', email: '', teams_webhook: '' }; 
+  editandoGestor.value = false; 
+  dialogGestor.value = true; 
+};
 const editarFichaGestor = (dados) => { gestorForm.value = { ...dados }; editandoGestor.value = true; dialogGestor.value = true; };
 const salvarGestor = async () => {
   if (!gestorForm.value.nome) return toast.add({ severity: 'warn', summary: 'Atenção', detail: 'O nome do gestor é obrigatório.', life: 3000 });
@@ -217,6 +222,36 @@ const salvarGestor = async () => {
     dialogGestor.value = false; carregarTudo();
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Gestor salvo.' });
   } catch (e) {} finally { saving.value = false; }
+};
+
+const testandoWebhook = ref(false);
+
+const testarWebhook = async () => {
+  if (!gestorForm.value.teams_webhook) return;
+  
+  try {
+    testandoWebhook.value = true;
+    // Dispara para a nova rota que criámos no main.py
+    await api.post('/gestores/testar-webhook', { 
+      webhook_url: gestorForm.value.teams_webhook 
+    });
+    
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Sucesso', 
+      detail: 'Mensagem de teste enviada para o Teams!', 
+      life: 4000 
+    });
+  } catch (error) {
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Erro', 
+      detail: 'Falha ao enviar mensagem. Verifique se a URL está correta.', 
+      life: 5000 
+    });
+  } finally {
+    testandoWebhook.value = false;
+  }
 };
 
 const formatarMoeda = (valor) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(valor || 0);
@@ -462,6 +497,26 @@ onMounted(carregarTudo);
           <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome do Gestor *</label><InputText v-model="gestorForm.nome" class="custom-input w-full" /></div>
           <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Papel / Função</label><InputText v-model="gestorForm.papel" class="custom-input w-full" /></div>
           <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">E-mail de Contacto</label><InputText v-model="gestorForm.email" type="email" class="custom-input w-full" /></div>
+          
+          <div class="flex flex-col gap-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
+            <div class="flex items-center justify-between">
+              <label class="text-[10px] font-black uppercase text-indigo-500 ml-1 flex items-center gap-1.5">
+                <i class="pi pi-microsoft"></i> Webhook do Teams (Opcional)
+              </label>
+              
+              <Button 
+                v-if="gestorForm.teams_webhook" 
+                label="Testar Conexão" 
+                icon="pi pi-send" 
+                class="!text-[9px] !font-bold !py-1 !px-2.5 !bg-indigo-50 dark:!bg-indigo-500/10 !text-indigo-600 dark:!text-indigo-400 !border-none hover:scale-105 transition-transform" 
+                :loading="testandoWebhook" 
+                @click="testarWebhook" 
+              />
+            </div>
+            
+            <InputText v-model="gestorForm.teams_webhook" class="custom-input w-full" placeholder="https://sua-empresa.webhook.office.com/..." />
+            <span class="text-[9px] text-slate-400 ml-1 mt-0.5 leading-tight">Cole a URL do canal do Teams para que este gestor receba o resumo diário de ações pendentes.</span>
+          </div>
         </div>
         <template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900 flex gap-3 w-full"><Button label="Cancelar" text class="flex-1 font-bold text-[11px] text-slate-400" @click="dialogGestor = false" /><Button :label="editandoGestor ? 'Atualizar' : 'Criar'" @click="salvarGestor" :loading="saving" class="flex-1 !bg-sky-500 !text-white py-3 !rounded-xl font-bold text-[11px] uppercase tracking-widest shadow-xl border-none" /></div></template>
       </Dialog>

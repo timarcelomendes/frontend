@@ -80,20 +80,33 @@ const logout = () => {
     <Toast /> 
     <ConfirmDialog />
 
-    <header v-if="exibirLayout" 
-            class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30">
-      <div class="flex items-center gap-2">
-        <img src="/nps.png" alt="Logo" class="w-8 h-8 object-contain shrink-0" />
+      <header v-if="exibirLayout" 
+            class="md:hidden flex items-center justify-between p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30">
+      
+      <div class="flex items-center gap-3 cursor-default">
         
-        <div class="flex flex-col justify-center">
-          <h1 class="text-sm font-black tracking-tighter uppercase italic leading-none text-slate-800 dark:text-white">
-            NPS
-          </h1>
-          <span class="text-[9px] font-black tracking-widest uppercase text-orange-500 mt-0.5">
-            INTELLIGENCE
-          </span>
+        <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-800 dark:to-slate-950 shadow-md shrink-0 overflow-hidden group border border-slate-700/50">
+          <div class="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-indigo-500/20 opacity-50"></div>
+          <i class="pi pi-sparkles text-transparent bg-clip-text bg-gradient-to-br from-orange-400 to-rose-400 text-lg z-10"></i>
+          <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border border-slate-800 dark:border-slate-900 animate-pulse"></div>
         </div>
+
+        <div class="flex flex-col select-none">
+          <div class="flex items-baseline gap-1">
+            <span class="text-xl font-black tracking-tighter text-slate-800 dark:text-white leading-none">Gauge</span>
+            <span class="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500 leading-none">NPS</span>
+          </div>
+          
+          <div class="flex items-center gap-1.5 mt-1">
+            <span class="h-[1.5px] w-2 bg-indigo-500/50 rounded-full"></span>
+            <span class="text-[8px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 leading-none">
+              Intelligence
+            </span>
+          </div>
+        </div>
+        
       </div>
+
       <Button icon="pi pi-bars" @click="mobileMenuAberto = true" class="p-button-text !text-slate-600 dark:!text-slate-400" />
     </header>
 
@@ -136,8 +149,15 @@ const logout = () => {
           <i class="pi pi-users"></i> <span>Audiência</span>
         </router-link>
 
-        <router-link v-if="isAdmin" to="/configuracoes" class="nav-item" @click="mobileMenuAberto = false">
-          <i class="pi pi-cog"></i> <span>Configurações</span>
+        <router-link to="/acoes" class="nav-item border border-orange-100 dark:border-orange-500/20 bg-orange-50/50 dark:bg-orange-500/10" @click="mobileMenuAberto = false">
+          <i class="pi pi-check-square text-orange-500"></i> 
+          <div class="flex items-center justify-between flex-1">
+            <span class="text-orange-700 dark:text-orange-400 font-black">Planos de Ação</span>
+            <span class="flex h-2 w-2 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+            </span>
+          </div>
         </router-link>
 
         <div class="mt-auto border-t border-slate-100 dark:border-slate-800 pt-6 pb-8">
@@ -161,25 +181,30 @@ const logout = () => {
     </Sidebar>
 
     <aside v-if="exibirLayout" 
-      class="hidden md:flex bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col shadow-sm z-20 transition-all duration-300"
-      :class="[sidebarExpandida ? 'w-64' : 'w-20']"
-    >
-      <div class="p-6 flex items-center justify-between h-20">
-      <div v-if="sidebarExpandida" class="flex items-center gap-3 animate-fadein">
-        <img src="/nps.png" alt="Logo" class="w-12 h-12 object-contain shrink-0" />
+           :class="['hidden md:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 z-20 shadow-sm relative', sidebarExpandida ? 'w-64' : 'w-20']">
+      
+      <div class="flex items-center gap-3 py-6 px-4 mb-2 cursor-default overflow-hidden">
         
-        <div class="flex flex-col justify-center mt-1">
-          <h1 class="text-lg font-black tracking-tighter uppercase italic leading-none text-slate-800 dark:text-white">
-            NPS
-          </h1>
-          <span class="text-[10px] font-black tracking-[0.2em] uppercase text-orange-500 mt-0.5">
-            INTELLIGENCE
-          </span>
+        <div class="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-800 dark:to-slate-950 shadow-lg shadow-slate-900/10 shrink-0 overflow-hidden group border border-slate-700/50">
+          <div class="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-indigo-500/20 opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <i class="pi pi-sparkles text-transparent bg-clip-text bg-gradient-to-br from-orange-400 to-rose-400 text-xl z-10"></i>
+          <div class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-800 dark:border-slate-900 animate-pulse"></div>
         </div>
-      </div>
-        <button @click="toggleSidebar" class="p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400">
-          <i :class="sidebarExpandida ? 'pi pi-angle-left' : 'pi pi-angle-right'"></i>
-        </button>
+
+        <div v-if="sidebarExpandida" class="flex flex-col animate-fadein select-none shrink-0">
+          <div class="flex items-baseline gap-1">
+            <span class="text-2xl font-black tracking-tighter text-slate-800 dark:text-white leading-none">Gauge</span>
+            <span class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500 leading-none">NPS</span>
+          </div>
+          
+          <div class="flex items-center gap-1.5 mt-1.5">
+            <span class="h-[1.5px] w-3 bg-indigo-500/50 rounded-full"></span>
+            <span class="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 leading-none">
+              Intelligence
+            </span>
+          </div>
+        </div>
+        
       </div>
 
       <nav class="flex-1 px-3 space-y-1 mt-4">
@@ -217,9 +242,15 @@ const logout = () => {
           <i class="pi pi-cog"></i> <span v-if="sidebarExpandida" class="animate-fadein">Configurações</span>
         </router-link>
 
-        <router-link to="/acoes" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 text-slate-400 hover:text-white hover:bg-slate-800" active-class="!bg-orange-500/10 !text-orange-500 font-bold border border-orange-500/20">
-          <i class="pi pi-check-square text-lg"></i>
-          <span class="text-sm font-medium tracking-wide">Planos de Ação</span>
+        <router-link to="/acoes" class="nav-item border border-orange-100 dark:border-orange-500/20 bg-orange-50/50 dark:bg-orange-500/10" v-tooltip.right="!sidebarExpandida ? 'Planos de Ação' : null">
+          <i class="pi pi-check-square text-orange-500"></i> 
+          <div v-if="sidebarExpandida" class="flex items-center justify-between flex-1 animate-fadein">
+            <span class="text-orange-700 dark:text-orange-400 font-black">Planos de Ação</span>
+            <span class="flex h-2 w-2 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+            </span>
+          </div>
         </router-link>
       </nav>
 
