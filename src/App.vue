@@ -90,18 +90,21 @@ const logout = () => {
           <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border border-slate-800 dark:border-slate-900 animate-pulse"></div>
         </div>
 
-        <div class="flex flex-col select-none">
-          <div class="flex items-baseline gap-1">
-            <span class="text-xl font-black tracking-tighter text-slate-800 dark:text-white leading-none">Gauge</span>
-            <span class="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500 leading-none">NPS</span>
+        <div class="flex items-center gap-3 px-6 py-8">
+          
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
+            <i class="pi pi-chart-line text-white text-lg"></i>
           </div>
           
-          <div class="flex items-center gap-1.5 mt-1">
-            <span class="h-[1.5px] w-2 bg-indigo-500/50 rounded-full"></span>
-            <span class="text-[8px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 leading-none">
+          <div class="flex flex-col justify-center">
+            <span class="text-xl font-black tracking-wider text-slate-800 dark:text-white leading-none mb-1">
+              NPS
+            </span>
+            <span class="text-[9px] font-bold tracking-[0.3em] text-indigo-500 dark:text-indigo-400 uppercase leading-none">
               Intelligence
             </span>
           </div>
+
         </div>
         
       </div>
@@ -183,26 +186,23 @@ const logout = () => {
            :class="['hidden md:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 z-20 shadow-sm relative', sidebarExpandida ? 'w-64' : 'w-20']">
       
       <div class="flex items-center gap-3 py-6 px-4 mb-2 cursor-default overflow-hidden">
+
+      <div class="flex items-center gap-3 px-6 py-8">
         
-        <div class="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-800 dark:to-slate-950 shadow-lg shadow-slate-900/10 shrink-0 overflow-hidden group border border-slate-700/50">
-          <div class="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-indigo-500/20 opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
-          <i class="pi pi-sparkles text-transparent bg-clip-text bg-gradient-to-br from-orange-400 to-rose-400 text-xl z-10"></i>
-          <div class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-800 dark:border-slate-900 animate-pulse"></div>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
+          <i class="pi pi-chart-line text-white text-lg"></i>
+        </div>
+        
+        <div class="flex flex-col justify-center">
+          <span class="text-xl font-black tracking-wider text-slate-800 dark:text-white leading-none mb-1">
+            NPS
+          </span>
+          <span class="text-[9px] font-bold tracking-[0.3em] text-indigo-500 dark:text-indigo-400 uppercase leading-none">
+            Intelligence
+          </span>
         </div>
 
-        <div v-if="sidebarExpandida" class="flex flex-col animate-fadein select-none shrink-0">
-          <div class="flex items-baseline gap-1">
-            <span class="text-2xl font-black tracking-tighter text-slate-800 dark:text-white leading-none">Gauge</span>
-            <span class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500 leading-none">NPS</span>
-          </div>
-          
-          <div class="flex items-center gap-1.5 mt-1.5">
-            <span class="h-[1.5px] w-3 bg-indigo-500/50 rounded-full"></span>
-            <span class="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 leading-none">
-              Intelligence
-            </span>
-          </div>
-        </div>
+      </div>
         
       </div>
 

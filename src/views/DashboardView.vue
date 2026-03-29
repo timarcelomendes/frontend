@@ -55,6 +55,89 @@ const smartInsights = ref({
   nivel_alerta: "Baixo"
 });
 
+// ==========================================
+// 📊 CARDS DE INDICADORES (NOVO)
+// ==========================================
+const cardsIndicadores = computed(() => [
+  {
+    titulo: 'Score Global',
+    subtitulo: 'Net Promoter Score',
+    valor: kpis.value.score,
+    unidade: 'pts',
+    rodape: `${kpis.value.delta_score > 0 ? '+' : ''}${kpis.value.delta_score} PTS`,
+    rodapeCor: kpis.value.delta_score >= 0 ? 'text-emerald-500' : 'text-rose-500',
+    icone: 'pi pi-chart-line',
+    corIcone: 'text-indigo-600 dark:text-indigo-400',
+    bgIcone: 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20'
+  },
+  {
+    titulo: 'Polaridade',
+    subtitulo: 'Distribuição de Sentimento',
+    valor: kpis.value.promotores,
+    unidade: 'promotores',
+    rodape: `${kpis.value.neutros} NEUTROS • ${kpis.value.detratores} DETRATORES`,
+    rodapeCor: 'text-slate-500 dark:text-slate-400',
+    icone: 'pi pi-users',
+    corIcone: 'text-blue-600 dark:text-blue-400',
+    bgIcone: 'bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20'
+  },
+  {
+    titulo: 'NPS Decisores',
+    subtitulo: 'Visão Nível Executivo',
+    valor: kpis.value.nps_decisor,
+    unidade: 'pts',
+    rodape: `${kpis.value.total_decisores} AVALIAÇÕES`,
+    rodapeCor: 'text-slate-500 dark:text-slate-400',
+    icone: 'pi pi-briefcase',
+    corIcone: 'text-amber-600 dark:text-amber-400',
+    bgIcone: 'bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20'
+  },
+  {
+    titulo: 'Conversão',
+    subtitulo: 'Detratores Resgatados',
+    valor: kpis.value.clientes_resgatados,
+    unidade: 'clientes',
+    rodape: 'CONVERTIDOS P/ PROMOTOR',
+    rodapeCor: 'text-emerald-500',
+    icone: 'pi pi-sync',
+    corIcone: 'text-emerald-600 dark:text-emerald-400',
+    bgIcone: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20'
+  },
+  {
+    titulo: 'Risco de Churn',
+    subtitulo: 'Promotores Perdidos',
+    valor: kpis.value.clientes_em_risco || kpis.value.queda_drastica || 0,
+    unidade: 'clientes',
+    rodape: `${kpis.value.queda_drastica || 0} QUEDAS P/ DETRATOR`,
+    rodapeCor: 'text-rose-500',
+    icone: 'pi pi-sort-amount-down-alt',
+    corIcone: 'text-rose-600 dark:text-rose-400',
+    bgIcone: 'bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20'
+  }
+]);
+
+// Filtra os críticos (NPS <= 0)
+const alertasCriticos = computed(() => {
+  if (!ranking.value || ranking.value.length === 0) return [];
+  
+  return ranking.value.filter(item => item.nps <= 0);
+});
+
+// Ordena: 1º Menores Notas, 2º Mais Antigos
+const alertasPrioritarios = computed(() => {
+  if (!ranking.value || ranking.value.length === 0) return [];
+
+  // Pega em todo o ranking, ordena (Pior Nota -> Mais Antigo) e corta em 5
+  return [...ranking.value]
+    .sort((a, b) => {
+      if (a.nps !== b.nps) {
+        return a.nps - b.nps;
+      }
+      return new Date(a.data_ultima_resposta) - new Date(b.data_ultima_resposta);
+    })
+    .slice(0, 5);
+});
+
 const abrirDetalhesCliente = (item) => {
   if (!item.nome) return;
 
@@ -68,7 +151,6 @@ const topRisco = computed(() => {
   if (!ranking.value || ranking.value.length === 0) return null;
   return [...ranking.value].sort((a, b) => a.nps - b.nps)[0];
 });
-
 
 const porcentagemConversao = ref(0);
 
@@ -90,39 +172,6 @@ const simulador = computed(() => {
   const receitaSalva = detratoresConvertidos * ticketMedio;
 
   return { npsGanho, npsNovo, receitaSalva };
-});
-
-// --- DISPARO DE E-MAIL PARA O GESTOR ---
-const acionandoGestor = ref(false);
-
-const dispararEmailGestor = async () => {
-  if (!topRisco.value || !topRisco.value.gestor) {
-    toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Esta conta não tem um Gestor associado para notificar.', life: 4000 });
-    return;
-  }
-  
-  acionandoGestor.value = true;
-  try {
-    const payload = {
-      empresa: topRisco.value.nome,
-      gestor: topRisco.value.gestor,
-      nps: topRisco.value.nps
-    };
-    const res = await api.post('/dashboard/acionar-gestor', payload);
-    toast.add({ severity: 'success', summary: 'Fecho de Loop Acionado', detail: res.data.message, life: 5000 });
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro de Envio', detail: error.response?.data?.detail || 'Falha ao enviar e-mail.', life: 5000 });
-  } finally {
-    acionandoGestor.value = false;
-  }
-};
-
-const alertasCriticos = computed(() => {
-  if (!ranking.value || ranking.value.length === 0) return [];
-  
-  return ranking.value
-    .filter(item => item.nps <= 0)
-    .slice(0, 5);
 });
 
 // --- GRÁFICOS ---
@@ -194,7 +243,6 @@ const gerarInsightIA = async (forcarNova = false) => {
 // ==========================================
 const carregarCompanhias = async () => {
   try {
-    // 💡 BLINDAGEM: Usamos a rota central de cadastros para garantir consistência em todo o sistema
     const res = await api.get('/cadastros/companhias');
     if (res.data) {
       const nomes = res.data.map(c => c.nome).sort();
@@ -210,7 +258,7 @@ const carregarCompanhias = async () => {
 // ==========================================
 watch(companhiaSelecionada, () => {
   carregarDashboard();
-  gerarInsightIA(false); // Carrega IA do Cache ou gera nova para esta companhia
+  gerarInsightIA(false); 
 });
 
 watch(datasFiltro, (novasDatas) => {
@@ -227,21 +275,19 @@ watch(datasFiltro, (novasDatas) => {
 const obterParametrosFiltro = () => {
   const params = new URLSearchParams();
 
-  // Filtro de Companhia
   if (companhiaSelecionada.value && companhiaSelecionada.value !== 'Todas as Companhias') {
     params.append('companhia', companhiaSelecionada.value);
   }
 
-  // Filtro de Data
   if (datasFiltro.value && datasFiltro.value[0] && datasFiltro.value[1]) {
-    const formatarData = (data) => {
+    const formatarDataLocal = (data) => {
       const d = new Date(data);
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
       return d.toISOString().split('T')[0];
     };
     
-    params.append('data_inicio', formatarData(datasFiltro.value[0]));
-    params.append('data_fim', formatarData(datasFiltro.value[1]));
+    params.append('data_inicio', formatarDataLocal(datasFiltro.value[0]));
+    params.append('data_fim', formatarDataLocal(datasFiltro.value[1]));
   }
   
   const queryStr = params.toString();
@@ -252,10 +298,6 @@ const formatarData = (dataString) => {
   if (!dataString) return 'Sem data';
   const data = new Date(dataString);
   
-  // Opção A: Formato simples (15/03/2026)
-  // return data.toLocaleDateString('pt-PT');
-
-  // Opção B: Formato "Há X dias" (Mais comum em dashboards de alerta)
   const hoje = new Date();
   const diffTempo = Math.abs(hoje - data);
   const diffDias = Math.floor(diffTempo / (1000 * 60 * 60 * 24));
@@ -428,7 +470,7 @@ const exportarDados = async () => {
 };
 
 onMounted(() => {
-  carregarCompanhias(); // 👈 AGORA CARREGA AS COMPANHIAS AO ABRIR O DASHBOARD
+  carregarCompanhias();
   carregarDashboard();
   gerarInsightIA(false); 
 });
@@ -636,44 +678,55 @@ onMounted(() => {
 
         </div>
 
-        <div v-if="alertasCriticos.length > 0" class="flex flex-col gap-4 animate-fadein">
+        <div v-if="alertasPrioritarios.length > 0" class="flex flex-col gap-4 animate-fadein mb-8">
+          
           <div class="flex items-center gap-2 mb-2">
             <div class="w-1.5 h-4 bg-rose-500 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.4)]"></div>
-            <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-rose-500">Atenção Prioritária (Mais Antigos)</h3>
+            <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-rose-500">
+              Atenção Prioritária (Maior Risco)
+            </h3>
           </div>
 
-          <div v-for="item in alertasCriticos" :key="item.nome" 
-              class="bg-white dark:bg-slate-900 border-l-4 border-rose-500 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all group border border-slate-100 dark:border-slate-800">
+          <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-3">
             
-            <div class="flex flex-col md:flex-row items-center gap-5">
-              <div class="w-14 h-14 bg-rose-50 dark:bg-rose-500/10 rounded-2xl flex flex-col items-center justify-center shrink-0 border border-rose-100 dark:border-rose-500/20">
-                <span class="text-[9px] font-black text-rose-400 uppercase leading-none mb-1">NPS</span>
-                <span class="text-xl font-black text-rose-600 leading-none">{{ item.nps }}</span>
-              </div>
-
-              <div class="flex-1 text-center md:text-left">
-                <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2">
-                  <span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 text-[9px] font-black uppercase tracking-widest rounded-md">
+            <div v-for="item in alertasPrioritarios" :key="item.nome" 
+                class="bg-white dark:bg-slate-900 border-l-4 border-rose-500 p-3.5 rounded-2xl shadow-sm hover:shadow-md transition-all group border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+              
+              <div>
+                <div class="flex flex-wrap justify-between items-start gap-2 mb-3">
+                  <div class="bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 px-2 py-1 rounded-lg flex items-center gap-1.5 shrink-0">
+                    <span class="text-[8px] font-black text-rose-400 uppercase tracking-wider">NPS</span>
+                    <span class="text-sm font-black text-rose-600 leading-none">{{ item.nps }}</span>
+                  </div>
+                  
+                  <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 text-[8px] font-black uppercase tracking-widest rounded-md shrink-0">
                     {{ formatarData(item.data_ultima_resposta) }}
                   </span>
-                  <span v-if="item.gestor" class="px-2 py-0.5 bg-rose-500 text-white text-[9px] font-black uppercase tracking-widest rounded-md">
-                    Gestor: {{ item.gestor }}
-                  </span>
                 </div>
-                
-                <p class="text-slate-600 dark:text-slate-400 text-sm font-medium leading-relaxed">
+
+                <div v-if="item.gestor" class="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 mb-2 truncate">
+                  Gestor: {{ item.gestor }}
+                </div>
+
+                <p class="text-[10px] text-slate-600 dark:text-slate-400 font-medium leading-relaxed mb-4">
                   O cliente <strong class="text-slate-900 dark:text-white">{{ item.nome }}</strong> 
-                  registou um NPS crítico. Ação de retenção aconselhada imediatamente.
+                  registou um NPS de risco. Ação de retenção aconselhada.
                 </p>
               </div>
 
-              <Button 
-                icon="pi pi-chevron-right" 
-                class="!bg-slate-100 dark:!bg-slate-800 !text-slate-600 !border-none !rounded-xl hover:!bg-rose-500 hover:!text-white transition-all shadow-sm"
-                @click="abrirDetalhesCliente(item)"
-                v-tooltip.top="'Abrir no Kanban'"
-              />
+              <div class="flex justify-between items-center mt-auto pt-2 border-t border-slate-100 dark:border-slate-800/50">
+                <span class="text-[8px] uppercase tracking-widest font-bold text-rose-500/60">Ação Requerida</span>
+                
+                <Button 
+                  icon="pi pi-chevron-right" 
+                  class="!bg-slate-100 dark:!bg-slate-800 !text-slate-600 !border-none !rounded-xl hover:!bg-rose-500 hover:!text-white transition-all shadow-sm !w-8 !h-8"
+                  @click="abrirDetalhesCliente(item)"
+                  v-tooltip.top="'Abrir no Kanban'"
+                />
+              </div>
+
             </div>
+
           </div>
         </div>
 
