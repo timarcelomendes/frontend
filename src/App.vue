@@ -119,7 +119,7 @@ watch(
 <template>
   <div class="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 antialiased overflow-hidden flex-col md:flex-row transition-colors duration-300">
     
-    <Toast /> 
+    <Toast position="bottom-right" />
     <ConfirmDialog />
 
     <header v-if="exibirLayout" 
@@ -364,5 +364,56 @@ watch(
 }
 .router-link-active.nav-item i {
   @apply text-orange-500 dark:text-orange-400;
+}
+
+/* ==========================================
+   ✨ ESTILO PREMIUM PARA O TOAST (NOTIFICAÇÕES)
+   ========================================== */
+:deep(.p-toast) {
+  /* Adiciona um espaçamento mais elegante da borda do ecrã */
+  margin-bottom: 1rem;
+  margin-right: 1rem;
+}
+
+:deep(.p-toast-message) {
+  /* Arredondamento moderno estilo Apple/Vercel e efeito vidro */
+  @apply rounded-2xl shadow-2xl shadow-slate-900/10 border-none backdrop-blur-md transition-all duration-300;
+  overflow: hidden;
+}
+
+:deep(.p-toast-message-content) {
+  /* Espaçamento interno perfeito e alinhamento do ícone */
+  @apply p-4 flex items-center gap-3;
+}
+
+:deep(.p-toast-message-icon) {
+  @apply text-xl;
+}
+
+/* Tipografia e cores do título e do texto */
+:deep(.p-toast-summary) {
+  @apply font-black text-sm tracking-wide;
+}
+:deep(.p-toast-detail) {
+  @apply text-xs font-medium opacity-90 mt-0.5 leading-relaxed;
+}
+
+/* Cores customizadas por Severidade (Modo Claro/Escuro) */
+:deep(.p-toast-message-success) {
+  @apply bg-emerald-500/90 dark:bg-emerald-500/20 text-white dark:text-emerald-400 border-l-4 border-emerald-500;
+}
+:deep(.p-toast-message-error) {
+  @apply bg-rose-500/90 dark:bg-rose-500/20 text-white dark:text-rose-400 border-l-4 border-rose-500;
+}
+:deep(.p-toast-message-warn) {
+  @apply bg-orange-500/90 dark:bg-orange-500/20 text-white dark:text-orange-400 border-l-4 border-orange-500;
+}
+:deep(.p-toast-message-info) {
+  @apply bg-indigo-500/90 dark:bg-indigo-500/20 text-white dark:text-indigo-400 border-l-4 border-indigo-500;
+}
+
+/* Ocultar o botão de fechar (opcional, deixa mais minimalista pois desaparece sozinho) */
+:deep(.p-toast-icon-close) {
+  @apply text-white/50 hover:text-white dark:text-current hover:bg-white/10 rounded-full transition-colors w-6 h-6 outline-none ring-0;
 }
 </style>

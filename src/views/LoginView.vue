@@ -117,11 +117,10 @@
             <Button 
               type="submit" 
               :loading="loading" 
+              loadingIcon="pi pi-spinner pi-spin"
+              :label="loading ? 'A processar...' : (isLoginMode ? 'Entrar na Plataforma' : 'Solicitar Registro')"
               class="w-full !bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 !py-4.5 !rounded-2xl !font-black !text-[11px] uppercase tracking-[0.2em] !shadow-2xl !border-none hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
-            >
-              <span v-if="!loading">{{ isLoginMode ? 'Entrar na Plataforma' : 'Solicitar Registro' }}</span>
-              <span v-else>A processar...</span>
-            </Button>
+            />
             
             <button type="button" @click="isLoginMode = !isLoginMode" class="text-[11px] font-black text-slate-400 hover:text-orange-500 uppercase tracking-[0.1em] bg-transparent border-none cursor-pointer transition-colors text-center">
               {{ isLoginMode ? 'Não tem acesso? Criar conta' : 'Já possui conta? Fazer login' }}
