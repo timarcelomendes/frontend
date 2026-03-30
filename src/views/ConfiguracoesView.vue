@@ -157,6 +157,14 @@ const encerrarTodasAsSessoes = async () => {
   }
 };
 
+// --- UTILITÁRIO: GERAR AVATAR ---
+const getIniciais = (nome) => {
+  if (!nome) return 'US';
+  const partes = nome.trim().split(' ');
+  if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+};
+
 // ==========================================
 // 📡 CARREGAR CONFIGURAÇÕES GERAIS E EMAIL
 // ==========================================
@@ -710,63 +718,91 @@ onMounted(() => {
       </TabPanel>
 
       <TabPanel header="Utilizadores">
-        <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4 md:p-6 shadow-sm">
-          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
+          
+          <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-6">
             <div>
-              <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Gestão de Utilizadores</h3>
-              <p class="text-[9px] text-slate-300 font-bold italic mt-1">Utilizadores registados no sistema</p>
+              <h3 class="text-xl font-black italic tracking-tight text-slate-800 dark:text-white flex items-center gap-3">
+                <i class="pi pi-users text-orange-500"></i> Gestão de Utilizadores
+              </h3>
+              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                Controle de acessos, cargos e permissões
+              </p>
             </div>
-            <div class="flex gap-3 items-center w-full sm:w-auto">
-              <Button icon="pi pi-refresh" @click="carregarUtilizadores" :loading="carregandoUtilizadores" class="w-10 h-10 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !rounded-xl hover:!bg-slate-100 dark:hover:!bg-slate-700 transition-colors shadow-sm" />
-              <Button label="Novo Utilizador" icon="pi pi-user-plus" @click="abrirNovoUser" class="flex-1 sm:flex-none !bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-orange-500/30 hover:scale-105 transition-transform" />
+            
+            <div class="flex flex-col sm:flex-row gap-3 items-center w-full xl:w-auto bg-slate-50 dark:bg-slate-800/50 p-2 rounded-[1.2rem] border border-slate-100 dark:border-slate-700/50">
+              <div class="relative w-full sm:w-64">
+                <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <InputText placeholder="Procurar utilizador..." class="custom-input !pl-10 !py-2.5 !bg-white dark:!bg-slate-900 w-full !text-xs !border-none shadow-sm" />
+              </div>
+              <div class="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-700"></div>
+              <Button icon="pi pi-refresh" @click="carregarUtilizadores" :loading="carregandoUtilizadores" v-tooltip.top="'Atualizar Lista'" class="w-full sm:w-10 h-10 !bg-white dark:!bg-slate-900 !text-slate-400 !border-none !rounded-xl hover:!text-orange-500 transition-colors shadow-sm shrink-0" />
+              <Button label="Novo Utilizador" icon="pi pi-user-plus" @click="abrirNovoUser" class="w-full sm:w-auto !bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-5 !py-3 shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform shrink-0" />
             </div>
           </div>
 
-          <DataTable :value="utilizadores" responsiveLayout="stack" breakpoint="960px" class="p-datatable-sm custom-table" :rows="5" paginator rowHover>
+          <DataTable :value="utilizadores" responsiveLayout="stack" breakpoint="960px" class="p-datatable-sm custom-table" :rows="10" paginator rowHover>
             <Column field="nome" header="Utilizador">
               <template #body="s">
-                <div class="flex items-center gap-3">
-                  <span class="font-bold text-slate-800 dark:text-white">{{ s.data.nome }}</span>
-                  <Tag v-if="!s.data.ativo" value="Aguardando Aprovação" class="text-[10px] font-bold uppercase tracking-wider !bg-yellow-600 !text-white" rounded />
+                <div class="flex items-center gap-4 py-1">
+                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 font-black text-[11px] shadow-inner shrink-0">
+                    {{ getIniciais(s.data.nome) }}
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="font-black text-sm text-slate-800 dark:text-white">{{ s.data.nome }}</span>
+                    <span class="text-[10px] font-bold text-slate-400">{{ s.data.email }}</span>
+                  </div>
+                  <Tag v-if="!s.data.ativo" value="Pendente" class="ml-2 !text-[9px] !font-black uppercase tracking-widest !bg-yellow-100 dark:!bg-yellow-500/10 !text-yellow-600 dark:!text-yellow-500 !border !border-yellow-200 dark:!border-yellow-500/20" rounded />
                 </div>
               </template>
             </Column>
-            <Column field="cargo" header="Cargo">
+            
+            <Column field="cargo" header="Função">
               <template #body="s">
-                <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">{{ s.data.cargo || 'Analista' }}</span>
+                <div class="flex items-center gap-2">
+                  <i class="pi pi-briefcase text-slate-300 text-[10px]"></i>
+                  <span class="text-[11px] font-bold text-slate-600 dark:text-slate-300">{{ s.data.cargo || 'Analista' }}</span>
+                </div>
               </template>
             </Column>
-            <Column header="Perfil">
+            
+            <Column header="Nível de Acesso">
               <template #body="s">
-                <Tag :value="s.data.tipo" :severity="s.data.tipo === 'Admin' ? 'danger' : 'info'" class="!text-[9px] !font-black !px-3 !py-1 uppercase tracking-widest !rounded-lg" />
+                <Tag :value="s.data.tipo" :class="s.data.tipo === 'Admin' ? '!bg-rose-50 dark:!bg-rose-500/10 !text-rose-600 dark:!text-rose-400 !border-rose-200 dark:!border-rose-500/20' : '!bg-indigo-50 dark:!bg-indigo-500/10 !text-indigo-600 dark:!text-indigo-400 !border-indigo-200 dark:!border-indigo-500/20'" class="!text-[9px] !font-black !px-3 !py-1 uppercase tracking-widest !rounded-lg border" />
               </template>
             </Column>
+            
             <Column header="Estado">
               <template #body="s">
-                <div class="flex items-center gap-2">
-                  <div :class="['w-2 h-2 rounded-full', s.data.ativo ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-slate-300']"></div>
-                  <span class="text-[10px] font-black uppercase tracking-widest" :class="s.data.ativo ? 'text-emerald-500' : 'text-slate-400'">{{ s.data.ativo ? 'Ativo' : 'Inativo' }}</span>
+                <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 w-fit px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                  <div :class="['w-2 h-2 rounded-full', s.data.ativo ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-slate-400']"></div>
+                  <span class="text-[9px] font-black uppercase tracking-widest" :class="s.data.ativo ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'">{{ s.data.ativo ? 'Ativo' : 'Bloqueado' }}</span>
                 </div>
               </template>
             </Column>
-            <Column field="ultimo_acesso" header="Último Acesso" sortable>
+            
+            <Column field="ultimo_acesso" header="Último Login" sortable>
               <template #body="{ data }">
-                <div class="flex items-center gap-2">
-                  <i class="pi pi-clock text-slate-400 text-[10px]"></i>
-                  <span :class="data.ultimo_acesso ? 'text-slate-600 dark:text-slate-300 font-medium' : 'text-slate-400 italic'">{{ formatarDataHora(data.ultimo_acesso) }}</span>
-                </div>
+                <span :class="data.ultimo_acesso ? 'text-slate-500 dark:text-slate-400 font-bold text-[11px]' : 'text-slate-300 italic text-[10px] uppercase tracking-widest font-black'">
+                  {{ formatarDataHora(data.ultimo_acesso) }}
+                </span>
               </template>
             </Column>
-            <Column alignFrozen="right" style="width: 100px">
+            
+            <Column alignFrozen="right" style="width: 120px">
               <template #body="s">
                 <div class="flex gap-2 justify-end">
-                  <Button icon="pi pi-pencil" @click="prepararEdicaoUser(s.data)" v-tooltip.top="'Editar Utilizador'" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" />
-                  <Button :icon="s.data.ativo ? 'pi pi-lock' : 'pi pi-unlock'" @click="alternarStatus(s.data)" v-tooltip.top="s.data.ativo ? 'Bloquear Acesso' : 'Desbloquear Acesso'" :class="['w-8 h-8 !border-none !text-[10px] rounded-lg transition-colors', s.data.ativo ? '!bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 hover:!bg-rose-500 hover:!text-white' : '!bg-emerald-50 dark:!bg-emerald-500/10 !text-emerald-500 hover:!bg-emerald-500 hover:!text-white']" />
+                  <Button icon="pi pi-pencil" @click="prepararEdicaoUser(s.data)" v-tooltip.top="'Editar Utilizador'" class="w-9 h-9 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-xs rounded-xl hover:!bg-indigo-50 hover:!text-indigo-500 transition-all shadow-sm" />
+                  <Button :icon="s.data.ativo ? 'pi pi-lock' : 'pi pi-unlock'" @click="alternarStatus(s.data)" v-tooltip.top="s.data.ativo ? 'Bloquear Acesso' : 'Desbloquear Acesso'" :class="['w-9 h-9 !border-none !text-xs rounded-xl transition-all shadow-sm', s.data.ativo ? '!bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 hover:!bg-rose-500 hover:!text-white' : '!bg-emerald-50 dark:!bg-emerald-500/10 !text-emerald-500 hover:!bg-emerald-500 hover:!text-white']" />
                 </div>
               </template>
             </Column>
+            
             <template #empty>
-              <div class="text-center p-8 text-slate-400 text-[10px] font-black uppercase tracking-widest">Nenhum utilizador encontrado.</div>
+              <div class="flex flex-col items-center justify-center p-12 text-slate-400">
+                <i class="pi pi-users text-4xl mb-4 opacity-50"></i>
+                <span class="text-[10px] font-black uppercase tracking-widest">Nenhum utilizador encontrado.</span>
+              </div>
             </template>
           </DataTable>
         </div>
@@ -1232,48 +1268,71 @@ onMounted(() => {
       </TabPanel>
     </TabView>
 
-    <Dialog v-model:visible="usuarioDialog" :header="editandoUser ? 'Editar Utilizador' : 'Novo Utilizador'" :modal="true" class="custom-dialog w-[95vw] sm:w-[80vw] md:w-[50vw] max-w-lg">
-      <div class="p-4 sm:p-6 md:p-8 space-y-5">
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nome Completo</label>
-          <InputText v-model="usuario.nome" class="custom-input" placeholder="Ex: Marcelo Mendes" />
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">E-mail Corporativo</label>
-          <InputText v-model="usuario.email" class="custom-input" placeholder="nome@empresa.com" />
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="flex flex-col gap-1.5">
-            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Perfil de Acesso</label>
-            <Dropdown v-model="usuario.tipo" :options="opcoesTipo" class="custom-input !p-0" />
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Status</label>
-            <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 h-[56px] px-4 rounded-xl border border-slate-100 dark:border-slate-800">
-              <InputSwitch v-model="usuario.ativo" />
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">{{ usuario.ativo ? 'Ativo' : 'Inativo' }}</span>
+    <Dialog v-model:visible="usuarioDialog" :header="editandoUser ? 'Editar Utilizador' : 'Novo Utilizador'" :modal="true" class="custom-dialog w-[95vw] sm:w-[80vw] md:w-[60vw] lg:w-[50vw] max-w-2xl">
+      <div class="p-2 sm:p-6 space-y-8">
+        
+        <div class="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+          <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+            <i class="pi pi-id-card"></i> Identificação
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div class="flex flex-col gap-1.5 sm:col-span-2">
+              <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Nome Completo</label>
+              <InputText v-model="usuario.nome" class="custom-input !py-3 !text-sm" placeholder="Ex: Marcelo Mendes" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">E-mail Corporativo</label>
+              <InputText v-model="usuario.email" class="custom-input !py-3 !text-sm" placeholder="nome@empresa.com" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Cargo / Função</label>
+              <InputText v-model="usuario.cargo" class="custom-input !py-3 !text-sm" placeholder="Ex: Product Manager" />
             </div>
           </div>
         </div>
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Cargo / Função na Empresa</label>
-          <InputText v-model="usuario.cargo" class="custom-input w-full" placeholder="Ex: Diretor de Operações" />
-        </div>
-        <div v-if="editandoUser && !mostrarTrocaSenha" class="pt-2">
-          <Button label="Redefinir Palavra-passe" icon="pi pi-key" class="p-button-text p-button-sm !text-orange-600 !font-bold" @click="mostrarTrocaSenha = true" />
-        </div>
-        <div v-if="!editandoUser || mostrarTrocaSenha" class="flex flex-col gap-1.5 animate-fade-in">
-          <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">{{ editandoUser ? 'Nova Palavra-passe' : 'Palavra-passe Inicial' }}</label>
-          <div class="flex gap-2">
-            <Password v-model="usuario.password" toggleMask :feedback="false" class="flex-1" inputClass="custom-input w-full" placeholder="Mínimo 8 caracteres" />
-            <Button icon="pi pi-refresh" @click="gerarSenhaAleatoria" v-tooltip.top="'Gerar Senha'" class="!bg-slate-800 hover:!bg-slate-700 !border-none !rounded-xl !w-[56px] !h-[56px] flex-shrink-0 text-white transition-colors" />
+
+        <div class="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-800/30">
+          <h4 class="text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-4 flex items-center gap-2">
+            <i class="pi pi-shield"></i> Permissões & Segurança
+          </h4>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Nível de Acesso</label>
+              <Dropdown v-model="usuario.tipo" :options="opcoesTipo" class="custom-input !p-0 !py-1" />
+            </div>
+            
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Estado da Conta</label>
+              <div class="flex items-center gap-3 bg-white dark:bg-slate-900 h-[48px] px-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <InputSwitch v-model="usuario.ativo" />
+                <span class="text-[11px] font-black uppercase tracking-widest" :class="usuario.ativo ? 'text-emerald-500' : 'text-slate-400'">
+                  {{ usuario.ativo ? 'Conta Ativa' : 'Bloqueada' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="editandoUser && !mostrarTrocaSenha" class="pt-2 border-t border-indigo-100 dark:border-indigo-800/30">
+            <Button label="Redefinir Palavra-passe" icon="pi pi-key" class="!bg-transparent !text-indigo-600 dark:!text-indigo-400 hover:!bg-indigo-100 dark:hover:!bg-indigo-900/30 !border-none !rounded-lg !text-[10px] !font-black uppercase tracking-widest transition-colors" @click="mostrarTrocaSenha = true" />
+          </div>
+          
+          <div v-if="!editandoUser || mostrarTrocaSenha" class="flex flex-col gap-1.5 animate-fade-in pt-2">
+            <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">
+              {{ editandoUser ? 'Nova Palavra-passe' : 'Palavra-passe Inicial' }}
+            </label>
+            <div class="flex gap-2">
+              <Password v-model="usuario.password" toggleMask :feedback="false" class="flex-1" inputClass="custom-input !py-3 w-full" placeholder="Mínimo 8 caracteres" />
+              <Button icon="pi pi-refresh" @click="gerarSenhaAleatoria" v-tooltip.top="'Gerar Senha Segura'" class="!bg-slate-800 hover:!bg-slate-700 !border-none !rounded-xl !w-[48px] text-white transition-colors shadow-sm" />
+            </div>
           </div>
         </div>
+
       </div>
       <template #footer>
-        <div class="flex gap-3 justify-end px-4 sm:px-6 md:px-8 pb-4 sm:pb-6 md:pb-8">
-          <Button label="Cancelar" icon="pi pi-times" class="p-button-text !text-slate-500 !font-bold" @click="usuarioDialog = false" />
-          <Button :label="editandoUser ? 'Atualizar' : 'Criar Utilizador'" icon="pi pi-check" :loading="submetendoUser" class="!bg-orange-600 !text-white !border-none !rounded-xl !px-6 !py-3 !font-black !uppercase !text-[10px] tracking-widest hover:scale-105 transition-transform" @click="salvarUtilizador" />
+        <div class="flex gap-3 justify-end px-6 pb-6 pt-2">
+          <Button label="Cancelar" icon="pi pi-times" class="!bg-transparent !text-slate-500 hover:!bg-slate-100 dark:hover:!bg-slate-800 !border-none !font-black !text-[10px] uppercase tracking-widest" @click="usuarioDialog = false" />
+          <Button :label="editandoUser ? 'Atualizar Perfil' : 'Criar Utilizador'" icon="pi pi-check" :loading="submetendoUser" class="!bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !px-6 !py-3 !font-black !uppercase !text-[10px] tracking-widest hover:scale-105 transition-transform shadow-lg shadow-orange-500/20" @click="salvarUtilizador" />
         </div>
       </template>
     </Dialog>

@@ -55,67 +55,6 @@ const smartInsights = ref({
   nivel_alerta: "Baixo"
 });
 
-// ==========================================
-// 📊 CARDS DE INDICADORES (NOVO)
-// ==========================================
-const cardsIndicadores = computed(() => [
-  {
-    titulo: 'Score Global',
-    subtitulo: 'Net Promoter Score',
-    valor: kpis.value.score,
-    unidade: 'pts',
-    rodape: `${kpis.value.delta_score > 0 ? '+' : ''}${kpis.value.delta_score} PTS`,
-    rodapeCor: kpis.value.delta_score >= 0 ? 'text-emerald-500' : 'text-rose-500',
-    icone: 'pi pi-chart-line',
-    corIcone: 'text-indigo-600 dark:text-indigo-400',
-    bgIcone: 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20'
-  },
-  {
-    titulo: 'Polaridade',
-    subtitulo: 'Distribuição de Sentimento',
-    valor: kpis.value.promotores,
-    unidade: 'promotores',
-    rodape: `${kpis.value.neutros} NEUTROS • ${kpis.value.detratores} DETRATORES`,
-    rodapeCor: 'text-slate-500 dark:text-slate-400',
-    icone: 'pi pi-users',
-    corIcone: 'text-blue-600 dark:text-blue-400',
-    bgIcone: 'bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20'
-  },
-  {
-    titulo: 'NPS Decisores',
-    subtitulo: 'Visão Nível Executivo',
-    valor: kpis.value.nps_decisor,
-    unidade: 'pts',
-    rodape: `${kpis.value.total_decisores} AVALIAÇÕES`,
-    rodapeCor: 'text-slate-500 dark:text-slate-400',
-    icone: 'pi pi-briefcase',
-    corIcone: 'text-amber-600 dark:text-amber-400',
-    bgIcone: 'bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20'
-  },
-  {
-    titulo: 'Conversão',
-    subtitulo: 'Detratores Resgatados',
-    valor: kpis.value.clientes_resgatados,
-    unidade: 'clientes',
-    rodape: 'CONVERTIDOS P/ PROMOTOR',
-    rodapeCor: 'text-emerald-500',
-    icone: 'pi pi-sync',
-    corIcone: 'text-emerald-600 dark:text-emerald-400',
-    bgIcone: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20'
-  },
-  {
-    titulo: 'Risco de Churn',
-    subtitulo: 'Promotores Perdidos',
-    valor: kpis.value.clientes_em_risco || kpis.value.queda_drastica || 0,
-    unidade: 'clientes',
-    rodape: `${kpis.value.queda_drastica || 0} QUEDAS P/ DETRATOR`,
-    rodapeCor: 'text-rose-500',
-    icone: 'pi pi-sort-amount-down-alt',
-    corIcone: 'text-rose-600 dark:text-rose-400',
-    bgIcone: 'bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20'
-  }
-]);
-
 // Filtra os críticos (NPS <= 0)
 const alertasCriticos = computed(() => {
   if (!ranking.value || ranking.value.length === 0) return [];
@@ -130,12 +69,14 @@ const alertasPrioritarios = computed(() => {
   // Pega em todo o ranking, ordena (Pior Nota -> Mais Antigo) e corta em 5
   return [...ranking.value]
     .sort((a, b) => {
+      // 1º Critério: Menor NPS primeiro (-50 vem antes de 10)
       if (a.nps !== b.nps) {
         return a.nps - b.nps;
       }
+      // 2º Critério: Se a nota for igual, o mais antigo vem primeiro
       return new Date(a.data_ultima_resposta) - new Date(b.data_ultima_resposta);
     })
-    .slice(0, 5);
+    .slice(0, 5); // Força a exibir os 5 piores globais
 });
 
 const abrirDetalhesCliente = (item) => {
@@ -151,6 +92,7 @@ const topRisco = computed(() => {
   if (!ranking.value || ranking.value.length === 0) return null;
   return [...ranking.value].sort((a, b) => a.nps - b.nps)[0];
 });
+
 
 const porcentagemConversao = ref(0);
 
@@ -243,6 +185,7 @@ const gerarInsightIA = async (forcarNova = false) => {
 // ==========================================
 const carregarCompanhias = async () => {
   try {
+    // 💡 BLINDAGEM: Usamos a rota central de cadastros para garantir consistência em todo o sistema
     const res = await api.get('/cadastros/companhias');
     if (res.data) {
       const nomes = res.data.map(c => c.nome).sort();
@@ -258,7 +201,7 @@ const carregarCompanhias = async () => {
 // ==========================================
 watch(companhiaSelecionada, () => {
   carregarDashboard();
-  gerarInsightIA(false); 
+  gerarInsightIA(false); // Carrega IA do Cache ou gera nova para esta companhia
 });
 
 watch(datasFiltro, (novasDatas) => {
@@ -275,19 +218,21 @@ watch(datasFiltro, (novasDatas) => {
 const obterParametrosFiltro = () => {
   const params = new URLSearchParams();
 
+  // Filtro de Companhia
   if (companhiaSelecionada.value && companhiaSelecionada.value !== 'Todas as Companhias') {
     params.append('companhia', companhiaSelecionada.value);
   }
 
+  // Filtro de Data
   if (datasFiltro.value && datasFiltro.value[0] && datasFiltro.value[1]) {
-    const formatarDataLocal = (data) => {
+    const formatarData = (data) => {
       const d = new Date(data);
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
       return d.toISOString().split('T')[0];
     };
     
-    params.append('data_inicio', formatarDataLocal(datasFiltro.value[0]));
-    params.append('data_fim', formatarDataLocal(datasFiltro.value[1]));
+    params.append('data_inicio', formatarData(datasFiltro.value[0]));
+    params.append('data_fim', formatarData(datasFiltro.value[1]));
   }
   
   const queryStr = params.toString();
@@ -298,6 +243,10 @@ const formatarData = (dataString) => {
   if (!dataString) return 'Sem data';
   const data = new Date(dataString);
   
+  // Opção A: Formato simples (15/03/2026)
+  // return data.toLocaleDateString('pt-PT');
+
+  // Opção B: Formato "Há X dias" (Mais comum em dashboards de alerta)
   const hoje = new Date();
   const diffTempo = Math.abs(hoje - data);
   const diffDias = Math.floor(diffTempo / (1000 * 60 * 60 * 24));
@@ -470,7 +419,7 @@ const exportarDados = async () => {
 };
 
 onMounted(() => {
-  carregarCompanhias();
+  carregarCompanhias(); // 👈 AGORA CARREGA AS COMPANHIAS AO ABRIR O DASHBOARD
   carregarDashboard();
   gerarInsightIA(false); 
 });

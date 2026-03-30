@@ -219,7 +219,7 @@ const fazerLogin = async () => {
         localStorage.setItem('nps_remember_email', emailSalvo);
       }
 
-      toast.add({ severity: 'success', summary: '🚀 Conexão Estabelecida', detail: `Bem-vindo, ${response.data.nome.split(' ')[0]}! Sincronizando dados...`, life: 2500 });
+      toast.add({ severity: 'success', summary: '✅ Conexão Estabelecida', detail: `Bem-vindo, ${response.data.nome.split(' ')[0]}! Sincronizando dados...`, life: 2500 });
       
       setTimeout(() => { window.location.href = '/'; }, 700); 
     } else {

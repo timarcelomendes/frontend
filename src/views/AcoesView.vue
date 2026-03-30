@@ -16,6 +16,11 @@ import MultiSelect from 'primevue/multiselect';
 
 const toast = useToast();
 
+// --- CONTROLO DE ACESSO (RBAC) ---
+const tipoUtilizador = localStorage.getItem('usuario_tipo') || 'Viewer';
+const isAdmin = computed(() => tipoUtilizador === 'Admin');
+const podeEditar = computed(() => ['Admin', 'Manager'].includes(tipoUtilizador));
+
 const acoes = ref([]);
 const loading = ref(true);
 const regrasSLA = ref({ sla_detrator_dias: 2, sla_neutro_dias: 5, sla_promotor_dias: 7 });
@@ -364,7 +369,7 @@ onMounted(async () => {
       </div>
       <div class="flex gap-3">
         <Button icon="pi pi-refresh" @click="carregarAcoes" :loading="loading" class="w-10 h-10 !bg-slate-50 dark:!bg-slate-800 !text-slate-600 !border-none !rounded-lg hover:!bg-slate-100 transition-colors" v-tooltip.top="'Atualizar Kanban'" />
-        <Button label="Nova Ação" icon="pi pi-plus" @click="abrirNovo" class="!bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 !border-none !rounded-lg !text-[11px] !font-black !uppercase !tracking-widest !px-5 shadow-md hover:-translate-y-0.5 transition-transform" />
+        <Button v-if="podeEditar" label="Nova Ação" icon="pi pi-plus" @click="abrirNovaAcao" class="!bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform shrink-0" />
       </div>
     </div>
 
@@ -435,7 +440,7 @@ onMounted(async () => {
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
       
-      <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800" @dragover.prevent @drop="onDrop($event, 'Pendente')">
+      <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800" @dragover="podeEditar ? $event.preventDefault() : null" @drop="podeEditar ? onDrop($event, 'Pendente') : null">
         <div class="flex justify-between items-center px-2 pt-1 pb-2 border-b border-slate-200/50 dark:border-slate-800">
           <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Pendente <span class="text-slate-400 ml-1">{{ estatisticas.pendentes }}</span></h3>
           <i class="pi pi-inbox text-slate-400 text-xs"></i>

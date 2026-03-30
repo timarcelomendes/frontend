@@ -26,11 +26,11 @@ const routes = [
   // ==========================================
   // 🔒 ROTAS PRIVADAS (Core da Aplicação)
   // ==========================================
-  {
+{
     path: '/',
     name: 'Dashboard',
     component: () => import('../views/DashboardView.vue'),
-    meta: { requiresAuth: true } 
+    meta: { requiresAuth: true, roles: ['Admin', 'Manager', 'Viewer'] } // Todos acedem
   },
   {
     path: '/respostas',
@@ -38,11 +38,11 @@ const routes = [
     component: () => import('../views/RespostasView.vue'),
     meta: { requiresAuth: true }
   },
-  {
+{
     path: '/acoes',
     name: 'Acoes',
     component: () => import('../views/AcoesView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, roles: ['Admin', 'Manager', 'Viewer'] } // Viewers apenas leem (bloqueio visual no .vue)
   },
   {
     path: '/audiencia',
@@ -66,17 +66,17 @@ const routes = [
   // ==========================================
   // ⚙️ ROTAS PRIVADAS (Gestão e Sistema)
   // ==========================================
+{
+    path: '/configuracoes',
+    name: 'Configuracoes',
+    component: () => import('../views/ConfiguracoesView.vue'),
+    meta: { requiresAuth: true, roles: ['Admin'] } // 🚫 APENAS ADMINS
+  },
   {
     path: '/importacao',
     name: 'Importacao',
     component: () => import('../views/ImportacaoView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/configuracoes',
-    name: 'Configuracoes',
-    component: () => import('../views/ConfiguracoesView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, roles: ['Admin', 'Manager'] } // 🚫 SEM VIEWERS
   },
 
   // ==========================================
@@ -93,12 +93,15 @@ const router = createRouter({
   routes
 });
 
-// Guardião de Navegação (Verifica se tem token antes de abrir a página)
+// Guardião de Navegação Blindado
 router.beforeEach((to, from, next) => {
   const isAuthenticated = localStorage.getItem('token');
+  const usuarioTipo = localStorage.getItem('usuario_tipo') || 'Viewer'; 
 
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login');
+  } else if (to.meta.roles && !to.meta.roles.includes(usuarioTipo)) {
+    next('/'); 
   } else {
     next();
   }
