@@ -206,21 +206,25 @@ const fazerLogin = async () => {
 
     const token = response.data.access_token;
 
-    if (token) {
+if (token) {
       const emailSalvo = credenciais.value.email;
-      localStorage.clear(); 
+            
       localStorage.setItem('token', token);
+      localStorage.setItem('access_token', token); // Garantir o nome correto do token
       localStorage.setItem('usuario_id', response.data.usuario_id);
       localStorage.setItem('usuario_nome', response.data.nome);
       localStorage.setItem('usuario_tipo', response.data.tipo);
       localStorage.setItem('usuario_cargo', response.data.cargo || 'Analista');
       localStorage.setItem('usuario_permissoes', JSON.stringify(response.data.permissoes));
 
+      // Lógica inteligente do "Lembrar Acesso"
       if (lembrarDeMim.value) {
         localStorage.setItem('nps_remember_email', emailSalvo);
+      } else {
+        localStorage.removeItem('nps_remember_email'); // Se ele desmarcar, nós esquecemos
       }
 
-      toast.add({ severity: 'success', summary: '✅ Conexão Estabelecida', detail: `Bem-vindo, ${response.data.nome.split(' ')[0]}! Sincronizando dados...`, life: 2500 });
+      toast.add({ severity: 'success', summary: '✅ Conectado', detail: `Bem-vindo, ${response.data.nome.split(' ')[0]}! Sincronizando...`, life: 2500 });
       
       setTimeout(() => { window.location.href = '/'; }, 700); 
     } else {
