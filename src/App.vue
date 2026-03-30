@@ -1,39 +1,54 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+// ==========================================
+// 1. IMPORTS
+// ==========================================
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Sidebar from 'primevue/sidebar';
 import Button from 'primevue/button';
 
+// ==========================================
+// 2. SETUP (Router & Globals)
+// ==========================================
 const router = useRouter();
 const route = useRoute();
 
+// ==========================================
+// 3. ESTADO (Variáveis)
+// ==========================================
+// -- UI / Layout
+const sidebarExpandida = ref(true);
+const mobileMenuAberto = ref(false);
+const isDark = ref(false);
+
+// -- Dados do Utilizador
 const isAdmin = ref(false);
 const nomeExibido = ref('');
 const cargoExibido = ref('');
 const iniciais = ref('');
 
-const sidebarExpandida = ref(true);
-const mobileMenuAberto = ref(false);
-const isDark = ref(false);
-
-// Lógica para esconder menus em páginas de login/senha
+// ==========================================
+// 4. COMPUTED PROPERTIES
+// ==========================================
+// Esconde a sidebar/menu em páginas específicas
 const exibirLayout = computed(() => {
   const rotasSemMenu = ['Login', 'ForgotPassword', 'redefinir-senha'];
   return !rotasSemMenu.includes(route.name);
 });
 
-const toggleSidebar = () => {
-  sidebarExpandida.value = !sidebarExpandida.value;
-};
-
-onMounted(() => {
+// ==========================================
+// 5. FUNÇÕES (Methods)
+// ==========================================
+const atualizarDadosUsuario = () => {
   const nome = localStorage.getItem('usuario_nome');
   const cargo = localStorage.getItem('usuario_cargo');
-  
   const perfil = localStorage.getItem('usuario_tipo'); 
+  
   isAdmin.value = (perfil || '').toLowerCase() === 'admin';
+
+  // Debug mantido para ajudar nos seus testes
   console.log("---- DEBUG MENU ----");
   console.log("Valor bruto que está no storage:", perfil);
   console.log("É Admin?", isAdmin.value);
@@ -41,20 +56,24 @@ onMounted(() => {
 
   if (nome) {
     nomeExibido.value = nome;
-    cargoExibido.value = cargo || 'Analista';
+    cargoExibido.value = cargo || 'Analista'; // Fallback de segurança
     
+    // Lógica das iniciais do Avatar
     const partes = nome.trim().split(' ');
     iniciais.value = partes.length > 1 
       ? (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
-      : partes[0][0].toUpperCase();
-  } 
-  
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') {
-    isDark.value = true;
-    document.documentElement.classList.add('dark');
+      : partes[0].substring(0, 2).toUpperCase();
+  } else {
+    // Limpeza de segurança caso faça logout
+    nomeExibido.value = '';
+    cargoExibido.value = '';
+    iniciais.value = '';
   }
-});
+};
+
+const toggleSidebar = () => {
+  sidebarExpandida.value = !sidebarExpandida.value;
+};
 
 const toggleTema = () => {
   isDark.value = !isDark.value;
@@ -71,6 +90,30 @@ const logout = () => {
   localStorage.clear();
   router.push('/login');
 };
+
+// ==========================================
+// 6. LIFECYCLE & WATCHERS
+// ==========================================
+// Executa quando a página carrega pela primeira vez (F5)
+onMounted(() => {
+  // 1. Carrega os dados do utilizador
+  atualizarDadosUsuario();
+
+  // 2. Inicializa o tema (Dark/Light)
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'dark') {
+    isDark.value = true;
+    document.documentElement.classList.add('dark');
+  }
+});
+
+// Reage a mudanças de rota (ex: transição suave pós-login)
+watch(
+  () => route.path,
+  () => {
+    atualizarDadosUsuario();
+  }
+);
 </script>
 
 <template>
@@ -79,34 +122,21 @@ const logout = () => {
     <Toast /> 
     <ConfirmDialog />
 
-      <header v-if="exibirLayout" 
+    <header v-if="exibirLayout" 
             class="md:hidden flex items-center justify-between p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30">
       
       <div class="flex items-center gap-3 cursor-default">
-        
-        <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-800 dark:to-slate-950 shadow-md shrink-0 overflow-hidden group border border-slate-700/50">
-          <div class="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-indigo-500/20 opacity-50"></div>
-          <i class="pi pi-sparkles text-transparent bg-clip-text bg-gradient-to-br from-orange-400 to-rose-400 text-lg z-10"></i>
-          <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border border-slate-800 dark:border-slate-900 animate-pulse"></div>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
+          <i class="pi pi-chart-line text-white text-lg"></i>
         </div>
-
-        <div class="flex items-center gap-3 px-6 py-8">
-          
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
-            <i class="pi pi-chart-line text-white text-lg"></i>
-          </div>
-          
-          <div class="flex flex-col justify-center">
-            <span class="text-xl font-black tracking-wider text-slate-800 dark:text-white leading-none mb-1">
-              NPS
-            </span>
-            <span class="text-[9px] font-bold tracking-[0.3em] text-indigo-500 dark:text-indigo-400 uppercase leading-none">
-              Intelligence
-            </span>
-          </div>
-
+        <div class="flex flex-col justify-center">
+          <span class="text-xl font-black tracking-wider text-slate-800 dark:text-white leading-none mb-1">
+            NPS
+          </span>
+          <span class="text-[9px] font-bold tracking-[0.3em] text-indigo-500 dark:text-indigo-400 uppercase leading-none">
+            Intelligence
+          </span>
         </div>
-        
       </div>
 
       <Button icon="pi pi-bars" @click="mobileMenuAberto = true" class="p-button-text !text-slate-600 dark:!text-slate-400" />
@@ -140,15 +170,16 @@ const logout = () => {
           <i class="pi pi-comments"></i> <span>Respostas</span>
         </router-link>
 
-        <router-link to="/acoes" class="nav-item" @click="mobileMenuAberto = false">
-          <i class="pi pi-check-square"></i> <span>Planos de Ação</span>
-        </router-link>
         <router-link to="/importacao" class="nav-item" @click="mobileMenuAberto = false">
           <i class="pi pi-upload"></i> <span>Importação</span>
         </router-link>
 
         <router-link to="/audiencia" class="nav-item" @click="mobileMenuAberto = false">
           <i class="pi pi-users"></i> <span>Audiência</span>
+        </router-link>
+
+        <router-link v-if="isAdmin" to="/configuracoes" class="nav-item" @click="mobileMenuAberto = false">
+          <i class="pi pi-cog"></i> <span>Configurações</span>
         </router-link>
 
         <router-link to="/acoes" class="nav-item border border-orange-100 dark:border-orange-500/20 bg-orange-50/50 dark:bg-orange-500/10" @click="mobileMenuAberto = false">
@@ -182,18 +213,24 @@ const logout = () => {
       </nav>
     </Sidebar>
 
-    <aside v-if="exibirLayout" 
-           :class="['hidden md:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 z-20 shadow-sm relative', sidebarExpandida ? 'w-64' : 'w-20']">
-      
-      <div class="flex items-center gap-3 py-6 px-4 mb-2 cursor-default overflow-hidden">
+    <aside v-if="exibirLayout" :class="[
+        'hidden md:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 h-screen fixed md:relative z-40 transition-all duration-300 ease-in-out shrink-0',
+        sidebarExpandida ? 'w-72' : 'w-20'
+      ]">
 
-      <div class="flex items-center gap-3 px-6 py-8">
-        
+      <button 
+        @click="toggleSidebar" 
+        class="absolute -right-3 top-8 bg-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center shadow-md hover:bg-orange-600 transition-colors z-50"
+      >
+        <i :class="['pi text-[10px] transition-transform duration-300', sidebarExpandida ? 'pi-chevron-left' : 'pi-chevron-right']"></i>
+      </button>
+      
+      <div class="flex items-center gap-3 py-8 px-5 cursor-default overflow-hidden border-b border-transparent">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
           <i class="pi pi-chart-line text-white text-lg"></i>
         </div>
         
-        <div class="flex flex-col justify-center">
+        <div class="flex flex-col justify-center whitespace-nowrap transition-opacity duration-300" :class="sidebarExpandida ? 'opacity-100' : 'opacity-0 w-0'">
           <span class="text-xl font-black tracking-wider text-slate-800 dark:text-white leading-none mb-1">
             NPS
           </span>
@@ -201,19 +238,17 @@ const logout = () => {
             Intelligence
           </span>
         </div>
-
-      </div>
-        
       </div>
 
-      <nav class="flex-1 px-3 space-y-1 mt-4">
-        <router-link to="/" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Visão geral' : null">
-          <i class="pi pi-chart-bar"></i> <span v-if="sidebarExpandida" class="animate-fadein">Visão geral</span>
+      <nav class="flex-1 px-3 space-y-1 mt-4 overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <router-link to="/" :class="['nav-item', sidebarExpandida ? 'justify-start px-4' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Visão geral' : null">
+          <i class="pi pi-chart-bar shrink-0"></i> 
+          <span v-show="sidebarExpandida" class="whitespace-nowrap transition-opacity duration-300">Visão geral</span>
         </router-link>
 
-        <router-link to="/relatorios" class="nav-item group" v-tooltip.right="!sidebarExpandida ? 'Relatórios Inteligentes' : null">
-          <i class="pi pi-chart-line"></i> 
-          <div v-if="sidebarExpandida" class="flex items-center justify-between flex-1 animate-fadein">
+        <router-link to="/relatorios" :class="['nav-item group', sidebarExpandida ? 'justify-start px-4' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Relatórios Inteligentes' : null">
+          <i class="pi pi-chart-line shrink-0"></i> 
+          <div v-show="sidebarExpandida" class="flex items-center justify-between flex-1 whitespace-nowrap transition-opacity duration-300">
             <span>Relatórios</span>
             <span class="bg-indigo-500 text-[7px] text-white px-1.5 py-0.5 rounded-md font-black tracking-tighter animate-pulse shadow-sm shadow-indigo-500/50">
               AI
@@ -221,29 +256,34 @@ const logout = () => {
           </div>
         </router-link>
 
-        <router-link to="/clientes" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Contas' : null">
-          <i class="pi pi-building"></i> <span v-if="sidebarExpandida" class="animate-fadein">Contas</span>
+        <router-link to="/clientes" :class="['nav-item', sidebarExpandida ? 'justify-start px-4' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Contas' : null">
+          <i class="pi pi-building shrink-0"></i> 
+          <span v-show="sidebarExpandida" class="whitespace-nowrap transition-opacity duration-300">Contas</span>
         </router-link>
 
-        <router-link to="/respostas" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Respostas' : null">
-          <i class="pi pi-comments"></i> <span v-if="sidebarExpandida" class="animate-fadein">Respostas</span>
+        <router-link to="/respostas" :class="['nav-item', sidebarExpandida ? 'justify-start px-4' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Respostas' : null">
+          <i class="pi pi-comments shrink-0"></i> 
+          <span v-show="sidebarExpandida" class="whitespace-nowrap transition-opacity duration-300">Respostas</span>
         </router-link>
 
-        <router-link to="/importacao" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Importação' : null">
-          <i class="pi pi-upload"></i> <span v-if="sidebarExpandida" class="animate-fadein">Importação</span>
+        <router-link to="/importacao" :class="['nav-item', sidebarExpandida ? 'justify-start px-4' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Importação' : null">
+          <i class="pi pi-upload shrink-0"></i> 
+          <span v-show="sidebarExpandida" class="whitespace-nowrap transition-opacity duration-300">Importação</span>
         </router-link>
 
-        <router-link to="/audiencia" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Audiência' : null">
-          <i class="pi pi-users"></i> <span v-if="sidebarExpandida" class="animate-fadein">Audiência</span>
+        <router-link to="/audiencia" :class="['nav-item', sidebarExpandida ? 'justify-start px-4' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Audiência' : null">
+          <i class="pi pi-users shrink-0"></i> 
+          <span v-show="sidebarExpandida" class="whitespace-nowrap transition-opacity duration-300">Audiência</span>
         </router-link>
 
-        <router-link v-if="isAdmin" to="/configuracoes" class="nav-item" v-tooltip.right="!sidebarExpandida ? 'Configurações' : null">
-          <i class="pi pi-cog"></i> <span v-if="sidebarExpandida" class="animate-fadein">Configurações</span>
+        <router-link v-if="isAdmin" to="/configuracoes" :class="['nav-item', sidebarExpandida ? 'justify-start px-4' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Configurações' : null">
+          <i class="pi pi-cog shrink-0"></i> 
+          <span v-show="sidebarExpandida" class="whitespace-nowrap transition-opacity duration-300">Configurações</span>
         </router-link>
 
-        <router-link to="/acoes" class="nav-item border border-orange-100 dark:border-orange-500/20 bg-orange-50/50 dark:bg-orange-500/10" v-tooltip.right="!sidebarExpandida ? 'Planos de Ação' : null">
-          <i class="pi pi-check-square text-orange-500"></i> 
-          <div v-if="sidebarExpandida" class="flex items-center justify-between flex-1 animate-fadein">
+        <router-link to="/acoes" :class="['nav-item border border-orange-100 dark:border-orange-500/20 bg-orange-50/50 dark:bg-orange-500/10', sidebarExpandida ? 'justify-start px-4' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Planos de Ação' : null">
+          <i class="pi pi-check-square text-orange-500 shrink-0"></i> 
+          <div v-show="sidebarExpandida" class="flex items-center justify-between flex-1 whitespace-nowrap transition-opacity duration-300">
             <span class="text-orange-700 dark:text-orange-400 font-black">Planos de Ação</span>
             <span class="flex h-2 w-2 relative">
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
@@ -253,25 +293,27 @@ const logout = () => {
         </router-link>
       </nav>
 
-      <div class="p-4 space-y-2">
-        <button @click="toggleTema" class="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
-          <i :class="isDark ? 'pi pi-sun' : 'pi pi-moon'"></i>
-          <span v-if="sidebarExpandida" class="text-xs font-bold uppercase tracking-widest">{{ isDark ? 'Modo Claro' : 'Modo Escuro' }}</span>
+      <div class="mt-auto border-t border-slate-100 dark:border-slate-800 p-3 space-y-2">
+        <button @click="toggleTema" :class="['w-full flex items-center py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all', sidebarExpandida ? 'gap-4 px-4 justify-start' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Alternar Tema' : null">
+          <i :class="[isDark ? 'pi pi-sun' : 'pi pi-moon', 'shrink-0']"></i>
+          <span v-show="sidebarExpandida" class="text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-opacity duration-300">{{ isDark ? 'Modo Claro' : 'Modo Escuro' }}</span>
         </button>
 
-        <div class="flex items-center gap-3 p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-          <div class="w-10 h-10 rounded-xl bg-orange-600 flex-shrink-0 flex items-center justify-center text-white text-xs font-black shadow-lg">
+        <div :class="['flex items-center rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800', sidebarExpandida ? 'gap-3 p-2 justify-start' : 'p-2 justify-center']">
+          <div class="w-10 h-10 rounded-xl bg-orange-600 flex-shrink-0 flex items-center justify-center text-white text-xs font-black shadow-lg" v-tooltip.right="!sidebarExpandida ? nomeExibido : null">
             {{ iniciais }}
           </div>
-          <div v-if="sidebarExpandida" class="flex-1 min-w-0 animate-fadein">
+          
+          <div v-show="sidebarExpandida" class="flex-1 min-w-0 flex flex-col justify-center whitespace-nowrap transition-opacity duration-300 overflow-hidden">
             <p class="text-[11px] font-black text-slate-800 dark:text-white truncate leading-none mb-1">
               {{ nomeExibido }}
             </p>
-            <p class="text-[9px] font-bold text-orange-500 uppercase tracking-widest leading-none">
+            <p class="text-[9px] font-bold text-orange-500 uppercase tracking-widest leading-none truncate">
               {{ cargoExibido }}
             </p>
           </div>
-          <button @click="logout" v-if="sidebarExpandida" class="p-2 text-slate-400 hover:text-rose-500 transition-colors">
+          
+          <button @click="logout" v-show="sidebarExpandida" class="p-2 text-slate-400 hover:text-rose-500 transition-colors shrink-0" title="Sair do sistema">
             <i class="pi pi-sign-out"></i>
           </button>
         </div>

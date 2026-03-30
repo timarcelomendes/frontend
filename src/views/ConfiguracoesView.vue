@@ -681,7 +681,7 @@ onMounted(() => {
     <TabView class="custom-tabview">
       
       <TabPanel header="Geral">
-        <div class="flex flex-col gap-6">
+        <div class="space-y-6 py-4">
           <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
             <div class="flex flex-col gap-2 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
               <label class="text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -719,54 +719,56 @@ onMounted(() => {
       </TabPanel>
 
       <TabPanel header="E-mail">
-        <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 pb-6 border-b border-slate-50 dark:border-slate-800 gap-4">
-            <div>
-              <h3 class="text-sm font-black uppercase text-slate-800 dark:text-white">Microsoft Graph API</h3>
-              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Estado da Conexão em Tempo Real</p>
-            </div>
-            <Tag :value="config.refresh_token ? 'API CONECTADA' : 'AGUARDANDO AUTORIZAÇÃO'" 
-                 :severity="config.refresh_token ? 'success' : 'warning'" 
-                 class="!text-[9px] !px-4 !py-2 !rounded-xl !font-black shadow-sm tracking-widest" />
-          </div>
-
-          <div class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="flex flex-col gap-2">
-                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Tenant ID</label>
-                <InputText v-model="config.tenant_id" class="custom-input" />
+        <div class="space-y-6 py-4">
+          <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 pb-6 border-b border-slate-50 dark:border-slate-800 gap-4">
+              <div>
+                <h3 class="text-sm font-black uppercase text-slate-800 dark:text-white">Microsoft Graph API</h3>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Estado da Conexão em Tempo Real</p>
               </div>
-              <div class="flex flex-col gap-2">
-                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Client ID</label>
-                <InputText v-model="config.client_id" class="custom-input" />
+              <Tag :value="config.refresh_token ? 'API CONECTADA' : 'AGUARDANDO AUTORIZAÇÃO'" 
+                   :severity="config.refresh_token ? 'success' : 'warning'" 
+                   class="!text-[9px] !px-4 !py-2 !rounded-xl !font-black shadow-sm tracking-widest" />
+            </div>
+
+            <div class="space-y-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="flex flex-col gap-2">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Tenant ID</label>
+                  <InputText v-model="config.tenant_id" class="custom-input" />
+                </div>
+                <div class="flex flex-col gap-2">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Client ID</label>
+                  <InputText v-model="config.client_id" class="custom-input" />
+                </div>
               </div>
-            </div>
 
-            <div class="flex flex-col gap-2">
-              <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Client Secret</label>
-              <Password v-model="config.client_secret" toggleMask :feedback="false" inputClass="custom-input w-full" class="w-full" />
-              <p v-if="config.client_secret" class="text-[9px] text-emerald-500 font-bold ml-1 uppercase tracking-widest">
-                <i class="pi pi-lock"></i> Credencial encriptada no banco.
-              </p>
-            </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Client Secret</label>
+                <Password v-model="config.client_secret" toggleMask :feedback="false" inputClass="custom-input w-full" class="w-full" />
+                <p v-if="config.client_secret" class="text-[9px] text-emerald-500 font-bold ml-1 uppercase tracking-widest">
+                  <i class="pi pi-lock"></i> Credencial encriptada no banco.
+                </p>
+              </div>
 
-            <div class="flex flex-col gap-2">
-              <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">E-mail Remetente Autenticado</label>
-              <InputText v-model="config.email_remetente" class="custom-input !text-[12px]" />
-            </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">E-mail Remetente Autenticado</label>
+                <InputText v-model="config.email_remetente" class="custom-input !text-[12px]" />
+              </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-8 border-t border-slate-50 dark:border-slate-800">
-              <Button label="1. Guardar no Banco" icon="pi pi-database" @click="salvarConfiguracoes" :loading="loading" class="w-full !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 shadow-xl hover:scale-[1.02] transition-transform" />
-              <Button label="2. Autorizar Microsoft" icon="pi pi-microsoft" @click="autorizarMicrosoft" :loading="verificandoConexao" class="w-full !bg-transparent !border-2 !border-slate-200 dark:!border-slate-700 !text-slate-700 dark:!text-slate-300 !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 hover:!bg-slate-50 dark:hover:!bg-slate-800 hover:scale-[1.02] transition-all" />
-              
-              <div class="sm:col-span-2">
-                <Button 
-                  label="Enviar E-mail de Teste" 
-                  icon="pi pi-send" 
-                  @click="enviarTeste" 
-                  :loading="enviandoTeste"
-                  class="w-full !bg-transparent !border-2 !border-orange-500/20 !text-orange-500 !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 hover:!bg-orange-50 dark:hover:!bg-orange-500/10 hover:scale-[1.01] transition-all mt-2" 
-                  />
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-8 border-t border-slate-50 dark:border-slate-800">
+                <Button label="1. Guardar no Banco" icon="pi pi-database" @click="salvarConfiguracoes" :loading="loading" class="w-full !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 shadow-xl hover:scale-[1.02] transition-transform" />
+                <Button label="2. Autorizar Microsoft" icon="pi pi-microsoft" @click="autorizarMicrosoft" :loading="verificandoConexao" class="w-full !bg-transparent !border-2 !border-slate-200 dark:!border-slate-700 !text-slate-700 dark:!text-slate-300 !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 hover:!bg-slate-50 dark:hover:!bg-slate-800 hover:scale-[1.02] transition-all" />
+                
+                <div class="sm:col-span-2">
+                  <Button 
+                    label="Enviar E-mail de Teste" 
+                    icon="pi pi-send" 
+                    @click="enviarTeste" 
+                    :loading="enviandoTeste"
+                    class="w-full !bg-transparent !border-2 !border-orange-500/20 !text-orange-500 !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 hover:!bg-orange-50 dark:hover:!bg-orange-500/10 hover:scale-[1.01] transition-all mt-2" 
+                    />
+                </div>
               </div>
             </div>
           </div>
@@ -774,220 +776,226 @@ onMounted(() => {
       </TabPanel>
 
       <TabPanel header="IA">
-        <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-          <div class="flex justify-between items-start lg:items-center mb-8 pb-6 border-b border-slate-50 dark:border-slate-800 flex-col lg:flex-row gap-4">
-            <div class="flex items-center gap-4 group">
-              <div class="w-12 h-12 rounded-[1.2rem] bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20 shadow-sm group-hover:scale-105 group-hover:bg-emerald-500 group-hover:border-emerald-500 transition-all duration-300">
-                <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400 group-hover:text-white transition-colors" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-                  <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A6.0651 6.0651 0 0 0 19.02 19.818a5.9847 5.9847 0 0 0 3.9977-2.9001 6.051 6.051 0 0 0-.7358-7.0967zm-14.5358 1.15l8.6046-4.9658a.4735.4735 0 0 0 .2368-.4114v-1.6384a4.4335 4.4335 0 0 1 2.3023 2.1264 4.3854 4.3854 0 0 1 .4943 2.91 4.4287 4.4287 0 0 1-1.7828 2.5029l-7.3732 4.2526a.4735.4735 0 0 1-.4736 0L1.75 11.23a4.4431 4.4431 0 0 1-.7864-3.1413 4.4093 4.4093 0 0 1 2.0124-2.671 4.4383 4.4383 0 0 1 3.2384-.3676v5.4855a1.6521 1.6521 0 0 0 .8258 1.429zm3.5042-7.394l8.6046 4.9658a.4735.4735 0 0 1 .2368.4114v6.864a4.4335 4.4335 0 0 0-1.808-2.4839 4.3854 4.3854 0 0 0-3.0487-.7146 4.4287 4.4287 0 0 0-2.4347 1.4552l-3.6866 6.386a.4735.4735 0 0 1-.4114.2368H2.174a4.4431 4.4431 0 0 0 2.4578-2.108 4.4093 4.4093 0 0 0 .1786-3.3243 4.4383 4.4383 0 0 0-2.228-2.383L10.05 4.5025a1.6521 1.6521 0 0 1 1.2003-.9256zm-1.8217 12.0031l-8.6046 4.9658a.4735.4735 0 0 0-.2368.4114v1.6384a4.4335 4.4335 0 0 1-2.3023-2.1264 4.3854 4.3854 0 0 1-.4943-2.91 4.4287 4.4287 0 0 1 1.7828-2.5029l7.3732-4.2526a.4735.4735 0 0 1 .4736 0l8.0044 4.6235a4.4431 4.4431 0 0 1 .7864 3.1413 4.4093 4.4093 0 0 1-2.0124 2.671 4.4383 4.4383 0 0 1-3.2384.3676v-5.4855a1.6521 1.6521 0 0 0-.8258-1.429zM12 15.1768a3.1768 3.1768 0 1 1 0-6.3536 3.1768 3.1768 0 0 1 0 6.3536z"/>
-                </svg>
+        <div class="space-y-6 py-4">
+          <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
+            <div class="flex justify-between items-start lg:items-center mb-8 pb-6 border-b border-slate-50 dark:border-slate-800 flex-col lg:flex-row gap-4">
+              <div class="flex items-center gap-4 group">
+                <div class="w-12 h-12 rounded-[1.2rem] bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20 shadow-sm group-hover:scale-105 group-hover:bg-emerald-500 group-hover:border-emerald-500 transition-all duration-300">
+                  <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400 group-hover:text-white transition-colors" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                    <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A6.0651 6.0651 0 0 0 19.02 19.818a5.9847 5.9847 0 0 0 3.9977-2.9001 6.051 6.051 0 0 0-.7358-7.0967zm-14.5358 1.15l8.6046-4.9658a.4735.4735 0 0 0 .2368-.4114v-1.6384a4.4335 4.4335 0 0 1 2.3023 2.1264 4.3854 4.3854 0 0 1 .4943 2.91 4.4287 4.4287 0 0 1-1.7828 2.5029l-7.3732 4.2526a.4735.4735 0 0 1-.4736 0L1.75 11.23a4.4431 4.4431 0 0 1-.7864-3.1413 4.4093 4.4093 0 0 1 2.0124-2.671 4.4383 4.4383 0 0 1 3.2384-.3676v5.4855a1.6521 1.6521 0 0 0 .8258 1.429zm3.5042-7.394l8.6046 4.9658a.4735.4735 0 0 1 .2368.4114v6.864a4.4335 4.4335 0 0 0-1.808-2.4839 4.3854 4.3854 0 0 0-3.0487-.7146 4.4287 4.4287 0 0 0-2.4347 1.4552l-3.6866 6.386a.4735.4735 0 0 1-.4114.2368H2.174a4.4431 4.4431 0 0 0 2.4578-2.108 4.4093 4.4093 0 0 0 .1786-3.3243 4.4383 4.4383 0 0 0-2.228-2.383L10.05 4.5025a1.6521 1.6521 0 0 1 1.2003-.9256zm-1.8217 12.0031l-8.6046 4.9658a.4735.4735 0 0 0-.2368.4114v1.6384a4.4335 4.4335 0 0 1-2.3023-2.1264 4.3854 4.3854 0 0 1-.4943-2.91 4.4287 4.4287 0 0 1 1.7828-2.5029l7.3732-4.2526a.4735.4735 0 0 1 .4736 0l8.0044 4.6235a4.4431 4.4431 0 0 1 .7864 3.1413 4.4093 4.4093 0 0 1-2.0124 2.671 4.4383 4.4383 0 0 1-3.2384.3676v-5.4855a1.6521 1.6521 0 0 0-.8258-1.429zM12 15.1768a3.1768 3.1768 0 1 1 0-6.3536 3.1768 3.1768 0 0 1 0 6.3536z"/>
+                  </svg>
+                </div>
+                <div class="flex flex-col justify-center">
+                  <h2 class="text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Integração OpenAI</h2>
+                  <p class="text-[10px] md:text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Motor Preditivo do Magic AI</p>
+                </div>
               </div>
-              <div class="flex flex-col justify-center">
-                <h2 class="text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Integração OpenAI</h2>
-                <p class="text-[10px] md:text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Motor Preditivo do Magic AI</p>
-              </div>
+              <Button label="Guardar" icon="pi pi-save" @click="salvarConfiguracoesAI" :loading="savingAIConfig" class="w-full lg:w-auto !bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform" />
             </div>
-            <Button label="Guardar" icon="pi pi-save" @click="salvarConfiguracoesAI" :loading="savingAIConfig" class="w-full lg:w-auto !bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform" />
-          </div>
 
-          <div class="space-y-6 max-w-3xl">
-            <div class="flex flex-col gap-2">
-              <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Chave de API (Secret Key)</label>
-              <Password v-model="formConfigAI.openai_api_key" :feedback="false" toggleMask placeholder="sk-..." inputClass="custom-input !text-[12px] w-full" class="w-full" />
-              <small class="text-slate-400 italic font-medium ml-1">Nunca partilhe esta chave. Obtenha uma em platform.openai.com</small>
-            </div>
-            <div class="flex flex-col gap-2">
-              <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Motor de Processamento (Modelo)</label>
-              <Dropdown v-model="formConfigAI.openai_model" :options="opcoesModeloIA" optionLabel="label" optionValue="value" class="custom-input !p-0 !text-[12px]" />
-            </div>
-            <div class="flex flex-col gap-2">
-              <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Temperatura de Criatividade (0.0 a 1.0)</label>
-              <InputText v-model="formConfigAI.ai_temperature" placeholder="0.4" class="custom-input !text-[12px] w-full md:w-1/3" />
+            <div class="space-y-6 max-w-3xl">
+              <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Chave de API (Secret Key)</label>
+                <Password v-model="formConfigAI.openai_api_key" :feedback="false" toggleMask placeholder="sk-..." inputClass="custom-input !text-[12px] w-full" class="w-full" />
+                <small class="text-slate-400 italic font-medium ml-1">Nunca partilhe esta chave. Obtenha uma em platform.openai.com</small>
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Motor de Processamento (Modelo)</label>
+                <Dropdown v-model="formConfigAI.openai_model" :options="opcoesModeloIA" optionLabel="label" optionValue="value" class="custom-input !p-0 !text-[12px]" />
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Temperatura de Criatividade (0.0 a 1.0)</label>
+                <InputText v-model="formConfigAI.ai_temperature" placeholder="0.4" class="custom-input !text-[12px] w-full md:w-1/3" />
+              </div>
             </div>
           </div>
         </div>
       </TabPanel>
 
       <TabPanel header="Utilizadores">
-        <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-          
-          <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-6">
-            <div>
-              <h3 class="text-xl font-black italic tracking-tight text-slate-800 dark:text-white flex items-center gap-3">
-                <i class="pi pi-users text-orange-500"></i> Gestão de Utilizadores
-              </h3>
-              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                Controle de acessos, cargos e permissões
-              </p>
-            </div>
+        <div class="space-y-6 py-4">
+          <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
             
-            <div class="flex flex-col sm:flex-row gap-3 items-center w-full xl:w-auto bg-slate-50 dark:bg-slate-800/50 p-2 rounded-[1.2rem] border border-slate-100 dark:border-slate-700/50">
-              <div class="relative w-full sm:w-64">
-                <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                <InputText placeholder="Procurar utilizador..." class="custom-input !pl-10 !py-2.5 !bg-white dark:!bg-slate-900 w-full !text-xs !border-none shadow-sm" />
+            <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-6">
+              <div>
+                <h3 class="text-xl font-black italic tracking-tight text-slate-800 dark:text-white flex items-center gap-3">
+                  <i class="pi pi-users text-orange-500"></i> Gestão de Utilizadores
+                </h3>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                  Controle de acessos, cargos e permissões
+                </p>
               </div>
-              <div class="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-700"></div>
-              <Button icon="pi pi-refresh" @click="carregarUtilizadores" :loading="carregandoUtilizadores" v-tooltip.top="'Atualizar Lista'" class="w-full sm:w-10 h-10 !bg-white dark:!bg-slate-900 !text-slate-400 !border-none !rounded-xl hover:!text-orange-500 transition-colors shadow-sm shrink-0" />
-              <Button label="Novo Utilizador" icon="pi pi-user-plus" @click="abrirNovoUser" class="w-full sm:w-auto !bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-5 !py-3 shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform shrink-0" />
+              
+              <div class="flex flex-col sm:flex-row gap-3 items-center w-full xl:w-auto bg-slate-50 dark:bg-slate-800/50 p-2 rounded-[1.2rem] border border-slate-100 dark:border-slate-700/50">
+                <div class="relative w-full sm:w-64">
+                  <i class="pi pi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                  <InputText placeholder="Procurar utilizador..." class="custom-input !pl-10 !py-2.5 !bg-white dark:!bg-slate-900 w-full !text-xs !border-none shadow-sm" />
+                </div>
+                <div class="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-700"></div>
+                <Button icon="pi pi-refresh" @click="carregarUtilizadores" :loading="carregandoUtilizadores" v-tooltip.top="'Atualizar Lista'" class="w-full sm:w-10 h-10 !bg-white dark:!bg-slate-900 !text-slate-400 !border-none !rounded-xl hover:!text-orange-500 transition-colors shadow-sm shrink-0" />
+                <Button label="Novo Utilizador" icon="pi pi-user-plus" @click="abrirNovoUser" class="w-full sm:w-auto !bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-5 !py-3 shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform shrink-0" />
+              </div>
             </div>
-          </div>
 
-          <DataTable :value="utilizadores" responsiveLayout="stack" breakpoint="960px" class="p-datatable-sm custom-table" :rows="10" paginator rowHover>
-            <Column field="nome" header="Utilizador">
-              <template #body="s">
-                <div class="flex items-center gap-4 py-1">
-                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 font-black text-[11px] shadow-inner shrink-0">
-                    {{ getIniciais(s.data.nome) }}
+            <DataTable :value="utilizadores" responsiveLayout="stack" breakpoint="960px" class="p-datatable-sm custom-table" :rows="10" paginator rowHover>
+              <Column field="nome" header="Utilizador">
+                <template #body="s">
+                  <div class="flex items-center gap-4 py-1">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 font-black text-[11px] shadow-inner shrink-0">
+                      {{ getIniciais(s.data.nome) }}
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="font-black text-sm text-slate-800 dark:text-white">{{ s.data.nome }}</span>
+                      <span class="text-[10px] font-bold text-slate-400">{{ s.data.email }}</span>
+                    </div>
+                    <Tag v-if="!s.data.ativo" value="Pendente" class="ml-2 !text-[9px] !font-black uppercase tracking-widest !bg-yellow-100 dark:!bg-yellow-500/10 !text-yellow-600 dark:!text-yellow-500 !border !border-yellow-200 dark:!border-yellow-500/20" rounded />
                   </div>
-                  <div class="flex flex-col">
-                    <span class="font-black text-sm text-slate-800 dark:text-white">{{ s.data.nome }}</span>
-                    <span class="text-[10px] font-bold text-slate-400">{{ s.data.email }}</span>
+                </template>
+              </Column>
+              
+              <Column field="cargo" header="Função">
+                <template #body="s">
+                  <div class="flex items-center gap-2">
+                    <i class="pi pi-briefcase text-slate-300 text-[10px]"></i>
+                    <span class="text-[11px] font-bold text-slate-600 dark:text-slate-300">{{ s.data.cargo || 'Analista' }}</span>
                   </div>
-                  <Tag v-if="!s.data.ativo" value="Pendente" class="ml-2 !text-[9px] !font-black uppercase tracking-widest !bg-yellow-100 dark:!bg-yellow-500/10 !text-yellow-600 dark:!text-yellow-500 !border !border-yellow-200 dark:!border-yellow-500/20" rounded />
+                </template>
+              </Column>
+              
+              <Column header="Nível de Acesso">
+                <template #body="s">
+                  <Tag :value="s.data.tipo" :class="s.data.tipo === 'Admin' ? '!bg-rose-50 dark:!bg-rose-500/10 !text-rose-600 dark:!text-rose-400 !border-rose-200 dark:!border-rose-500/20' : '!bg-indigo-50 dark:!bg-indigo-500/10 !text-indigo-600 dark:!text-indigo-400 !border-indigo-200 dark:!border-indigo-500/20'" class="!text-[9px] !font-black !px-3 !py-1 uppercase tracking-widest !rounded-lg border" />
+                </template>
+              </Column>
+              
+              <Column header="Estado">
+                <template #body="s">
+                  <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 w-fit px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                    <div :class="['w-2 h-2 rounded-full', s.data.ativo ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-slate-400']"></div>
+                    <span class="text-[9px] font-black uppercase tracking-widest" :class="s.data.ativo ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'">{{ s.data.ativo ? 'Ativo' : 'Bloqueado' }}</span>
+                  </div>
+                </template>
+              </Column>
+              
+              <Column field="ultimo_acesso" header="Último Login" sortable>
+                <template #body="{ data }">
+                  <span :class="data.ultimo_acesso ? 'text-slate-500 dark:text-slate-400 font-bold text-[11px]' : 'text-slate-300 italic text-[10px] uppercase tracking-widest font-black'">
+                    {{ formatarDataHora(data.ultimo_acesso) }}
+                  </span>
+                </template>
+              </Column>
+              
+              <Column alignFrozen="right" style="width: 120px">
+                <template #body="s">
+                  <div class="flex gap-2 justify-end">
+                    <Button icon="pi pi-pencil" @click="prepararEdicaoUser(s.data)" v-tooltip.top="'Editar Utilizador'" class="w-9 h-9 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-xs rounded-xl hover:!bg-indigo-50 hover:!text-indigo-500 transition-all shadow-sm" />
+                    <Button :icon="s.data.ativo ? 'pi pi-lock' : 'pi pi-unlock'" @click="alternarStatus(s.data)" v-tooltip.top="s.data.ativo ? 'Bloquear Acesso' : 'Desbloquear Acesso'" :class="['w-9 h-9 !border-none !text-xs rounded-xl transition-all shadow-sm', s.data.ativo ? '!bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 hover:!bg-rose-500 hover:!text-white' : '!bg-emerald-50 dark:!bg-emerald-500/10 !text-emerald-500 hover:!bg-emerald-500 hover:!text-white']" />
+                  </div>
+                </template>
+              </Column>
+              
+              <template #empty>
+                <div class="flex flex-col items-center justify-center p-12 text-slate-400">
+                  <i class="pi pi-users text-4xl mb-4 opacity-50"></i>
+                  <span class="text-[10px] font-black uppercase tracking-widest">Nenhum utilizador encontrado.</span>
                 </div>
               </template>
-            </Column>
-            
-            <Column field="cargo" header="Função">
-              <template #body="s">
-                <div class="flex items-center gap-2">
-                  <i class="pi pi-briefcase text-slate-300 text-[10px]"></i>
-                  <span class="text-[11px] font-bold text-slate-600 dark:text-slate-300">{{ s.data.cargo || 'Analista' }}</span>
-                </div>
-              </template>
-            </Column>
-            
-            <Column header="Nível de Acesso">
-              <template #body="s">
-                <Tag :value="s.data.tipo" :class="s.data.tipo === 'Admin' ? '!bg-rose-50 dark:!bg-rose-500/10 !text-rose-600 dark:!text-rose-400 !border-rose-200 dark:!border-rose-500/20' : '!bg-indigo-50 dark:!bg-indigo-500/10 !text-indigo-600 dark:!text-indigo-400 !border-indigo-200 dark:!border-indigo-500/20'" class="!text-[9px] !font-black !px-3 !py-1 uppercase tracking-widest !rounded-lg border" />
-              </template>
-            </Column>
-            
-            <Column header="Estado">
-              <template #body="s">
-                <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 w-fit px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700/50">
-                  <div :class="['w-2 h-2 rounded-full', s.data.ativo ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-slate-400']"></div>
-                  <span class="text-[9px] font-black uppercase tracking-widest" :class="s.data.ativo ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'">{{ s.data.ativo ? 'Ativo' : 'Bloqueado' }}</span>
-                </div>
-              </template>
-            </Column>
-            
-            <Column field="ultimo_acesso" header="Último Login" sortable>
-              <template #body="{ data }">
-                <span :class="data.ultimo_acesso ? 'text-slate-500 dark:text-slate-400 font-bold text-[11px]' : 'text-slate-300 italic text-[10px] uppercase tracking-widest font-black'">
-                  {{ formatarDataHora(data.ultimo_acesso) }}
-                </span>
-              </template>
-            </Column>
-            
-            <Column alignFrozen="right" style="width: 120px">
-              <template #body="s">
-                <div class="flex gap-2 justify-end">
-                  <Button icon="pi pi-pencil" @click="prepararEdicaoUser(s.data)" v-tooltip.top="'Editar Utilizador'" class="w-9 h-9 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-xs rounded-xl hover:!bg-indigo-50 hover:!text-indigo-500 transition-all shadow-sm" />
-                  <Button :icon="s.data.ativo ? 'pi pi-lock' : 'pi pi-unlock'" @click="alternarStatus(s.data)" v-tooltip.top="s.data.ativo ? 'Bloquear Acesso' : 'Desbloquear Acesso'" :class="['w-9 h-9 !border-none !text-xs rounded-xl transition-all shadow-sm', s.data.ativo ? '!bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 hover:!bg-rose-500 hover:!text-white' : '!bg-emerald-50 dark:!bg-emerald-500/10 !text-emerald-500 hover:!bg-emerald-500 hover:!text-white']" />
-                </div>
-              </template>
-            </Column>
-            
-            <template #empty>
-              <div class="flex flex-col items-center justify-center p-12 text-slate-400">
-                <i class="pi pi-users text-4xl mb-4 opacity-50"></i>
-                <span class="text-[10px] font-black uppercase tracking-widest">Nenhum utilizador encontrado.</span>
-              </div>
-            </template>
-          </DataTable>
+            </DataTable>
+          </div>
         </div>
       </TabPanel>
 
       <TabPanel header="Permissões">
-        <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-          
-          <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-              <h3 class="text-xl font-black italic tracking-tight text-slate-800 dark:text-white flex items-center gap-3">
-                <i class="pi pi-shield text-indigo-500"></i> Matriz de Acessos
-              </h3>
-              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                Controle o que cada perfil pode ver e fazer no sistema
-              </p>
-            </div>
+        <div class="space-y-6 py-4">
+          <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
             
-            <Button label="Guardar Matriz" icon="pi pi-check" :loading="savingPermissoes" @click="salvarPermissoes" class="w-full sm:w-auto !bg-indigo-500 hover:!bg-indigo-600 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform shrink-0" />
-          </div>
-
-          <div v-if="loadingPermissoes" class="space-y-4">
-             <Skeleton height="3rem" class="rounded-xl mb-4" />
-             <Skeleton height="15rem" class="rounded-xl" />
-          </div>
-
-          <div v-else class="overflow-x-auto custom-scrollbar pb-4">
-            <div class="min-w-[700px]">
-              
-              <div class="grid grid-cols-12 gap-4 mb-4 px-4 items-center bg-slate-50 dark:bg-slate-800/50 py-3 rounded-2xl border border-slate-100 dark:border-slate-700/50">
-                <div class="col-span-6">
-                  <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Módulos e Funcionalidades</span>
-                </div>
-                <div class="col-span-3 text-center border-l border-slate-200 dark:border-slate-700">
-                  <span class="text-[11px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex flex-col items-center">
-                    <i class="pi pi-eye mb-1"></i> Viewer
-                  </span>
-                </div>
-                <div class="col-span-3 text-center border-l border-slate-200 dark:border-slate-700">
-                  <span class="text-[11px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400 flex flex-col items-center">
-                    <i class="pi pi-briefcase mb-1"></i> Manager
-                  </span>
-                </div>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+              <div>
+                <h3 class="text-xl font-black italic tracking-tight text-slate-800 dark:text-white flex items-center gap-3">
+                  <i class="pi pi-shield text-indigo-500"></i> Matriz de Acessos
+                </h3>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                  Controle o que cada perfil pode ver e fazer no sistema
+                </p>
               </div>
+              
+              <Button label="Guardar Matriz" icon="pi pi-check" :loading="savingPermissoes" @click="salvarPermissoes" class="w-full sm:w-auto !bg-indigo-500 hover:!bg-indigo-600 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform shrink-0" />
+            </div>
 
-              <div v-for="modulo in modulosPermissoes" :key="modulo.nome" class="mb-6">
+            <div v-if="loadingPermissoes" class="space-y-4">
+               <Skeleton height="3rem" class="rounded-xl mb-4" />
+               <Skeleton height="15rem" class="rounded-xl" />
+            </div>
+
+            <div v-else class="overflow-x-auto custom-scrollbar pb-4">
+              <div class="min-w-[700px]">
                 
-                <div class="flex items-center gap-2 mb-3 pl-2">
-                  <i :class="['pi', modulo.icone, modulo.cor, 'text-sm']"></i>
-                  <h4 class="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-white">{{ modulo.nome }}</h4>
-                </div>
-
-                <div class="flex flex-col gap-1.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-2 shadow-sm">
-                  
-                  <div v-for="(perm, index) in modulo.permissoes" :key="perm.chave" 
-                       :class="['grid grid-cols-12 gap-4 px-4 py-3 items-center rounded-xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50', index !== modulo.permissoes.length - 1 ? 'border-b border-slate-50 dark:border-slate-800/50' : '']">
-                    
-                    <div class="col-span-6 flex flex-col">
-                      <span class="text-xs font-bold text-slate-700 dark:text-slate-300">{{ perm.label }}</span>
-                      <span class="text-[9px] font-mono text-slate-400 dark:text-slate-500 mt-0.5">{{ perm.chave }}</span>
-                    </div>
-
-                    <div class="col-span-3 flex justify-center">
-                      <div class="bg-emerald-50 dark:bg-emerald-500/10 p-2 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
-                        <Checkbox v-model="permissoesAtuais.Viewer" :value="perm.chave" />
-                      </div>
-                    </div>
-
-                    <div class="col-span-3 flex justify-center">
-                      <div class="bg-orange-50 dark:bg-orange-500/10 p-2 rounded-lg border border-orange-100 dark:border-orange-500/20">
-                        <Checkbox v-model="permissoesAtuais.Manager" :value="perm.chave" />
-                      </div>
-                    </div>
-
+                <div class="grid grid-cols-12 gap-4 mb-4 px-4 items-center bg-slate-50 dark:bg-slate-800/50 py-3 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+                  <div class="col-span-6">
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Módulos e Funcionalidades</span>
+                  </div>
+                  <div class="col-span-3 text-center border-l border-slate-200 dark:border-slate-700">
+                    <span class="text-[11px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex flex-col items-center">
+                      <i class="pi pi-eye mb-1"></i> Viewer
+                    </span>
+                  </div>
+                  <div class="col-span-3 text-center border-l border-slate-200 dark:border-slate-700">
+                    <span class="text-[11px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400 flex flex-col items-center">
+                      <i class="pi pi-briefcase mb-1"></i> Manager
+                    </span>
                   </div>
                 </div>
 
+                <div v-for="modulo in modulosPermissoes" :key="modulo.nome" class="mb-6">
+                  
+                  <div class="flex items-center gap-2 mb-3 pl-2">
+                    <i :class="['pi', modulo.icone, modulo.cor, 'text-sm']"></i>
+                    <h4 class="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-white">{{ modulo.nome }}</h4>
+                  </div>
+
+                  <div class="flex flex-col gap-1.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-2 shadow-sm">
+                    
+                    <div v-for="(perm, index) in modulo.permissoes" :key="perm.chave" 
+                         :class="['grid grid-cols-12 gap-4 px-4 py-3 items-center rounded-xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50', index !== modulo.permissoes.length - 1 ? 'border-b border-slate-50 dark:border-slate-800/50' : '']">
+                      
+                      <div class="col-span-6 flex flex-col">
+                        <span class="text-xs font-bold text-slate-700 dark:text-slate-300">{{ perm.label }}</span>
+                        <span class="text-[9px] font-mono text-slate-400 dark:text-slate-500 mt-0.5">{{ perm.chave }}</span>
+                      </div>
+
+                      <div class="col-span-3 flex justify-center">
+                        <div class="bg-emerald-50 dark:bg-emerald-500/10 p-2 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
+                          <Checkbox v-model="permissoesAtuais.Viewer" :value="perm.chave" />
+                        </div>
+                      </div>
+
+                      <div class="col-span-3 flex justify-center">
+                        <div class="bg-orange-50 dark:bg-orange-500/10 p-2 rounded-lg border border-orange-100 dark:border-orange-500/20">
+                          <Checkbox v-model="permissoesAtuais.Manager" :value="perm.chave" />
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                </div>
+
               </div>
-
             </div>
-          </div>
-          
-          <div class="mt-4 bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl flex items-start gap-3 border border-indigo-100 dark:border-indigo-800/30">
-            <i class="pi pi-info-circle text-indigo-500 mt-0.5"></i>
-            <p class="text-[10px] text-indigo-700 dark:text-indigo-300 font-medium leading-relaxed">
-              <strong>Atenção:</strong> O perfil de <span class="font-black uppercase">Admin</span> não é exibido nesta matriz pois possui nativamente acesso total irrestrito (Bypass) a todos os módulos do sistema. Alterações feitas nesta matriz entram em vigor no próximo login dos utilizadores.
-            </p>
-          </div>
+            
+            <div class="mt-4 bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl flex items-start gap-3 border border-indigo-100 dark:border-indigo-800/30">
+              <i class="pi pi-info-circle text-indigo-500 mt-0.5"></i>
+              <p class="text-[10px] text-indigo-700 dark:text-indigo-300 font-medium leading-relaxed">
+                <strong>Atenção:</strong> O perfil de <span class="font-black uppercase">Admin</span> não é exibido nesta matriz pois possui nativamente acesso total irrestrito (Bypass) a todos os módulos do sistema. Alterações feitas nesta matriz entram em vigor no próximo login dos utilizadores.
+              </p>
+            </div>
 
+          </div>
         </div>
       </TabPanel>
 
       <TabPanel header="Segurança">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 py-4">
           <div class="lg:col-span-4 space-y-6">
             <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
               <h3 class="text-[11px] font-black uppercase text-slate-800 dark:text-white tracking-widest mb-6 flex items-center gap-2">
@@ -1062,7 +1070,7 @@ onMounted(() => {
       </TabPanel>
 
       <TabPanel header="Integrações">
-        <div class="p-2 space-y-8 animate-fadein">
+        <div class="p-2 space-y-8 animate-fadein py-4">
           <div>
             <h3 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest mb-1">Integrações de Sistema</h3>
             <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Ligue o Hub de NPS a ferramentas externas como formulários e canais de comunicação.</p>
@@ -1118,7 +1126,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between relative overflow-hidden group">
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between relative overflow-hidden group shadow-sm">
               <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity"><i class="pi pi-microsoft text-9xl text-slate-900 dark:text-white"></i></div>
               <div>
                 <div class="flex items-center gap-3 mb-4 relative z-10">
@@ -1138,18 +1146,18 @@ onMounted(() => {
                     <InputText 
                       v-model="integracoesConfig.webhook_global" 
                       placeholder="https://gauge-team.webhook.office.com/..." 
-                      class="custom-input !w-full !bg-white dark:!bg-slate-900 !text-[11px]" 
+                      class="custom-input !w-full !bg-slate-50 dark:!bg-slate-800 !text-[11px]" 
                     />
                   </div>
 
-                  <div class="flex flex-col gap-2 pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
+                  <div class="flex flex-col gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">
                       Canal Técnico (DevOps / TI)
                     </label>
                     <InputText 
                       v-model="integracoesConfig.webhook_tecnico" 
                       placeholder="https://gauge-team.webhook.office.com/..." 
-                      class="custom-input !w-full !bg-white dark:!bg-slate-900 !text-[11px]" 
+                      class="custom-input !w-full !bg-slate-50 dark:!bg-slate-800 !text-[11px]" 
                     />
                     <p class="text-[9px] text-slate-400 font-medium ml-1 mt-0.5 leading-relaxed">
                       Recebe notificações de falhas críticas (ex: Timeout na Azure, Banco Offline).
@@ -1532,8 +1540,16 @@ onMounted(() => {
     background: transparent !important; background-color: transparent !important; border: none !important;
 }
 
-:deep(.p-tabview-panels) { background: transparent !important; padding: 0 !important; margin-top: -10px !important; }
-:deep(.p-tabview-nav li) { background: transparent !important; border: none !important; margin-right: 6px !important; margin-bottom: 0 !important; }
+:deep(.p-tabview-panels) {
+    background: transparent !important;
+    padding: 0 !important;   
+    margin-top: -10px !important; 
+}
+
+/* Força o conteúdo interno da aba a esticar também */
+:deep(.p-tabview-panel) {
+    min-height: 850px !important; 
+}
 
 :deep(.p-tabview-nav li .p-tabview-nav-link) {
     @apply bg-slate-100 dark:bg-slate-800 text-slate-500 !important;
