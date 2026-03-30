@@ -3,6 +3,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
 import { FilterMatchMode } from 'primevue/api';
+import { temPermissao } from '../utils/permissoes';
 
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -420,8 +421,8 @@ onMounted(() => {
       </div>
       
       <div class="flex flex-wrap gap-3">
-        <Button :label="clientesSelecionados.length > 0 ? `Disparar para ${clientesSelecionados.length}` : 'Disparo em Lote'" icon="pi pi-send" @click="dispararLote" :loading="enviandoEmail" class="bg-slate-900 dark:bg-white dark:text-slate-900 border-none rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-xl hover:-translate-y-0.5 transition-transform" />
-        <Button label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="bg-orange-500 border-none rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-orange-500/30 hover:-translate-y-0.5 transition-transform" />
+        <Button v-if="temPermissao('audiencia:disparar')" :label="clientesSelecionados.length > 0 ? `Disparar para ${clientesSelecionados.length}` : 'Disparo em Lote'" icon="pi pi-send" @click="dispararLote" :loading="enviandoEmail" class="bg-slate-900 dark:bg-white dark:text-slate-900 border-none rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-xl hover:-translate-y-0.5 transition-transform" />
+        <Button v-if="temPermissao('clientes:criar')" label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="bg-orange-500 border-none rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-orange-500/30 hover:-translate-y-0.5 transition-transform" />
       </div>
     </div>
 
@@ -604,7 +605,9 @@ onMounted(() => {
 
         <Column header="Ações" alignFrozen="right" style="width: 130px">
           <template #body="slotProps">
-            <div class="flex gap-1.5 justify-end items-center"> <Button 
+            <div class="flex gap-1.5 justify-end items-center"> 
+              <Button 
+                v-if="temPermissao('audiencia:disparar')"
                 :icon="idsEnviando.includes(slotProps.data.cliente_id) ? 'pi pi-spin pi-spinner' : 'pi pi-send'" 
                 v-tooltip.top="idsEnviando.includes(slotProps.data.cliente_id) ? 'A processar...' : 'Forçar Disparo'" 
                 @click="dispararIndividual(slotProps.data)" 
@@ -613,6 +616,7 @@ onMounted(() => {
               />
 
               <Button 
+                v-if="temPermissao('clientes:editar')"
                 icon="pi pi-pencil" 
                 v-tooltip.top="'Editar'" 
                 @click="editarCliente(slotProps.data)" 
@@ -677,7 +681,7 @@ onMounted(() => {
       <template #footer>
         <div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900 flex gap-3 w-full">
           <Button label="Cancelar" text class="flex-1 font-bold text-[11px] text-slate-400" @click="clienteDialog = false" />
-          <Button :label="editando ? 'Guardar' : 'Adicionar'" :loading="submetendo" class="flex-1 !bg-indigo-500 !text-white !rounded-xl font-bold text-[11px] shadow-lg hover:scale-[1.02] transition-transform border-none py-3" @click="salvarCliente" />
+          <Button v-if="temPermissao('clientes:criar') || temPermissao('clientes:editar')" :label="editando ? 'Guardar' : 'Adicionar'" :loading="submetendo" class="flex-1 !bg-indigo-500 !text-white !rounded-xl font-bold text-[11px] shadow-lg hover:scale-[1.02] transition-transform border-none py-3" @click="salvarCliente" />
         </div>
       </template>
     </Dialog>

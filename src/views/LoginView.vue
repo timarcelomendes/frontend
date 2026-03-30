@@ -214,6 +214,7 @@ const fazerLogin = async () => {
       localStorage.setItem('usuario_nome', response.data.nome);
       localStorage.setItem('usuario_tipo', response.data.tipo);
       localStorage.setItem('usuario_cargo', response.data.cargo || 'Analista');
+      localStorage.setItem('usuario_permissoes', JSON.stringify(response.data.permissoes));
 
       if (lembrarDeMim.value) {
         localStorage.setItem('nps_remember_email', emailSalvo);

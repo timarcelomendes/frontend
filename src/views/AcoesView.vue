@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
 import { useRoute, useRouter } from 'vue-router';
+import { temPermissao } from '../utils/permissoes';
 
 import Menu from 'primevue/menu';
 import Button from 'primevue/button';
@@ -15,11 +16,6 @@ import Calendar from 'primevue/calendar';
 import MultiSelect from 'primevue/multiselect';
 
 const toast = useToast();
-
-// --- CONTROLO DE ACESSO (RBAC) ---
-const tipoUtilizador = localStorage.getItem('usuario_tipo') || 'Viewer';
-const isAdmin = computed(() => tipoUtilizador === 'Admin');
-const podeEditar = computed(() => ['Admin', 'Manager'].includes(tipoUtilizador));
 
 const acoes = ref([]);
 const loading = ref(true);
@@ -284,11 +280,19 @@ const toggleMenu = (event, acao) => {
   menuOpcoes.value.toggle(event);
 };
 
-const menuItens = ref([
-  { label: 'Editar Ação', icon: 'pi pi-pencil', command: () => abrirEdicao(acaoSelecionada.value) },
-  { separator: true },
-  { label: 'Excluir', icon: 'pi pi-trash', command: () => excluirAcao(acaoSelecionada.value.id) }
-]);
+const menuItens = computed(() => {
+  const itens = [];
+  if (temPermissao('acoes:editar')) {
+    itens.push({ label: 'Editar Ação', icon: 'pi pi-pencil', command: () => abrirEdicao(acaoSelecionada.value) });
+  }
+  if (temPermissao('acoes:editar') && temPermissao('acoes:excluir')) {
+    itens.push({ separator: true });
+  }
+  if (temPermissao('acoes:excluir')) {
+    itens.push({ label: 'Excluir', icon: 'pi pi-trash', command: () => excluirAcao(acaoSelecionada.value.id) });
+  }
+  return itens;
+});
 
 const getGestor = (id) => gestoresLista.value.find(g => g.id === id);
 
@@ -369,7 +373,7 @@ onMounted(async () => {
       </div>
       <div class="flex gap-3">
         <Button icon="pi pi-refresh" @click="carregarAcoes" :loading="loading" class="w-10 h-10 !bg-slate-50 dark:!bg-slate-800 !text-slate-600 !border-none !rounded-lg hover:!bg-slate-100 transition-colors" v-tooltip.top="'Atualizar Kanban'" />
-        <Button v-if="podeEditar" label="Nova Ação" icon="pi pi-plus" @click="abrirNovaAcao" class="!bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform shrink-0" />
+        <Button v-if="temPermissao('acoes:criar')" label="Nova Ação" icon="pi pi-plus" @click="abrirNovaAcao" class="!bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform shrink-0" />
       </div>
     </div>
 
@@ -440,7 +444,7 @@ onMounted(async () => {
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
       
-      <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800" @dragover="podeEditar ? $event.preventDefault() : null" @drop="podeEditar ? onDrop($event, 'Pendente') : null">
+      <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800" @dragover="temPermissao('acoes:mover') ? $event.preventDefault() : null" @drop="temPermissao('acoes:mover') ? onDrop($event, 'Pendente') : null">
         <div class="flex justify-between items-center px-2 pt-1 pb-2 border-b border-slate-200/50 dark:border-slate-800">
           <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Pendente <span class="text-slate-400 ml-1">{{ estatisticas.pendentes }}</span></h3>
           <i class="pi pi-inbox text-slate-400 text-xs"></i>
@@ -458,7 +462,7 @@ onMounted(async () => {
                   <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[140px]">{{ acao.empresa_nome }}</span>
                 </div>
               </div>
-              <button @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
+              <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
             </div>
             
             <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug mb-2">
@@ -484,7 +488,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800" @dragover.prevent @drop="onDrop($event, 'Em Andamento')">
+      <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800" @dragover="temPermissao('acoes:mover') ? $event.preventDefault() : null" @drop="temPermissao('acoes:mover') ? onDrop($event, 'Em Andamento') : null">
         <div class="flex justify-between items-center px-2 pt-1 pb-2 border-b border-slate-200/50 dark:border-slate-800">
           <h3 class="text-[11px] font-black uppercase tracking-widest text-sky-600 dark:text-sky-500">Em Andamento <span class="text-slate-400 ml-1">{{ estatisticas.emAndamento }}</span></h3>
           <i class="pi pi-spinner text-sky-500 text-xs animate-spin-slow"></i>
@@ -502,7 +506,7 @@ onMounted(async () => {
                   <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[140px]">{{ acao.empresa_nome }}</span>
                 </div>
               </div>
-              <button @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-sky-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
+              <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-sky-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
             </div>
             
             <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug mb-2">
@@ -528,14 +532,14 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800 opacity-70 hover:opacity-100 transition-opacity" @dragover.prevent @drop="onDrop($event, 'Concluído')">
+      <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800 opacity-70 hover:opacity-100 transition-opacity" @dragover="temPermissao('acoes:mover') ? $event.preventDefault() : null" @drop="temPermissao('acoes:mover') ? onDrop($event, 'Concluído') : null">
         <div class="flex justify-between items-center px-2 pt-1 pb-2 border-b border-slate-200/50 dark:border-slate-800">
           <h3 class="text-[11px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500">Concluído <span class="text-slate-400 ml-1">{{ estatisticas.concluidas }}</span></h3>
           <i class="pi pi-check-circle text-emerald-500 text-xs"></i>
         </div>
         
         <div class="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
-          <div v-for="acao in acoesConcluidas" :key="acao.id" draggable="true" @dragstart="onDragStart($event, acao.id)" 
+          <div v-for="acao in acoesConcluidas" :key="acao.id" :draggable="temPermissao('acoes:mover')" @dragstart="temPermissao('acoes:mover') ? onDragStart($event, acao.id) : null" 
                class="bg-white/60 dark:bg-slate-800/40 p-4 rounded-[1.25rem] border border-slate-200/50 dark:border-slate-700 cursor-grab hover:shadow-sm transition-all group">
             
             <div class="flex justify-between items-start mb-3">
@@ -546,7 +550,7 @@ onMounted(async () => {
                   <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[140px]">{{ acao.empresa_nome }}</span>
                 </div>
               </div>
-              <button @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-emerald-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
+              <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-emerald-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
             </div>
             
             <h4 class="text-sm font-bold text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600 leading-snug mb-2">
@@ -632,7 +636,7 @@ onMounted(async () => {
         
         <div class="pt-2 flex gap-3 w-full">
           <Button label="Cancelar" text class="flex-1 text-slate-500 font-bold" @click="dialogAcao = false" />
-          <Button label="Guardar Ação" :loading="salvando" class="flex-1 bg-slate-900 text-white font-bold border-none rounded-xl hover:-translate-y-0.5 transition-transform" @click="salvarAcao" />
+          <Button v-if="temPermissao('acoes:editar')" label="Salvar Ação" icon="pi pi-check" :loading="saving" class="!bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !px-6 !py-3 !font-black !uppercase !text-[10px] tracking-widest hover:scale-105 transition-transform shadow-lg shadow-orange-500/20" @click="salvarAcao" />
         </div>
       </div>
     </Dialog>

@@ -18,6 +18,7 @@ import InputSwitch from 'primevue/inputswitch';
 import InputNumber from 'primevue/inputnumber';
 import MultiSelect from 'primevue/multiselect';
 import Textarea from 'primevue/textarea';
+import Checkbox from 'primevue/checkbox';
 
 const toast = useToast();
 
@@ -558,6 +559,95 @@ const testarTemplateLembrete = async () => {
   } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha no teste.' }); } finally { loadingTesteLembrete.value = false; }
 };
 
+// ==========================================
+// 🔐 MATRIZ DE PERMISSÕES
+// ==========================================
+const loadingPermissoes = ref(false);
+const savingPermissoes = ref(false);
+
+// O Admin não aparece aqui porque tem acesso total fixo
+const permissoesAtuais = ref({
+  Viewer: [],
+  Manager: []
+});
+
+// O "Dicionário" do que cada chave significa para desenhar no ecrã
+const modulosPermissoes = ref([
+  {
+    nome: 'Dashboard & Relatórios',
+    icone: 'pi-chart-line',
+    cor: 'text-indigo-500',
+    permissoes: [
+      { chave: 'dashboard:ler', label: 'Visualizar Dashboard e KPIs' },
+      { chave: 'dashboard:exportar', label: 'Exportar Dados (CSV)' }
+    ]
+  },
+  {
+    nome: 'Kanban & Ações',
+    icone: 'pi-objects-column',
+    cor: 'text-orange-500',
+    permissoes: [
+      { chave: 'acoes:ler', label: 'Visualizar Tickets e Colunas' },
+      { chave: 'acoes:criar', label: 'Criar Novas Ações Manuais' },
+      { chave: 'acoes:editar', label: 'Editar Dados do Ticket' },
+      { chave: 'acoes:mover', label: 'Mover Cartões (Drag & Drop)' },
+      { chave: 'acoes:excluir', label: 'Excluir Tickets do Kanban' }
+    ]
+  },
+  {
+    nome: 'Base de Clientes',
+    icone: 'pi-users',
+    cor: 'text-blue-500',
+    permissoes: [
+      { chave: 'clientes:ler', label: 'Visualizar Base de Clientes' },
+      { chave: 'clientes:criar', label: 'Cadastrar Novos Clientes/Empresas' },
+      { chave: 'clientes:editar', label: 'Editar Clientes/Empresas' },
+      { chave: 'clientes:excluir', label: 'Excluir Registos da Base' }
+    ]
+  },
+  {
+    nome: 'Disparos & Respostas',
+    icone: 'pi-send',
+    cor: 'text-emerald-500',
+    permissoes: [
+      { chave: 'audiencia:ler', label: 'Visualizar Audiência e Histórico' },
+      { chave: 'audiencia:disparar', label: 'Realizar Novos Disparos NPS' },
+      { chave: 'respostas:ler', label: 'Consultar Respostas Brutas' }
+    ]
+  }
+]);
+
+const carregarPermissoes = async () => {
+  loadingPermissoes.value = true;
+  try {
+    const response = await api.get('/permissoes');
+    if (response.data.status === 'success') {
+      permissoesAtuais.value = response.data.permissoes;
+    }
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar permissões.', life: 3000 });
+  } finally {
+    loadingPermissoes.value = false;
+  }
+};
+
+const salvarPermissoes = async () => {
+  savingPermissoes.value = true;
+  try {
+    const payload = [
+      { perfil: 'Viewer', chaves: permissoesAtuais.value.Viewer },
+      { perfil: 'Manager', chaves: permissoesAtuais.value.Manager }
+    ];
+    
+    await api.post('/permissoes', payload);
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Matriz de permissões atualizada!', life: 3000 });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao gravar permissões.', life: 3000 });
+  } finally {
+    savingPermissoes.value = false;
+  }
+};
+
 onMounted(() => {
   carregarDadosConfig();
   carregarConfiguracoesAI();
@@ -568,6 +658,7 @@ onMounted(() => {
   carregarElegiveisNPS();
   carregarRegras();
   carregarIntegracoes();
+  carregarPermissoes();
 });
 
 </script>
@@ -805,6 +896,93 @@ onMounted(() => {
               </div>
             </template>
           </DataTable>
+        </div>
+      </TabPanel>
+
+      <TabPanel header="Permissões">
+        <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
+          
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h3 class="text-xl font-black italic tracking-tight text-slate-800 dark:text-white flex items-center gap-3">
+                <i class="pi pi-shield text-indigo-500"></i> Matriz de Acessos
+              </h3>
+              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                Controle o que cada perfil pode ver e fazer no sistema
+              </p>
+            </div>
+            
+            <Button label="Guardar Matriz" icon="pi pi-check" :loading="savingPermissoes" @click="salvarPermissoes" class="w-full sm:w-auto !bg-indigo-500 hover:!bg-indigo-600 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform shrink-0" />
+          </div>
+
+          <div v-if="loadingPermissoes" class="space-y-4">
+             <Skeleton height="3rem" class="rounded-xl mb-4" />
+             <Skeleton height="15rem" class="rounded-xl" />
+          </div>
+
+          <div v-else class="overflow-x-auto custom-scrollbar pb-4">
+            <div class="min-w-[700px]">
+              
+              <div class="grid grid-cols-12 gap-4 mb-4 px-4 items-center bg-slate-50 dark:bg-slate-800/50 py-3 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+                <div class="col-span-6">
+                  <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Módulos e Funcionalidades</span>
+                </div>
+                <div class="col-span-3 text-center border-l border-slate-200 dark:border-slate-700">
+                  <span class="text-[11px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex flex-col items-center">
+                    <i class="pi pi-eye mb-1"></i> Viewer
+                  </span>
+                </div>
+                <div class="col-span-3 text-center border-l border-slate-200 dark:border-slate-700">
+                  <span class="text-[11px] font-black uppercase tracking-widest text-orange-600 dark:text-orange-400 flex flex-col items-center">
+                    <i class="pi pi-briefcase mb-1"></i> Manager
+                  </span>
+                </div>
+              </div>
+
+              <div v-for="modulo in modulosPermissoes" :key="modulo.nome" class="mb-6">
+                
+                <div class="flex items-center gap-2 mb-3 pl-2">
+                  <i :class="['pi', modulo.icone, modulo.cor, 'text-sm']"></i>
+                  <h4 class="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-white">{{ modulo.nome }}</h4>
+                </div>
+
+                <div class="flex flex-col gap-1.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-2 shadow-sm">
+                  
+                  <div v-for="(perm, index) in modulo.permissoes" :key="perm.chave" 
+                       :class="['grid grid-cols-12 gap-4 px-4 py-3 items-center rounded-xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50', index !== modulo.permissoes.length - 1 ? 'border-b border-slate-50 dark:border-slate-800/50' : '']">
+                    
+                    <div class="col-span-6 flex flex-col">
+                      <span class="text-xs font-bold text-slate-700 dark:text-slate-300">{{ perm.label }}</span>
+                      <span class="text-[9px] font-mono text-slate-400 dark:text-slate-500 mt-0.5">{{ perm.chave }}</span>
+                    </div>
+
+                    <div class="col-span-3 flex justify-center">
+                      <div class="bg-emerald-50 dark:bg-emerald-500/10 p-2 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
+                        <Checkbox v-model="permissoesAtuais.Viewer" :value="perm.chave" />
+                      </div>
+                    </div>
+
+                    <div class="col-span-3 flex justify-center">
+                      <div class="bg-orange-50 dark:bg-orange-500/10 p-2 rounded-lg border border-orange-100 dark:border-orange-500/20">
+                        <Checkbox v-model="permissoesAtuais.Manager" :value="perm.chave" />
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+          
+          <div class="mt-4 bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl flex items-start gap-3 border border-indigo-100 dark:border-indigo-800/30">
+            <i class="pi pi-info-circle text-indigo-500 mt-0.5"></i>
+            <p class="text-[10px] text-indigo-700 dark:text-indigo-300 font-medium leading-relaxed">
+              <strong>Atenção:</strong> O perfil de <span class="font-black uppercase">Admin</span> não é exibido nesta matriz pois possui nativamente acesso total irrestrito (Bypass) a todos os módulos do sistema. Alterações feitas nesta matriz entram em vigor no próximo login dos utilizadores.
+            </p>
+          </div>
+
         </div>
       </TabPanel>
 

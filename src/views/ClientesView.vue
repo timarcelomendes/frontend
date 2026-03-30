@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
+import { temPermissao } from '../utils/permissoes';
 
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -26,11 +27,12 @@ const gestores = ref([]);
 const companhias = ref([]);
 const loading = ref(true);
 
-
 const dialogVisivel = ref(false);
 const editando = ref(false);
 const dialogExclusao = ref(false);
 const idParaExcluir = ref(null);
+const tipoExclusao = ref(''); // Vai guardar a rota (ex: 'cadastros/empresas')
+const nomeExclusao = ref(''); // Vai guardar o texto (ex: 'esta empresa')
 const excluindo = ref(false);
 
 const cliente = ref({
@@ -108,16 +110,32 @@ const salvarCliente = async () => {
   }
 };
 
-const confirmarExclusao = (id) => { idParaExcluir.value = id; dialogExclusao.value = true; };
+// --- MOTOR UNIVERSAL DE EXCLUSÃO ---
+const confirmarExclusao = (id) => { idParaExcluir.value = id; tipoExclusao.value = 'clientes'; nomeExclusao.value = 'esta pessoa'; dialogExclusao.value = true; };
+const confirmarExclusaoEmpresa = (id) => { idParaExcluir.value = id; tipoExclusao.value = 'cadastros/empresas'; nomeExclusao.value = 'esta empresa'; dialogExclusao.value = true; };
+const confirmarExclusaoCompanhia = (id) => { idParaExcluir.value = id; tipoExclusao.value = 'cadastros/companhias'; nomeExclusao.value = 'esta companhia'; dialogExclusao.value = true; };
+const confirmarExclusaoGestor = (id) => { idParaExcluir.value = id; tipoExclusao.value = 'cadastros/gestores'; nomeExclusao.value = 'este gestor'; dialogExclusao.value = true; };
+const confirmarExclusaoSegmento = (id) => { idParaExcluir.value = id; tipoExclusao.value = 'cadastros/segmentos'; nomeExclusao.value = 'este segmento'; dialogExclusao.value = true; };
+const confirmarExclusaoPerfil = (id) => { idParaExcluir.value = id; tipoExclusao.value = 'cadastros/perfis'; nomeExclusao.value = 'este perfil'; dialogExclusao.value = true; };
+const confirmarExclusaoCargo = (id) => { idParaExcluir.value = id; tipoExclusao.value = 'cadastros/cargos'; nomeExclusao.value = 'este cargo'; dialogExclusao.value = true; };
+
 const executarExclusao = async () => {
   excluindo.value = true;
   try { 
-    await api.delete(`/clientes/${idParaExcluir.value}`); 
-    toast.add({ severity: 'success', summary: 'Removido', detail: 'Pessoa excluída.' }); 
-    dialogExclusao.value = false; carregarTudo(); 
-  } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao excluir.' }); } 
-  finally { excluindo.value = false; idParaExcluir.value = null; }
+    // Apaga na rota dinâmica com base na aba clicada
+    await api.delete(`/${tipoExclusao.value}/${idParaExcluir.value}`); 
+    toast.add({ severity: 'success', summary: 'Removido', detail: 'Registo excluído com sucesso.' }); 
+    dialogExclusao.value = false; 
+    carregarTudo(); 
+  } catch (error) { 
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao excluir. O registo pode estar a ser usado noutro local.', life: 4000 }); 
+  } finally { 
+    excluindo.value = false; 
+    idParaExcluir.value = null; 
+    tipoExclusao.value = '';
+  }
 };
+// -----------------------------------
 
 const abrirNovaEmpresa = () => { empresaForm.value = { id: null, nome: '', segmento: null, valor_contrato: 0, gestor: null, companhia: null }; editandoEmpresa.value = false; dialogEmpresa.value = true; };
 const editarFichaEmpresa = (dados) => { 
@@ -287,7 +305,7 @@ onMounted(carregarTudo);
           <TabPanel>
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-users text-indigo-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Pessoas</span></div></template>
             <div class="pt-4">
-              <div class="flex justify-end mb-4"><Button label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
+              <div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
               
               <DataTable :value="clientes" :paginator="true" :rows="10" dataKey="cliente_id" :loading="loading" class="p-datatable-sm custom-table" rowHover>
                 
@@ -331,9 +349,9 @@ onMounted(carregarTudo);
 
                 <Column header="Ações" alignFrozen="right" style="width: 100px">
                   <template #body="slotProps">
-                    <div class="flex gap-1.5 justify-end">
-                      <Button icon="pi pi-pencil" v-tooltip.top="'Editar'" @click="editarCliente(slotProps.data)" class="w-7 h-7 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none hover:!text-slate-700 rounded-lg transition-colors !text-xs" />
-                      <Button icon="pi pi-trash" v-tooltip.top="'Excluir'" @click="confirmarExclusao(slotProps.data.cliente_id || slotProps.data.id)" class="w-7 h-7 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-400 !border-none hover:!bg-rose-100 rounded-lg transition-colors !text-xs" />
+                    <div class="flex gap-2 justify-end">
+                      <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" v-tooltip.top="'Editar'" @click="editarCliente(slotProps.data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none hover:!text-slate-700 rounded-lg transition-colors !text-[10px]" />
+                      <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" v-tooltip.top="'Excluir'" @click="confirmarExclusao(slotProps.data.cliente_id || slotProps.data.id)" class="w-8 h-8 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-400 !border-none hover:!bg-rose-100 rounded-lg transition-colors !text-[10px]" />
                     </div>
                   </template>
                 </Column>
@@ -345,7 +363,7 @@ onMounted(carregarTudo);
           <TabPanel>
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-building text-orange-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Empresas</span></div></template>
             <div class="pt-4">
-              <div class="flex justify-end mb-4"><Button label="Nova Empresa" icon="pi pi-plus" @click="abrirNovaEmpresa" class="!bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
+              <div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Nova Empresa" icon="pi pi-plus" @click="abrirNovaEmpresa" class="!bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
               <DataTable :value="empresas" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
                 <Column field="nome" header="Conta" sortable>
                   <template #body="{ data }"><span class="text-sm font-black text-slate-800 dark:text-white flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-orange-500"><i class="pi pi-building text-xs"></i></div>{{ data.nome }}</span></template>
@@ -373,8 +391,13 @@ onMounted(carregarTudo);
                 <Column field="arr_total" header="Receita Anual" sortable align="right">
                   <template #body="{ data }"><span class="text-sm font-black text-emerald-600 dark:text-emerald-400">{{ formatarMoeda(data.arr_total) }}</span></template>
                 </Column>
-                <Column alignFrozen="right" style="width: 80px">
-                  <template #body="{ data }"><Button icon="pi pi-pencil" @click="editarFichaEmpresa(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-orange-50 hover:!text-orange-500" /></template>
+                <Column alignFrozen="right" style="width: 100px">
+                  <template #body="{ data }">
+                    <div class="flex gap-2 justify-end">
+                      <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" @click="editarFichaEmpresa(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" />
+                      <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" @click="confirmarExclusaoEmpresa(data.id)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-rose-50 hover:!text-rose-500 transition-colors" />
+                    </div>
+                  </template>
                 </Column>
               </DataTable>
             </div>
@@ -383,14 +406,19 @@ onMounted(carregarTudo);
           <TabPanel>
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-sitemap text-indigo-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Companhias</span></div></template>
             <div class="pt-4">
-              <div class="flex justify-end mb-4"><Button label="Nova Companhia" icon="pi pi-plus" @click="abrirNovaCompanhia" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
+              <div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Nova Companhia" icon="pi pi-plus" @click="abrirNovaCompanhia" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
               <DataTable :value="companhias" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
                 <Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column>
                 <Column field="nome" header="Companhia do Grupo" sortable>
                   <template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-sitemap text-indigo-500"></i> {{ data.nome }}</span></template>
                 </Column>
-                <Column alignFrozen="right" style="width: 80px">
-                  <template #body="{ data }"><Button icon="pi pi-pencil" @click="editarFichaCompanhia(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500" /></template>
+                <Column alignFrozen="right" style="width: 100px">
+                  <template #body="{ data }">
+                    <div class="flex gap-2 justify-end">
+                      <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" @click="editarFichaCompanhia(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" />
+                      <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" @click="confirmarExclusaoCompanhia(data.id)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-rose-50 hover:!text-rose-500 transition-colors" />
+                    </div>
+                  </template>
                 </Column>
               </DataTable>
             </div>
@@ -399,28 +427,65 @@ onMounted(carregarTudo);
           <TabPanel>
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-star-fill text-sky-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Gestores</span></div></template>
             <div class="pt-4">
-              <div class="flex justify-end mb-4"><Button label="Novo Gestor" icon="pi pi-plus" @click="abrirNovoGestor" class="!bg-sky-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
+              <div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Novo Gestor" icon="pi pi-plus" @click="abrirNovoGestor" class="!bg-sky-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
               <DataTable :value="gestores" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
                 <Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column>
                 <Column field="nome" header="Nome" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-user text-sky-500"></i> {{ data.nome }}</span></template></Column>
                 <Column field="papel" header="Papel / Função"><template #body="{ data }"><span class="text-[11px] font-medium text-slate-500 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-md border border-slate-100 dark:border-slate-700">{{ data.papel || 'Não definido' }}</span></template></Column>
                 <Column field="email" header="E-mail"><template #body="{ data }"><span class="text-[11px] font-medium text-slate-400">{{ data.email || 'Sem e-mail' }}</span></template></Column>
-                <Column alignFrozen="right" style="width: 80px"><template #body="{ data }"><Button icon="pi pi-pencil" @click="editarFichaGestor(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-sky-50 hover:!text-sky-500" /></template></Column>
+                <Column alignFrozen="right" style="width: 100px">
+                  <template #body="{ data }">
+                    <div class="flex gap-2 justify-end">
+                      <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" @click="editarFichaGestor(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" />
+                      <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" @click="confirmarExclusaoGestor(data.id)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-rose-50 hover:!text-rose-500 transition-colors" />
+                    </div>
+                  </template>
+                </Column>
               </DataTable>
             </div>
           </TabPanel>
 
           <TabPanel>
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-chart-pie text-emerald-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Segmentos</span></div></template>
-            <div class="pt-4"><div class="flex justify-end mb-4"><Button label="Novo Segmento" icon="pi pi-plus" @click="abrirNovoSegmento" class="!bg-emerald-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div><DataTable :value="segmentos" :paginator="true" :rows="10" class="p-datatable-sm custom-table"><Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column><Column field="nome" header="Segmento" sortable><template #body="{ data }"><Tag :value="data.nome" class="!bg-slate-100 !text-slate-600 dark:!bg-slate-800 dark:!text-slate-300 !text-[10px] !font-black !uppercase !tracking-widest !px-3" /></template></Column><Column alignFrozen="right" style="width: 80px"><template #body="{ data }"><Button icon="pi pi-pencil" @click="editarFichaSegmento(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-emerald-50 hover:!text-emerald-500" /></template></Column></DataTable></div>
+            <div class="pt-4"><div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Novo Segmento" icon="pi pi-plus" @click="abrirNovoSegmento" class="!bg-emerald-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
+            <DataTable :value="segmentos" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
+              <Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column>
+              <Column field="nome" header="Nome do Segmento" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300">{{ data.nome }}</span></template></Column>
+              <Column alignFrozen="right" style="width: 100px">
+                <template #body="{ data }">
+                  <div class="flex gap-2 justify-end">
+                    <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" @click="editarFichaSegmento(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" />
+                    <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" @click="confirmarExclusaoSegmento(data.id)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-rose-50 hover:!text-rose-500 transition-colors" />
+                  </div>
+                </template>
+                </Column>          
+              </DataTable></div>
           </TabPanel>
           <TabPanel>
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-id-card text-rose-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Perfis</span></div></template>
-            <div class="pt-4"><div class="flex justify-end mb-4"><Button label="Novo Perfil" icon="pi pi-plus" @click="abrirNovoPerfil" class="!bg-rose-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div><DataTable :value="perfis" :paginator="true" :rows="10" class="p-datatable-sm custom-table"><Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column><Column field="nome" header="Papel na Conta" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-user text-rose-500"></i> {{ data.nome }}</span></template></Column><Column alignFrozen="right" style="width: 80px"><template #body="{ data }"><Button icon="pi pi-pencil" @click="editarFichaPerfil(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-rose-50 hover:!text-rose-500" /></template></Column></DataTable></div>
+            <div class="pt-4"><div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Novo Perfil" icon="pi pi-plus" @click="abrirNovoPerfil" class="!bg-rose-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div><DataTable :value="perfis" :paginator="true" :rows="10" class="p-datatable-sm custom-table"><Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column><Column field="nome" header="Papel na Conta" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-user text-rose-500"></i> {{ data.nome }}</span></template></Column>
+            <Column alignFrozen="right" style="width: 100px">
+              <template #body="{ data }">
+                <div class="flex gap-2 justify-end">
+                  <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" @click="editarFichaPerfil(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" />
+                  <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" @click="confirmarExclusaoPerfil(data.id)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-rose-50 hover:!text-rose-500 transition-colors" />
+                </div>
+              </template>
+            </Column>
+          </DataTable></div>
           </TabPanel>
           <TabPanel>
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-briefcase text-purple-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Cargos</span></div></template>
-            <div class="pt-4"><div class="flex justify-end mb-4"><Button label="Novo Cargo" icon="pi pi-plus" @click="abrirNovoCargo" class="!bg-purple-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div><DataTable :value="cargos" :paginator="true" :rows="10" class="p-datatable-sm custom-table"><Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column><Column field="nome" header="Cargo" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-briefcase text-purple-500"></i> {{ data.nome }}</span></template></Column><Column alignFrozen="right" style="width: 80px"><template #body="{ data }"><Button icon="pi pi-pencil" @click="editarFichaCargo(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-purple-50 hover:!text-purple-500" /></template></Column></DataTable></div>
+            <div class="pt-4"><div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Novo Cargo" icon="pi pi-plus" @click="abrirNovoCargo" class="!bg-purple-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div><DataTable :value="cargos" :paginator="true" :rows="10" class="p-datatable-sm custom-table"><Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column><Column field="nome" header="Cargo" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-briefcase text-purple-500"></i> {{ data.nome }}</span></template></Column>
+              <Column alignFrozen="right" style="width: 100px">
+                <template #body="{ data }">
+                  <div class="flex gap-2 justify-end">
+                    <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" @click="editarFichaCargo(data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-indigo-50 hover:!text-indigo-500 transition-colors" />
+                    <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" @click="confirmarExclusaoCargo(data.id)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-[10px] rounded-lg hover:!bg-rose-50 hover:!text-rose-500 transition-colors" />
+                  </div>
+                </template>
+              </Column>
+            </DataTable></div>
           </TabPanel>
 
         </TabView>
@@ -524,7 +589,7 @@ onMounted(carregarTudo);
       <Dialog v-model:visible="dialogExclusao" header="Confirmar Exclusão" modal :style="{width: '400px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
         <div class="p-6 md:p-8 bg-slate-50/50 dark:bg-slate-900 text-center flex flex-col items-center">
           <div class="w-16 h-16 rounded-full bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center mb-4"><i class="pi pi-exclamation-triangle text-rose-500 text-3xl"></i></div>
-          <p class="text-slate-700 dark:text-slate-300 font-bold text-sm">Tem a certeza absoluta que deseja excluir esta pessoa?</p>
+          <p class="text-slate-700 dark:text-slate-300 font-bold text-sm">Tem a certeza absoluta que deseja excluir {{ nomeExclusao }}?</p>
           <p class="text-slate-500 dark:text-slate-400 text-xs mt-2 font-medium">Esta ação não poderá ser desfeita.</p>
         </div>
         <template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900 flex gap-3 w-full"><Button label="Cancelar" text class="flex-1 font-bold text-[11px] text-slate-400" @click="dialogExclusao = false" /><Button label="Sim, confirmo!" :loading="excluindo" @click="executarExclusao" class="flex-1 !bg-rose-500 !text-white !rounded-xl font-bold text-[11px] shadow-lg border-none py-3" /></div></template>
