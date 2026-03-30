@@ -1,6 +1,5 @@
 <template>
   <div class="grid grid-cols-1 md:grid-cols-2 min-h-screen bg-white dark:bg-slate-950 font-sans overflow-hidden">
-    <Toast />
     
     <div class="hidden md:flex flex-col justify-between p-16 lg:p-24 bg-slate-900 text-white relative overflow-hidden group">
       
