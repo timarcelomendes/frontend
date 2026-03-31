@@ -362,14 +362,16 @@ const sincronizarStatusRealTime = async () => {
 // ==========================================
 // ⏱️ MOTOR DE CÁLCULO DE FOLLOW-UP
 // ==========================================
-const regrasNPS = ref({ lembrete_dias: 3 }); // Fallback caso a API demore
+const regrasNPS = ref({ lembrete_dias: 3, recorrencia_dias: 90 });
 
 // 1. Vai buscar a regra dos dias ao banco de dados
 const carregarRegrasNPS = async () => {
   try {
     const res = await api.get('/config/regras');
-    if (res.data && res.data.lembrete_dias) {
-      regrasNPS.value.lembrete_dias = parseInt(res.data.lembrete_dias);
+    if (res.data) {
+      if (res.data.lembrete_dias) regrasNPS.value.lembrete_dias = parseInt(res.data.lembrete_dias);
+      // 👇 2. Ler do backend a recorrência
+      if (res.data.recorrencia_dias) regrasNPS.value.recorrencia_dias = parseInt(res.data.recorrencia_dias); 
     }
   } catch (error) {
     console.error("Erro ao ler regras de lembrete:", error);
@@ -417,7 +419,10 @@ onMounted(() => {
         <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight italic">
           Audiência <span class="text-orange-500">.</span>
         </h1>
-        <p class="text-[13px] text-slate-500 dark:text-slate-400 mt-1 font-medium">Gira a base de contactos e dispare pesquisas.</p>
+        <div class="flex items-center gap-3 mt-2">
+          <p class="text-[13px] text-slate-500 dark:text-slate-400 font-medium">Gira a base de contactos e dispare pesquisas.</p>
+          <Tag :value="'Ciclo: ' + regrasNPS.recorrencia_dias + ' dias'" icon="pi pi-sync" class="!bg-orange-50 dark:!bg-orange-500/10 !text-orange-600 dark:!text-orange-400 !text-[9px] !font-black uppercase tracking-widest border border-orange-200 dark:border-orange-500/20 !px-2" v-tooltip.top="'Tempo de carência configurado entre disparos para o mesmo cliente'" />
+        </div>
       </div>
       
       <div class="flex flex-wrap gap-3">
@@ -603,7 +608,14 @@ onMounted(() => {
                 </template>
               </Column>
 
-        <Column header="Ciclo de Envio" style="min-width: 200px">
+        <Column style="min-width: 200px">
+          <template #header>
+            <div class="flex flex-col">
+              <span>Ciclo de Envio</span>
+              <span class="text-[8px] text-orange-500 uppercase tracking-widest mt-0.5">A cada {{ regrasNPS.recorrencia_dias }} dias</span>
+            </div>
+          </template>
+          
           <template #body="slotProps">
             <div class="flex flex-col gap-1.5 bg-slate-50/50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
               <div class="flex items-center justify-between text-[10px]"><span class="text-slate-400 font-bold uppercase">Último:</span><span class="text-slate-600 dark:text-slate-300 font-bold">{{ formatarData(slotProps.data.ultimo_envio) }}</span></div>

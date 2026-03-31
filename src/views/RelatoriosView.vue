@@ -1,19 +1,18 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
 
-// Componentes PrimeVue
+// Componentes PrimeVue (Apenas os utilizados)
 import Dropdown from 'primevue/dropdown';
 import Button from 'primevue/button';
 import Chart from 'primevue/chart';
-import Dialog from 'primevue/dialog';
-import MultiSelect from 'primevue/multiselect';
-import Skeleton from 'primevue/skeleton';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
 import Timeline from 'primevue/timeline';
 import Tag from 'primevue/tag';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
 
 const toast = useToast();
 
@@ -52,7 +51,7 @@ const buscarJornada = async () => {
     const res = await api.get('/reports/jornada', { params: { empresa: empresaSelecionadaJornada.value } });
     historicoJornada.value = res.data;
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar jornada.' });
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar jornada da empresa.' });
   } finally {
     loadingJornada.value = false;
   }
@@ -68,15 +67,49 @@ const getCorNota = (nota) => {
 // ⚙️ ESTADOS OPERACIONAIS
 // ==========================================
 const dadosOperacionais = ref({ taxa_resposta: 0, sla_medio_dias: 0 });
+
+// 👇 NOVOS ESTADOS PARA A TABELA DE INATIVOS
+const clientesInativos = ref([]);
+const limiteRecorrencia = ref(90);
+const loadingInativos = ref(false);
+
 const carregarOperacional = async () => {
   try {
     const res = await api.get('/reports/operacional');
     dadosOperacionais.value = res.data;
-  } catch (e) {}
+  } catch (e) {
+    console.error("Erro ao carregar dados operacionais:", e);
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar KPIs operacionais.' });
+  }
+};
+
+// 👇 NOVA FUNÇÃO
+const carregarInativos = async () => {
+  loadingInativos.value = true;
+  try {
+    const res = await api.get('/reports/operacional/inativos');
+    clientesInativos.value = res.data.lista;
+    limiteRecorrencia.value = res.data.recorrencia_dias;
+  } catch (e) {
+    console.error("Erro inativos:", e);
+  } finally {
+    loadingInativos.value = false;
+  }
+};
+
+// 👇 UTILITÁRIO PARA A TABELA
+const formatarData = (dataStr) => {
+  if (!dataStr) return '---';
+  try {
+    const d = new Date(dataStr);
+    return d.toLocaleDateString('pt-PT');
+  } catch (e) {
+    return dataStr;
+  }
 };
 
 // ==========================================
-// 📊 LÓGICA DE GRÁFICOS (MANTIDA DO ORIGINAL)
+// 📊 LÓGICA DE GRÁFICOS
 // ==========================================
 const dataScatter = ref(null);
 const optionsScatter = ref(null);
@@ -127,7 +160,7 @@ const fetchGraficos = async () => {
     optionsBubble.value = { responsive: true, maintainAspectRatio: false };
 
   } catch (error) {
-    console.error(error);
+    console.error("Erro ao carregar gráficos:", error);
   } finally {
     loadingDados.value = false;
   }
@@ -139,7 +172,11 @@ const gerarAnaliseIA = async () => {
     const resIA = await api.get('/reports/bi-ia', { params: filtros.value });
     resumoParetoIA.value = resIA.data.resumoParetoIA;
     recomendacaoIA.value = resIA.data.recomendacaoIA;
-  } finally { loadingIA.value = false; }
+  } catch (error) {
+    console.error("Erro ao gerar análise de IA:", error);
+  } finally { 
+    loadingIA.value = false; 
+  }
 };
 
 watch(filtros, () => { fetchGraficos(); gerarAnaliseIA(); }, { deep: true });
@@ -158,7 +195,7 @@ const optionsChartGestor = ref({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-        legend: { display: false }, // Esconde a legenda para ficar mais limpo
+        legend: { display: false },
     },
     scales: {
         y: { 
@@ -178,8 +215,9 @@ const carregarPerformanceGestor = async () => {
   if (!gestorSelecionado.value) return;
   
   loadingGestor.value = true;
+  chartGestor.value = null; // Reseta o gráfico antes da nova carga para evitar erros de renderização
+  
   try {
-    // Enviamos 'gestor_id' como parâmetro para a API
     const res = await api.get('/reports/gestor', { 
       params: { gestor_id: gestorSelecionado.value } 
     });
@@ -196,34 +234,41 @@ const carregarPerformanceGestor = async () => {
       }]
     };
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar gestor.' });
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar scorecard do gestor.' });
   } finally {
     loadingGestor.value = false;
   }
 };
 
-// Função para buscar a lista (agora vem como lista de objetos)
 const carregarListaGestores = async () => {
   try {
     const res = await api.get('/reports/lista-gestores');
     listaGestores.value = res.data; 
-    console.log("Dados recebidos da API:", res.data);
   } catch (e) {
     console.error("Falha ao carregar lista de gestores", e);
+    toast.add({ severity: 'error', summary: 'Aviso', detail: 'Não foi possível carregar a lista de gestores.' });
   }
 };
 
-
-onMounted(async () => {
+onMounted(() => {
+  // 1. Disparamos estas funções em paralelo (sem o 'await' a travar a fila)
   fetchGraficos();
   gerarAnaliseIA();
   carregarOperacional();
-  const resEmp = await api.get('/cadastros/empresas');
-  listaEmpresas.value = resEmp.data.map(e => e.nome);
-  const resSeg = await api.get('/cadastros/segmentos');
-  opcoesSegmento.value = ['Todos', ...resSeg.data.map(s => s.nome)];
-  await carregarListaGestores(); 
-  console.log("Lista de gestores após carregar:", listaGestores.value);
+  carregarListaGestores(); 
+  carregarInativos();
+
+  Promise.all([
+    api.get('/cadastros/empresas'),
+    api.get('/cadastros/segmentos')
+  ])
+  .then(([resEmp, resSeg]) => {
+    listaEmpresas.value = resEmp.data.map(e => e.nome);
+    opcoesSegmento.value = ['Todos', ...resSeg.data.map(s => s.nome)];
+  })
+  .catch(e => {
+    console.error("Erro ao carregar opções de filtros.", e);
+  });
 });
 
 </script>
@@ -282,19 +327,76 @@ onMounted(async () => {
         <TabPanel>
           <template #header><i class="pi pi-cog mr-2"></i> Operacional</template>
           
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
-            <div class="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center text-center">
-               <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Taxa de Resposta Global</span>
-               <div class="text-6xl font-black text-indigo-500">{{ dadosOperacionais.taxa_resposta }}%</div>
-               <p class="text-xs text-slate-500 mt-4 max-w-xs">Percentagem de clientes da base ativa que responderam a pelo menos uma pesquisa.</p>
+          <div class="space-y-8 mt-6"> <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div class="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center text-center">
+                 <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Taxa de Resposta Global</span>
+                 <div class="text-6xl font-black text-indigo-500">{{ dadosOperacionais.taxa_resposta }}%</div>
+                 <p class="text-xs text-slate-500 mt-4 max-w-xs">Percentagem de clientes da base ativa que responderam a pelo menos uma pesquisa.</p>
+              </div>
+              
+              <div class="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center text-center">
+                 <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">SLA Médio de Fechamento</span>
+                 <div class="text-6xl font-black text-emerald-500">{{ dadosOperacionais.sla_medio_dias }} <span class="text-2xl">dias</span></div>
+                 <p class="text-xs text-slate-500 mt-4 max-w-xs">Tempo médio entre a criação de uma ação no Kanban e o seu encerramento.</p>
+              </div>
             </div>
-            
-            <div class="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center text-center">
-               <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">SLA Médio de Fechamento</span>
-               <div class="text-6xl font-black text-emerald-500">{{ dadosOperacionais.sla_medio_dias }} <span class="text-2xl">dias</span></div>
-               <p class="text-xs text-slate-500 mt-4 max-w-xs">Tempo médio entre a criação de uma ação no Kanban e o seu encerramento.</p>
+
+            <div class="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+              
+              <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 pb-6 border-b border-slate-100 dark:border-slate-800">
+                <div>
+                  <h3 class="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white flex items-center gap-2">
+                    <i class="pi pi-exclamation-triangle text-rose-500"></i> Risco de Omissão (Churn de Feedback)
+                  </h3>
+                  <p class="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">
+                    Clientes sem resposta há mais de {{ limiteRecorrencia }} dias (limite de carência).
+                  </p>
+                </div>
+                <Tag severity="danger" :value="clientesInativos.length + ' Clientes Críticos'" class="!text-[10px] !font-black uppercase tracking-widest !px-4" />
+              </div>
+
+              <DataTable :value="clientesInativos" :loading="loadingInativos" :paginator="true" :rows="10" class="p-datatable-sm custom-table" responsiveLayout="scroll">
+                
+                <template #empty>
+                   <div class="text-center py-12 text-emerald-500 text-[11px] uppercase tracking-widest font-black">
+                     <i class="pi pi-check-circle text-3xl mb-3 block opacity-50"></i>
+                     Nenhum cliente em atraso crítico. A base está saudável!
+                   </div>
+                </template>
+
+                <Column field="empresa" header="Empresa" sortable>
+                  <template #body="sp">
+                    <span class="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight">{{ sp.data.empresa }}</span>
+                  </template>
+                </Column>
+                
+                <Column field="cliente_nome" header="Cliente" sortable>
+                  <template #body="sp">
+                    <div class="flex flex-col">
+                      <span class="font-bold text-xs text-slate-800 dark:text-white">{{ sp.data.cliente_nome }}</span>
+                      <span class="text-[10px] font-medium text-slate-400">{{ sp.data.cliente_email }}</span>
+                    </div>
+                  </template>
+                </Column>
+                
+                <Column field="data_envio" header="Disparado em" sortable>
+                  <template #body="sp">
+                    <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">{{ formatarData(sp.data.data_envio) }}</span>
+                  </template>
+                </Column>
+                
+                <Column field="dias_sem_resposta" header="Atraso (Dias)" sortable>
+                  <template #body="sp">
+                    <div class="flex items-center gap-2">
+                      <div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+                      <span class="text-rose-500 font-black text-sm">{{ sp.data.dias_sem_resposta }} dias</span>
+                    </div>
+                  </template>
+                </Column>
+              </DataTable>
+
             </div>
-          </div>
+            </div>
         </TabPanel>
 
         <TabPanel>
@@ -371,7 +473,12 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div v-if="dadosGestor" class="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadein">
+            <div v-if="loadingGestor" class="py-20 text-center">
+              <i class="pi pi-spin pi-spinner text-4xl text-indigo-500 mb-4"></i>
+              <p class="text-slate-400 font-bold uppercase tracking-widest text-xs">A analisar a carteira do gestor...</p>
+            </div>
+
+            <div v-else-if="dadosGestor" class="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadein">
               
               <div class="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center">
                  <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">NPS do Gestor</span>
@@ -383,7 +490,7 @@ onMounted(async () => {
 
               <div class="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
                 <h3 class="text-xs font-black uppercase tracking-widest mb-6">Média por Empresa na Carteira</h3>
-                <Chart type="bar" :data="chartGestor" :options="{ responsive: true, maintainAspectRatio: false }" class="h-[250px]" />
+                <Chart v-if="chartGestor" type="bar" :data="chartGestor" :options="optionsChartGestor" class="h-[250px]" />
               </div>
 
               <div class="lg:col-span-3 grid grid-cols-3 gap-4">

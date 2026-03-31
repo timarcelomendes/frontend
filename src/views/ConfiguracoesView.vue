@@ -482,6 +482,7 @@ const regrasConfig = ref({
   sla_detrator_dias: 2, 
   sla_neutro_dias: 5, 
   sla_promotor_dias: 7,
+  recorrencia_dias: 90,
   fillout_campos: ['clienteId', 'email', 'nome', 'empresa', 'empresa_id'],
   email_template_html: '', 
   email_agradecimento_promotor: '',
@@ -515,7 +516,8 @@ const carregarRegras = async () => {
       lembrete_qtd_maxima: parseInt(res.data.lembrete_qtd_maxima) || 0,
       lembrete_dias_1: parseInt(res.data.lembrete_dias_1) || 3,
       lembrete_dias_2: parseInt(res.data.lembrete_dias_2) || 7,
-      lembrete_dias_3: parseInt(res.data.lembrete_dias_3) || 15
+      lembrete_dias_3: parseInt(res.data.lembrete_dias_3) || 15,
+      recorrencia_dias: parseInt(res.data.recorrencia_dias) || 90
     };
   } catch (error) { 
     console.error(error); 
@@ -1312,18 +1314,33 @@ onMounted(() => {
                 </div>
 
                 <div class="space-y-6">
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    
-                    <div class="flex flex-col gap-2">
-                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">1º Envio do Dia</label>
-                      <InputText v-model="regrasConfig.scheduler_hora_inicio" placeholder="09:00" class="w-full text-center font-bold text-[11px] !py-3 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-orange-500/20" />
-                    </div>
 
-                    <div class="flex flex-col gap-2">
-                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Repetir a cada</label>
-                      <InputNumber v-model="regrasConfig.scheduler_horas" :min="1" :max="48" suffix=" horas" class="w-full" inputClass="w-full text-center font-bold text-[11px] !py-3 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-orange-500/20" />
-                    </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  
+                  <div class="flex flex-col gap-2">
+                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">1º Envio do Dia</label>
+                    <InputText v-model="regrasConfig.scheduler_hora_inicio" placeholder="09:00" class="w-full text-center font-bold text-[11px] !py-3 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-orange-500/20" />
+                  </div>
 
+                  <div class="flex flex-col gap-2">
+                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Repetir a cada</label>
+                    <InputNumber v-model="regrasConfig.scheduler_horas" :min="1" :max="48" suffix=" horas" class="w-full" inputClass="w-full text-center font-bold text-[11px] !py-3 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-orange-500/20" />
+                  </div>
+
+                  <div class="flex flex-col gap-2">
+                    <label class="text-[9px] font-black uppercase tracking-widest text-orange-500 ml-1 flex items-center gap-1.5">
+                      <i class="pi pi-sync text-[8px]"></i> Recorrência do NPS
+                    </label>
+                    <InputNumber 
+                      v-model="regrasConfig.recorrencia_dias" 
+                      :min="1" 
+                      :max="365" 
+                      suffix=" dias" 
+                      class="w-full" 
+                      inputClass="w-full text-center font-black text-[11px] !py-3 !bg-orange-50 dark:!bg-orange-500/10 text-orange-600 dark:text-orange-400 !border-orange-200 dark:!border-orange-500/30 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-orange-500/20" 
+                      v-tooltip.top="'Tempo de carência (intervalo mínimo) para disparar nova pesquisa ao mesmo cliente.'" 
+                    />
+                  </div>
                   </div>
 
                   <div class="flex flex-col gap-2 pt-2">
@@ -1417,6 +1434,8 @@ onMounted(() => {
                     <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-2">3º Lembrete</label>
                     <InputNumber v-model="regrasConfig.lembrete_dias_3" suffix=" dias após envio" class="w-full" inputClass="w-full text-center font-bold text-[11px] !py-2.5 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-purple-500/20 text-purple-600 dark:text-purple-400" />
                   </div>
+
+                  
 
                 </div>
                 
