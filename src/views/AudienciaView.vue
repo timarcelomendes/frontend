@@ -565,34 +565,43 @@ onMounted(() => {
           </template>
         </Column>
 
-        <Column field="status_envio" header="Status" sortable style="min-width: 140px">
-        <template #body="slotProps">
-            <div class="flex flex-col gap-1.5 justify-center">
-              
-              <div class="flex items-center gap-2">
-                <i v-if="(slotProps.data.status_envio || '').toLowerCase() === 'respondido'" class="pi pi-check-circle text-emerald-500 text-[12px]"></i>
-                <i v-else-if="(slotProps.data.status_envio || '').toLowerCase() === 'enviado'" class="pi pi-send text-blue-500 text-[11px] transform -rotate-12 mt-0.5"></i>
-                <i v-else-if="(slotProps.data.status_envio || '').toLowerCase() === 'erro'" class="pi pi-times-circle text-rose-500 text-[12px]"></i>
-                <i v-else class="pi pi-clock text-orange-400 text-[12px]"></i>
-                <Tag :value="slotProps.data.status_envio || 'Pendente'" :severity="obterCorStatus(slotProps.data.status_envio)" class="rounded-md text-[8px] px-2 py-0.5 uppercase tracking-widest font-black shadow-sm transition-all" />
-              </div>
+        <Column field="status_envio" header="Estado" sortable>
+                <template #body="{ data }">
+                  <div class="flex flex-col items-start gap-1">
+                    
+                    <Tag v-if="data.status_envio === 'Respondido'" value="Respondido" severity="success" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm" />
+                    
+                    <Tag v-else-if="data.status_envio === 'Pendente'" value="Na Fila" class="!bg-slate-100 dark:!bg-slate-800 !text-slate-500 !text-[10px] !font-black uppercase tracking-widest !px-3" />
+                    
+                    <Tag v-else-if="data.status_envio === 'Enviado'" value="Enviado" severity="info" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm" />
+                    
+                    <Tag v-else-if="data.status_envio === 'Erro'" value="Falha" severity="danger" v-tooltip.top="data.erro_msg || 'Erro desconhecido'" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm cursor-help" />
+                    
+                    <Tag v-else value="Não Iniciado" class="!bg-slate-50 dark:!bg-slate-800/30 !text-slate-400 !text-[10px] !font-black uppercase tracking-widest !px-3 border border-slate-200 dark:border-slate-700/50" />
 
-              <div v-if="(slotProps.data.status_envio || '').toLowerCase() === 'enviado' && slotProps.data.ultimo_envio" 
-                   class="flex items-center gap-0.5 ml-1 animate-fadein">
-                
-                <i class="pi text-[10px] transform scale-75 origin-left mt-[1px]" 
-                   :class="[calcularStatusLembrete(slotProps.data.ultimo_envio).icone, calcularStatusLembrete(slotProps.data.ultimo_envio).cor]"></i>
-                
-                <span class="text-[8.5px] font-bold uppercase tracking-wider" 
-                      :class="calcularStatusLembrete(slotProps.data.ultimo_envio).cor">
-                  {{ calcularStatusLembrete(slotProps.data.ultimo_envio).texto }}
-                </span>
-                
-              </div>
+                    <div v-if="data.status_envio === 'Enviado'" class="flex items-center gap-1.5 ml-1" v-tooltip.top="`Enviado em: ${data.data_envio_inicial ? new Date(data.data_envio_inicial).toLocaleDateString() : '---'}`">
+                      
+                      <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                        {{ (data.lembretes_enviados || 0) === 0 ? 'Aguardando' : `${data.lembretes_enviados}º Lembrete` }}
+                      </span>
+                      
+                      <div class="flex gap-0.5">
+                        <div :class="['w-1.5 h-1.5 rounded-full transition-colors', (data.lembretes_enviados || 0) >= 1 ? 'bg-orange-500' : 'bg-slate-200 dark:bg-slate-700']"></div>
+                        <div :class="['w-1.5 h-1.5 rounded-full transition-colors', (data.lembretes_enviados || 0) >= 2 ? 'bg-orange-500' : 'bg-slate-200 dark:bg-slate-700']"></div>
+                        <div :class="['w-1.5 h-1.5 rounded-full transition-colors', (data.lembretes_enviados || 0) >= 3 ? 'bg-rose-500' : 'bg-slate-200 dark:bg-slate-700']"></div>
+                      </div>
+                      
+                    </div>
 
-            </div>
-        </template>
-        </Column>
+                    <div v-if="data.status_envio === 'Respondido'" class="flex items-center ml-1">
+                       <span class="text-[8px] font-black text-emerald-500/70 dark:text-emerald-400/50 uppercase tracking-widest">
+                        Ciclo Fechado
+                      </span>
+                    </div>
+
+                  </div>
+                </template>
+              </Column>
 
         <Column header="Ciclo de Envio" style="min-width: 200px">
           <template #body="slotProps">

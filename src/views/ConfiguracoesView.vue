@@ -473,8 +473,8 @@ const forcarDisparoNPS = async () => {
 const loadingRegras = ref(false);
 const savingRegras = ref(false);
 const abaEmailAgradecimento = ref('promotor');
+const abaEmailLembrete = ref('1');
 
-// Variável regrasConfig ATUALIZADA com teams_horario_resumo
 const regrasConfig = ref({
   scheduler_hora_inicio: '09:00', 
   scheduler_horas: 6,
@@ -487,8 +487,16 @@ const regrasConfig = ref({
   email_agradecimento_promotor: '',
   email_agradecimento_neutro: '', 
   email_agradecimento_detrator: '',
-  lembrete_dias: 3, 
-  email_template_lembrete: ''
+  
+  // 👇 AS 4 NOVAS VARIÁVEIS DA RÉGUA DE LEMBRETES:
+  lembrete_qtd_maxima: 3, 
+  lembrete_dias_1: 3,
+  lembrete_dias_2: 7,
+  lembrete_dias_3: 15,
+  
+  email_template_lembrete_1: '',
+  email_template_lembrete_2: '',
+  email_template_lembrete_3: '',
 });
 
 const opcoesCamposFillout = ref([
@@ -501,8 +509,19 @@ const carregarRegras = async () => {
   loadingRegras.value = true;
   try {
     const res = await api.get('/config/regras');
-    regrasConfig.value = { ...res.data, fillout_campos: res.data.fillout_campos ? res.data.fillout_campos.split(',') : [] };
-  } catch (error) { console.error(error); } finally { loadingRegras.value = false; }
+    regrasConfig.value = { 
+      ...res.data, 
+      fillout_campos: res.data.fillout_campos ? res.data.fillout_campos.split(',') : [],
+      lembrete_qtd_maxima: parseInt(res.data.lembrete_qtd_maxima) || 0,
+      lembrete_dias_1: parseInt(res.data.lembrete_dias_1) || 3,
+      lembrete_dias_2: parseInt(res.data.lembrete_dias_2) || 7,
+      lembrete_dias_3: parseInt(res.data.lembrete_dias_3) || 15
+    };
+  } catch (error) { 
+    console.error(error); 
+  } finally { 
+    loadingRegras.value = false; 
+  }
 };
 
 const salvarRegras = async () => {
@@ -551,10 +570,16 @@ const emailTesteLembrete = ref('');
 const modeloBaseLembrete = `<!DOCTYPE html><html><body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;"><div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto; text-align: center;"><h2 style="color: #333;">Olá novamente, {nome}!</h2><p style="color: #555; font-size: 16px;">Ainda não recebemos o seu feedback sobre a <strong>{empresa}</strong>. Leva menos de 1 minuto!</p><a href="{survey_url}" style="display: inline-block; padding: 14px 28px; background-color: #F97316; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 25px;">Responder Agora</a></div></body></html>`;
 const testarTemplateLembrete = async () => {
   if (!emailTesteLembrete.value) return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail.' });
-  if (!regrasConfig.value.email_template_lembrete) return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole o HTML.' });
+  
+  let htmlAlvo = '';
+  if (abaEmailLembrete.value === '1') htmlAlvo = regrasConfig.value.email_template_lembrete_1;
+  else if (abaEmailLembrete.value === '2') htmlAlvo = regrasConfig.value.email_template_lembrete_2;
+  else if (abaEmailLembrete.value === '3') htmlAlvo = regrasConfig.value.email_template_lembrete_3;
+
+  if (!htmlAlvo) return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole o HTML.' });
   loadingTesteLembrete.value = true;
   try {
-    await api.post('/config/testar-template', { email_destino: emailTesteLembrete.value, html_content: regrasConfig.value.email_template_lembrete, categoria: 'convite' });
+    await api.post('/config/testar-template', { email_destino: emailTesteLembrete.value, html_content: htmlAlvo, categoria: 'convite' });
     toast.add({ severity: 'success', summary: 'Enviado!', detail: 'Preview do lembrete enviado.' });
   } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha no teste.' }); } finally { loadingTesteLembrete.value = false; }
 };
@@ -792,7 +817,7 @@ onMounted(() => {
       <TabPanel>
         <template #header>
           <div class="flex items-center gap-2 px-2">
-            <i class="pi pi-sparkles text-slate-400"></i> <span class="font-bold">IA</span>
+            <i class="pi pi-android text-slate-400"></i><span class="font-bold">IA</span>
           </div>
         </template>
         <div class="space-y-8 animate-fadein py-4 ">
@@ -803,32 +828,32 @@ onMounted(() => {
                 <div class="w-12 h-12 rounded-[1.2rem] bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20 shadow-sm group-hover:scale-105 group-hover:bg-emerald-500 group-hover:border-emerald-500 transition-all duration-300">
                   <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400 group-hover:text-white transition-colors" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
                     <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A6.0651 6.0651 0 0 0 19.02 19.818a5.9847 5.9847 0 0 0 3.9977-2.9001 6.051 6.051 0 0 0-.7358-7.0967zm-14.5358 1.15l8.6046-4.9658a.4735.4735 0 0 0 .2368-.4114v-1.6384a4.4335 4.4335 0 0 1 2.3023 2.1264 4.3854 4.3854 0 0 1 .4943 2.91 4.4287 4.4287 0 0 1-1.7828 2.5029l-7.3732 4.2526a.4735.4735 0 0 1-.4736 0L1.75 11.23a4.4431 4.4431 0 0 1-.7864-3.1413 4.4093 4.4093 0 0 1 2.0124-2.671 4.4383 4.4383 0 0 1 3.2384-.3676v5.4855a1.6521 1.6521 0 0 0 .8258 1.429zm3.5042-7.394l8.6046 4.9658a.4735.4735 0 0 1 .2368.4114v6.864a4.4335 4.4335 0 0 0-1.808-2.4839 4.3854 4.3854 0 0 0-3.0487-.7146 4.4287 4.4287 0 0 0-2.4347 1.4552l-3.6866 6.386a.4735.4735 0 0 1-.4114.2368H2.174a4.4431 4.4431 0 0 0 2.4578-2.108 4.4093 4.4093 0 0 0 .1786-3.3243 4.4383 4.4383 0 0 0-2.228-2.383L10.05 4.5025a1.6521 1.6521 0 0 1 1.2003-.9256zm-1.8217 12.0031l-8.6046 4.9658a.4735.4735 0 0 0-.2368.4114v1.6384a4.4335 4.4335 0 0 1-2.3023-2.1264 4.3854 4.3854 0 0 1-.4943-2.91 4.4287 4.4287 0 0 1 1.7828-2.5029l7.3732-4.2526a.4735.4735 0 0 1 .4736 0l8.0044 4.6235a4.4431 4.4431 0 0 1 .7864 3.1413 4.4093 4.4093 0 0 1-2.0124 2.671 4.4383 4.4383 0 0 1-3.2384.3676v-5.4855a1.6521 1.6521 0 0 0-.8258-1.429zM12 15.1768a3.1768 3.1768 0 1 1 0-6.3536 3.1768 3.1768 0 0 1 0 6.3536z"/>
-                </svg>
+                  </svg>
+                </div>
+                <div class="flex flex-col justify-center">
+                  <h2 class="text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Integração OpenAI</h2>
+                  <p class="text-[10px] md:text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Motor Preditivo do Magic AI</p>
+                </div>
               </div>
-              <div class="flex flex-col justify-center">
-                <h2 class="text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Integração OpenAI</h2>
-                <p class="text-[10px] md:text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Motor Preditivo do Magic AI</p>
-              </div>
+              <Button label="Guardar" icon="pi pi-save" @click="salvarConfiguracoesAI" :loading="savingAIConfig" class="w-full lg:w-auto !bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform" />
             </div>
-            <Button label="Guardar" icon="pi pi-save" @click="salvarConfiguracoesAI" :loading="savingAIConfig" class="w-full lg:w-auto !bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-xl shadow-indigo-500/30 hover:scale-105 transition-transform" />
-          </div>
 
-          <div class="space-y-6 max-w-3xl">
-            <div class="flex flex-col gap-2">
-              <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Chave de API (Secret Key)</label>
-              <Password v-model="formConfigAI.openai_api_key" :feedback="false" toggleMask placeholder="sk-..." inputClass="custom-input !text-[12px] w-full" class="w-full" />
-              <small class="text-slate-400 italic font-medium ml-1">Nunca partilhe esta chave. Obtenha uma em platform.openai.com</small>
-            </div>
-            <div class="flex flex-col gap-2">
-              <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Motor de Processamento (Modelo)</label>
-              <Dropdown v-model="formConfigAI.openai_model" :options="opcoesModeloIA" optionLabel="label" optionValue="value" class="custom-input !p-0 !text-[12px]" />
-            </div>
-            <div class="flex flex-col gap-2">
-              <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Temperatura de Criatividade (0.0 a 1.0)</label>
-              <InputText v-model="formConfigAI.ai_temperature" placeholder="0.4" class="custom-input !text-[12px] w-full md:w-1/3" />
+            <div class="space-y-6 max-w-3xl">
+              <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Chave de API (Secret Key)</label>
+                <Password v-model="formConfigAI.openai_api_key" :feedback="false" toggleMask placeholder="sk-..." inputClass="custom-input !text-[12px] w-full" class="w-full" />
+                <small class="text-slate-400 italic font-medium ml-1">Nunca partilhe esta chave. Obtenha uma em platform.openai.com</small>
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Motor de Processamento (Modelo)</label>
+                <Dropdown v-model="formConfigAI.openai_model" :options="opcoesModeloIA" optionLabel="label" optionValue="value" class="custom-input !p-0 !text-[12px]" />
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Temperatura de Criatividade (0.0 a 1.0)</label>
+                <InputText v-model="formConfigAI.ai_temperature" placeholder="0.4" class="custom-input !text-[12px] w-full md:w-1/3" />
+              </div>
             </div>
           </div>
-        </div>
 
         </div>
       </TabPanel>
@@ -1298,11 +1323,6 @@ onMounted(() => {
                       <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Repetir a cada</label>
                       <InputNumber v-model="regrasConfig.scheduler_horas" :min="1" :max="48" suffix=" horas" class="w-full" inputClass="w-full text-center font-bold text-[11px] !py-3 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-orange-500/20" />
                     </div>
-                    
-                    <div class="flex flex-col gap-2">
-                      <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Lembrete em</label>
-                      <InputNumber v-model="regrasConfig.lembrete_dias" :min="1" :max="30" suffix=" dias" class="w-full" inputClass="w-full text-center font-bold text-[11px] !py-3 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-orange-500/20" />
-                    </div>
 
                   </div>
 
@@ -1356,6 +1376,57 @@ onMounted(() => {
               </div>
             </div>
 
+            <div class="md:col-span-2 bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
+              <div class="flex items-center gap-3 mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center text-purple-500 shadow-sm shrink-0">
+                  <i class="pi pi-calendar-clock text-lg"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white">Régua de Lembretes Automáticos</h3>
+                  <p class="text-[10px] text-slate-400 font-bold mt-0.5">Defina a cadência de insistência para clientes que não responderam.</p>
+                </div>
+              </div>
+
+              <div class="space-y-6">
+                <div class="flex flex-col gap-2 w-full md:w-1/3">
+                  <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Quantidade Máxima de Lembretes</label>
+                  <Dropdown 
+                    v-model="regrasConfig.lembrete_qtd_maxima" 
+                    :options="[0, 1, 2, 3]" 
+                    placeholder="Selecione" 
+                    class="custom-input !py-1 w-full font-bold" 
+                  />
+                </div>
+
+                <div v-if="regrasConfig.lembrete_qtd_maxima > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                  
+                  <div v-if="regrasConfig.lembrete_qtd_maxima >= 1" class="flex flex-col gap-2 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-sky-400"></div>
+                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-2">1º Lembrete</label>
+                    <InputNumber v-model="regrasConfig.lembrete_dias_1" suffix=" dias após envio" class="w-full" inputClass="w-full text-center font-bold text-[11px] !py-2.5 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-sky-500/20 text-sky-600 dark:text-sky-400" />
+                  </div>
+
+                  <div v-if="regrasConfig.lembrete_qtd_maxima >= 2" class="flex flex-col gap-2 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-400"></div>
+                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-2">2º Lembrete</label>
+                    <InputNumber v-model="regrasConfig.lembrete_dias_2" suffix=" dias após envio" class="w-full" inputClass="w-full text-center font-bold text-[11px] !py-2.5 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-indigo-500/20 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+
+                  <div v-if="regrasConfig.lembrete_qtd_maxima === 3" class="flex flex-col gap-2 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-purple-500"></div>
+                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-2">3º Lembrete</label>
+                    <InputNumber v-model="regrasConfig.lembrete_dias_3" suffix=" dias após envio" class="w-full" inputClass="w-full text-center font-bold text-[11px] !py-2.5 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-purple-500/20 text-purple-600 dark:text-purple-400" />
+                  </div>
+
+                </div>
+                
+                <div v-if="regrasConfig.lembrete_qtd_maxima > 0" class="flex items-center gap-3 text-[10px] font-bold text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-500/10 p-4 rounded-xl border border-amber-100 dark:border-amber-500/20">
+                  <i class="pi pi-exclamation-triangle text-lg"></i>
+                  O sistema interrompe a cadeia de lembretes automaticamente no momento em que o cliente submete a avaliação.
+                </div>
+              </div>
+            </div>
+            
             <div class="md:col-span-2 bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm mt-4 flex flex-col lg:flex-row gap-8 items-start lg:items-center justify-between group hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
               <div class="flex items-center gap-4 w-full lg:w-auto">
                 <div class="w-12 h-12 rounded-[1.2rem] bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center shadow-sm shrink-0 border border-indigo-100 dark:border-indigo-500/20 group-hover:scale-105 transition-transform">
@@ -1433,14 +1504,35 @@ onMounted(() => {
                   </div>
                 </div>
 
-                <div class="bg-slate-900/50 px-6 py-2 border-b border-slate-800 flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                <div class="bg-slate-900/80 px-4 pt-3 border-b border-slate-800 flex gap-2 overflow-x-auto">
+                  <button v-if="regrasConfig.lembrete_qtd_maxima >= 1" @click="abaEmailLembrete = '1'" :class="abaEmailLembrete === '1' ? 'bg-slate-800 text-purple-400 border-t-2 border-purple-500' : 'text-slate-500 hover:bg-slate-800/50 border-t-2 border-transparent'" class="px-5 py-2.5 rounded-t-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                    <i class="pi pi-file text-[10px]"></i> 1º Lembrete
+                  </button>
+                  <button v-if="regrasConfig.lembrete_qtd_maxima >= 2" @click="abaEmailLembrete = '2'" :class="abaEmailLembrete === '2' ? 'bg-slate-800 text-purple-400 border-t-2 border-purple-500' : 'text-slate-500 hover:bg-slate-800/50 border-t-2 border-transparent'" class="px-5 py-2.5 rounded-t-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                    <i class="pi pi-file text-[10px]"></i> 2º Lembrete
+                  </button>
+                  <button v-if="regrasConfig.lembrete_qtd_maxima === 3" @click="abaEmailLembrete = '3'" :class="abaEmailLembrete === '3' ? 'bg-slate-800 text-purple-400 border-t-2 border-purple-500' : 'text-slate-500 hover:bg-slate-800/50 border-t-2 border-transparent'" class="px-5 py-2.5 rounded-t-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                    <i class="pi pi-file text-[10px]"></i> 3º Lembrete
+                  </button>
+                </div>
+
+                <div class="bg-slate-800/50 px-6 py-2 border-b border-slate-800 flex items-center gap-2 overflow-x-auto custom-scrollbar">
                   <span class="text-[9px] text-slate-500 font-bold uppercase tracking-widest shrink-0">Injetáveis:</span>
                   <Tag value="{nome}" class="!bg-purple-900/40 !text-purple-300 !text-[9px] !font-mono border border-purple-800/50" />
                   <Tag value="{empresa}" class="!bg-purple-900/40 !text-purple-300 !text-[9px] !font-mono border border-purple-800/50" />
                   <Tag value="{survey_url}" class="!bg-rose-900/40 !text-rose-300 !text-[9px] !font-mono border border-rose-800/50" v-tooltip.top="'Obrigatório (Link do Botão)'" />
                 </div>
 
-                <Textarea v-model="regrasConfig.email_template_lembrete" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+                <div v-show="abaEmailLembrete === '1' && regrasConfig.lembrete_qtd_maxima >= 1" class="animate-fadein bg-slate-800/30">
+                  <Textarea v-model="regrasConfig.email_template_lembrete_1" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+                </div>
+                <div v-show="abaEmailLembrete === '2' && regrasConfig.lembrete_qtd_maxima >= 2" class="animate-fadein bg-slate-800/30">
+                  <Textarea v-model="regrasConfig.email_template_lembrete_2" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+                </div>
+                <div v-show="abaEmailLembrete === '3' && regrasConfig.lembrete_qtd_maxima === 3" class="animate-fadein bg-slate-800/30">
+                  <Textarea v-model="regrasConfig.email_template_lembrete_3" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+                </div>
+
               </div>
             </div>
 
