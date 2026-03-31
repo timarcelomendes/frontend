@@ -285,9 +285,56 @@ const obterCorNPS = (nota) => {
   return 'bg-rose-500 shadow-rose-500/30';
 };
 
+const modalNovaResposta = ref(false);
+const salvandoResposta = ref(false);
+const clientesDropdown = ref([]); // Deverá carregar isto da sua API de clientes
+
+const formResposta = ref({
+  cliente_id: null,
+  nota: null,
+  canal: 'Manual',
+  motivo: ''
+});
+
+const abrirModalNovaResposta = () => {
+  formResposta.value = { cliente_id: null, nota: null, canal: 'Manual', motivo: '' };
+  modalNovaResposta.value = true;
+};
+
+const salvarRespostaManual = async () => {
+  if (!formResposta.value.cliente_id || formResposta.value.nota === null) {
+    return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Cliente e Nota são obrigatórios.' });
+  }
+
+  salvandoResposta.value = true;
+  try {
+    // Chama a API para gravar a resposta
+    await api.post('/respostas/manual', formResposta.value);
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Resposta registada!' });
+    modalNovaResposta.value = false;
+    // recarregarRespostas(); <-- Chame a sua função que atualiza a tabela aqui
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar.' });
+  } finally {
+    salvandoResposta.value = false;
+  }
+};
+
+const carregarClientesParaDropdown = async () => {
+  try {
+    const res = await api.get('/clientes', { params: { ativo: 1 } });
+    
+    clientesDropdown.value = res.data;
+    console.log("Clientes carregados:", res.data.length); // Para confirmar no console
+  } catch (error) {
+    console.error("Erro ao carregar clientes:", error);
+  }
+};
+
 onMounted(async () => {
   await carregarCombos(); 
   carregarRespostas();
+  carregarClientesParaDropdown();
 });
 </script>
 
@@ -302,9 +349,25 @@ onMounted(async () => {
         <p class="text-[12px] text-slate-500 dark:text-slate-400 mt-2 font-bold uppercase tracking-widest">
           Categorização e Enriquecimento Qualitativo (Close the Loop)
         </p>
+    </div> <div class="flex items-center gap-3 shrink-0">
+        
+        <Button 
+          label="Inserir Resposta" 
+          icon="pi pi-plus" 
+          @click="abrirModalNovaResposta" 
+          class="!bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-5 !py-3 shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform" 
+        />
+
+        <Button 
+          icon="pi pi-refresh" 
+          @click="carregarRespostas" 
+          :loading="loading" 
+          v-tooltip.top="'Sincronizar Dados'" 
+          class="w-11 h-11 !bg-white dark:!bg-slate-900 !text-slate-500 hover:!text-orange-500 dark:hover:!text-orange-400 !border !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm transition-all flex items-center justify-center" 
+        />
+        
       </div>
-      <Button icon="pi pi-refresh" label="Sincronizar" @click="carregarRespostas" :loading="loading" class="!bg-white dark:!bg-slate-900 !text-slate-800 dark:!text-white !border !border-slate-200 dark:!border-slate-700 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest shadow-sm hover:!bg-slate-50" />
-    </div>
+      </div> ```
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 animate-fadein">
       <div class="bg-white dark:bg-slate-900 p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
@@ -475,7 +538,24 @@ onMounted(async () => {
           </template>
         </Column>
 
-        <Column field="created_at" header="Registo" style="width: 140px">
+        <Column field="canal" header="Canal" sortable>
+          <template #body="{ data }">
+            <div class="flex items-center gap-2">
+              <i :class="[
+                'pi text-[10px]',
+                data.canal === 'Manual' ? 'pi-user-edit text-orange-500' : 
+                data.canal === 'WhatsApp' ? 'pi-whatsapp text-emerald-500' : 
+                data.canal === 'Telefone' ? 'pi-phone text-indigo-500' : 
+                'pi-envelope text-sky-500'
+              ]"></i>
+              <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                {{ data.canal || 'E-mail' }}
+              </span>
+            </div>
+          </template>
+        </Column>
+
+        <Column field="created_at" header="Registro" style="width: 140px">
           <template #body="s">
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{{ formatarData(s.data.created_at) }}</span>
           </template>
@@ -605,6 +685,61 @@ onMounted(async () => {
         <Button label="Cancelar" text class="flex-1 font-black text-[11px] uppercase tracking-widest text-slate-400" @click="dialogNovaAcao = false" />
         <Button label="Criar Tarefa" :loading="salvandoAcao" icon="pi pi-check" class="flex-1 bg-orange-500 border-none rounded-xl font-black text-[11px] uppercase tracking-widest text-white shadow-xl hover:-translate-y-0.5 transition-transform" @click="criarPlanoAcao" />
       </div>
+    </Dialog>
+
+    <Dialog v-model:visible="modalNovaResposta" header="Inserir Resposta Manual" :modal="true" class="custom-dialog w-[95vw] sm:w-[500px]">
+      <div class="p-2 space-y-5">
+        
+        <Dropdown 
+          v-model="formResposta.cliente_id" 
+          :options="clientesDropdown" 
+          optionLabel="nome" 
+          optionValue="cliente_id" 
+          filter 
+          placeholder="Selecione o Cliente..." 
+          class="custom-input !py-1 w-full"
+        >
+          <template #option="slotProps">
+            <div class="flex flex-col">
+              <span class="text-[11px] font-black uppercase text-slate-700 dark:text-slate-200">
+                {{ slotProps.option.nome }}
+              </span>
+              <span class="text-[9px] font-bold text-slate-400">
+                {{ slotProps.option.empresa }}
+              </span>
+            </div>
+          </template>
+        </Dropdown>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Nota NPS (0 a 10)</label>
+            <Dropdown 
+              v-model="formResposta.nota" 
+              :options="[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]" 
+              placeholder="Nota..." 
+              class="custom-input !py-1 w-full font-black text-center text-lg" 
+            />
+          </div>
+          
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Canal de Origem</label>
+            <Dropdown v-model="formResposta.canal" :options="['Manual', 'WhatsApp', 'Telefone', 'E-mail', 'Reunião']" class="custom-input !py-1 w-full" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Feedback / Motivo principal</label>
+          <Textarea v-model="formResposta.motivo" rows="4" class="custom-input !py-3 w-full resize-none" placeholder="O que o cliente disse?" />
+        </div>
+
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-3 mt-4">
+          <Button label="Cancelar" icon="pi pi-times" @click="modalNovaResposta = false" class="!bg-transparent !text-slate-500 !border-none !text-[10px] !font-black !uppercase tracking-widest" />
+          <Button label="Guardar Resposta" icon="pi pi-check" :loading="salvandoResposta" @click="salvarRespostaManual" class="!bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase tracking-widest !px-6 py-3 shadow-lg hover:scale-105 transition-transform" />
+        </div>
+      </template>
     </Dialog>
   </div>
 </template>
