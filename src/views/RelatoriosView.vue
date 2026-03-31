@@ -144,15 +144,86 @@ const gerarAnaliseIA = async () => {
 
 watch(filtros, () => { fetchGraficos(); gerarAnaliseIA(); }, { deep: true });
 
+// ==========================================
+// 👔 ESTADOS E LÓGICA: ABA GESTORES
+// ==========================================
+const gestorSelecionado = ref(null);
+const listaGestores = ref([]);
+const dadosGestor = ref(null);
+const loadingGestor = ref(false);
+const chartGestor = ref(null);
+
+// Opções visuais para o gráfico do Gestor
+const optionsChartGestor = ref({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: { display: false }, // Esconde a legenda para ficar mais limpo
+    },
+    scales: {
+        y: { 
+            min: 0, 
+            max: 10,
+            grid: { display: false },
+            ticks: { font: { size: 10, weight: 'bold' } }
+        },
+        x: { 
+            grid: { display: false },
+            ticks: { font: { size: 9, weight: 'bold' } }
+        }
+    }
+});
+
+const carregarPerformanceGestor = async () => {
+  if (!gestorSelecionado.value) return;
+  
+  loadingGestor.value = true;
+  try {
+    // Enviamos 'gestor_id' como parâmetro para a API
+    const res = await api.get('/reports/gestor', { 
+      params: { gestor_id: gestorSelecionado.value } 
+    });
+    
+    dadosGestor.value = res.data;
+    
+    chartGestor.value = {
+      labels: res.data.ranking_empresas.map(e => e.nome),
+      datasets: [{
+        label: 'Média de Nota',
+        backgroundColor: '#6366f1',
+        borderRadius: 8,
+        data: res.data.ranking_empresas.map(e => e.media_nota)
+      }]
+    };
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar gestor.' });
+  } finally {
+    loadingGestor.value = false;
+  }
+};
+
+// Função para buscar a lista (agora vem como lista de objetos)
+const carregarListaGestores = async () => {
+  try {
+    const res = await api.get('/reports/lista-gestores');
+    listaGestores.value = res.data; 
+    console.log("Dados recebidos da API:", res.data);
+  } catch (e) {
+    console.error("Falha ao carregar lista de gestores", e);
+  }
+};
+
+
 onMounted(async () => {
   fetchGraficos();
   gerarAnaliseIA();
   carregarOperacional();
-  // Carrega empresas para a aba jornada
   const resEmp = await api.get('/cadastros/empresas');
   listaEmpresas.value = resEmp.data.map(e => e.nome);
   const resSeg = await api.get('/cadastros/segmentos');
   opcoesSegmento.value = ['Todos', ...resSeg.data.map(s => s.nome)];
+  await carregarListaGestores(); 
+  console.log("Lista de gestores após carregar:", listaGestores.value);
 });
 
 </script>
@@ -270,6 +341,70 @@ onMounted(async () => {
             <div v-else-if="!loadingJornada" class="py-20 text-center text-slate-400 italic">
                <i class="pi pi-search text-4xl mb-4 opacity-20"></i>
                <p>Selecione uma empresa acima para visualizar o histórico de feedbacks.</p>
+            </div>
+          </div>
+        </TabPanel>
+
+        <TabPanel>
+          <template #header><i class="pi pi-user mr-2"></i> Gestores</template>
+          
+          <div class="space-y-6 mt-6">
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-end">
+              <div class="flex-1 space-y-2">
+                <label class="text-[10px] font-black uppercase tracking-widest text-slate-400">Selecionar Gestor de Contas</label>
+                <Dropdown 
+                  v-model="gestorSelecionado" 
+                  :options="listaGestores" 
+                  optionLabel="nome" 
+                  optionValue="id" 
+                  filter 
+                  placeholder="Selecione um Gestor" 
+                  class="w-full custom-dropdown-premium" 
+                  @change="carregarPerformanceGestor" 
+                >
+                  <template #option="slotProps">
+                    <div class="flex items-center">
+                      <span class="text-xs font-bold uppercase">{{ slotProps.option.nome }}</span>
+                    </div>
+                  </template>
+                </Dropdown>
+              </div>
+            </div>
+
+            <div v-if="dadosGestor" class="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadein">
+              
+              <div class="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center">
+                 <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">NPS do Gestor</span>
+                 <div class="text-7xl font-black" :class="dadosGestor.nps >= 70 ? 'text-emerald-500' : 'text-orange-500'">
+                   {{ dadosGestor.nps }}
+                 </div>
+                 <Tag :value="dadosGestor.total_respostas + ' respostas'" severity="secondary" class="mt-4" />
+              </div>
+
+              <div class="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+                <h3 class="text-xs font-black uppercase tracking-widest mb-6">Média por Empresa na Carteira</h3>
+                <Chart type="bar" :data="chartGestor" :options="{ responsive: true, maintainAspectRatio: false }" class="h-[250px]" />
+              </div>
+
+              <div class="lg:col-span-3 grid grid-cols-3 gap-4">
+                <div class="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800/50 text-center">
+                  <div class="text-2xl font-black text-emerald-600">{{ dadosGestor.distribuicao.promotores }}</div>
+                  <div class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Promotores</div>
+                </div>
+                <div class="bg-amber-50 dark:bg-amber-900/10 p-6 rounded-2xl border border-amber-100 dark:border-amber-800/50 text-center">
+                  <div class="text-2xl font-black text-amber-600">{{ dadosGestor.distribuicao.neutros }}</div>
+                  <div class="text-[9px] font-black uppercase text-amber-500 tracking-widest">Neutros</div>
+                </div>
+                <div class="bg-rose-50 dark:bg-rose-900/10 p-6 rounded-2xl border border-rose-100 dark:border-rose-800/50 text-center">
+                  <div class="text-2xl font-black text-rose-600">{{ dadosGestor.distribuicao.detratores }}</div>
+                  <div class="text-[9px] font-black uppercase text-rose-500 tracking-widest">Detratores</div>
+                </div>
+              </div>
+
+            </div>
+
+            <div v-else class="py-20 text-center text-slate-400 italic">
+               <p>Selecione um gestor para visualizar o scorecard de performance.</p>
             </div>
           </div>
         </TabPanel>
