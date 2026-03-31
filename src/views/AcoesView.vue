@@ -11,7 +11,6 @@ import InputText from 'primevue/inputtext';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import Textarea from 'primevue/textarea';
-import Avatar from 'primevue/avatar';
 import Calendar from 'primevue/calendar';
 import MultiSelect from 'primevue/multiselect';
 
@@ -56,34 +55,28 @@ const limparFiltros = () => {
   filtroData.value = null;
 };
 
-// Mágica para descobrir a companhia a partir da empresa (caso a API das ações não envie diretamente)
 const getCompanhiaDaAcao = (acao) => {
   if (acao.companhia) return acao.companhia;
   const emp = empresasDetalhes.value.find(e => (e.empresa || e.nome) === acao.empresa_nome);
   return emp ? emp.companhia : null;
 };
 
-// Filtra a lista principal cruzando com os arrays de MultiSeleção
 const acoesFiltradas = computed(() => {
   return acoes.value.filter(acao => {
     
-    // 1. Filtro Companhia (Array)
     if (filtroCompanhia.value.length > 0) {
       const companhiaAtual = getCompanhiaDaAcao(acao);
       if (!filtroCompanhia.value.includes(companhiaAtual)) return false;
     }
     
-    // 2. Filtro Gestor / Responsável (Array)
     if (filtroResponsavel.value.length > 0) {
       if (!filtroResponsavel.value.includes(acao.gestor_id)) return false;
     }
     
-    // 3. Filtro Empresa (Array)
     if (filtroEmpresa.value.length > 0) {
       if (!filtroEmpresa.value.includes(acao.empresa_nome)) return false;
     }
     
-    // 4. Filtro Contexto / NPS (Array)
     if (filtroContexto.value.length > 0) {
       const isManual = acao.resposta_nota === null;
       const isPromotor = acao.resposta_nota >= 9;
@@ -99,7 +92,6 @@ const acoesFiltradas = computed(() => {
       if (!passouContexto) return false;
     }
 
-    // 5. Filtro Data (Range Calendar)
     if (filtroData.value && filtroData.value[0] && filtroData.value[1]) {
       const dataAcao = new Date(acao.created_at || new Date());
       dataAcao.setHours(0,0,0,0);
@@ -138,13 +130,11 @@ const carregarAcoes = async () => {
 
     if (route.query.abrir) {
       const acaoAlvo = acoes.value.find(a => String(a.id) === String(route.query.abrir));
-      
       if (acaoAlvo) {
         abrirEdicao(acaoAlvo);
         router.replace({ path: route.path });
       }
     }
-
   } catch (error) {
     console.error("Erro ao carregar ações:", error);
   } finally {
@@ -201,6 +191,7 @@ const onDrop = async (event, novoStatus) => {
   if (!idStr) return;
   const id = parseInt(idStr);
   const acao = acoes.value.find(a => a.id === id);
+  
   if (acao && acao.status !== novoStatus) {
     const statusAntigo = acao.status;
     acao.status = novoStatus;
@@ -208,7 +199,7 @@ const onDrop = async (event, novoStatus) => {
       await api.put(`/acoes/${id}`, { status: novoStatus });
     } catch (error) {
       acao.status = statusAntigo;
-      toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao mover tarefa.' });
+      toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao mover tarefa.', life: 4000 });
     }
   }
 };
@@ -221,12 +212,16 @@ const salvando = ref(false);
 const acaoAtual = ref({});
 
 const abrirNovo = () => {
-  acaoAtual.value = { id: null, titulo: '', descricao: '', empresa_nome: '', companhia: '', gestor_id: null, prioridade: 'Média', status: 'Pendente' };
+  acaoAtual.value = { id: null, titulo: '', descricao: '', empresa_nome: '', empresa_id: null, companhia: '', gestor_id: null, prioridade: 'Média', status: 'Pendente' };
   dialogAcao.value = true;
 };
 
 const abrirEdicao = (acao) => {
-  acaoAtual.value = { ...acao };
+  acaoAtual.value = { 
+    ...acao,
+    gestor_id: acao.gestor_id ? Number(acao.gestor_id) : null,
+    empresa_id: acao.empresa_id ? Number(acao.empresa_id) : null
+  };
   dialogAcao.value = true;
 };
 
@@ -235,25 +230,42 @@ const aoMudarEmpresa = () => {
   const emp = empresasDetalhes.value.find(e => (e.empresa || e.nome) === acaoAtual.value.empresa_nome);
   
   if (emp) {
-    if (emp.gestor_id) acaoAtual.value.gestor_id = emp.gestor_id;
+    acaoAtual.value.empresa_id = emp.id;
+    if (emp.gestor_id) acaoAtual.value.gestor_id = Number(emp.gestor_id);
     if (emp.companhia) acaoAtual.value.companhia = emp.companhia;
   }
 };
 
 const salvarAcao = async () => {
-  if (!acaoAtual.value.titulo) return toast.add({ severity: 'warn', summary: 'Obrigatório', detail: 'O título é obrigatório.' });
-  if (!acaoAtual.value.empresa_nome) return toast.add({ severity: 'warn', summary: 'Obrigatório', detail: 'A empresa é obrigatória.' });
+  if (!acaoAtual.value.titulo) return toast.add({ severity: 'warn', summary: 'Obrigatório', detail: 'O título é obrigatório.', life: 4000 });
+  if (!acaoAtual.value.empresa_nome) return toast.add({ severity: 'warn', summary: 'Obrigatório', detail: 'A empresa é obrigatória.', life: 4000 });
 
   salvando.value = true;
   try {
-    if (acaoAtual.value.id) await api.put(`/acoes/${acaoAtual.value.id}`, acaoAtual.value);
-    else await api.post('/acoes', acaoAtual.value);
+    const emp = empresasDetalhes.value.find(e => (e.empresa || e.nome) === acaoAtual.value.empresa_nome);
+    
+    const payload = {
+      titulo: acaoAtual.value.titulo,
+      descricao: acaoAtual.value.descricao,
+      empresa_id: emp ? emp.id : acaoAtual.value.empresa_id,
+      gestor_id: acaoAtual.value.gestor_id,
+      companhia: acaoAtual.value.companhia,
+      prioridade: acaoAtual.value.prioridade,
+      status: acaoAtual.value.status,
+      resposta_id: acaoAtual.value.resposta_id || null
+    };
+
+    if (acaoAtual.value.id) {
+      await api.put(`/acoes/${acaoAtual.value.id}`, payload);
+    } else {
+      await api.post('/acoes', payload);
+    }
     
     dialogAcao.value = false;
-    carregarAcoes();
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Ação guardada com sucesso.' });
+    await carregarAcoes(); 
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Ação guardada com sucesso.', life: 3000 });
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar a ação.' });
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar a ação.', life: 5000 });
   } finally {
     salvando.value = false;
   }
@@ -264,9 +276,9 @@ const excluirAcao = async (id) => {
   try {
     await api.delete(`/acoes/${id}`);
     acoes.value = acoes.value.filter(a => a.id !== id);
-    toast.add({ severity: 'success', summary: 'Excluída', detail: 'Ação removida do quadro.' });
+    toast.add({ severity: 'success', summary: 'Excluída', detail: 'Ação removida do quadro.', life: 3000 });
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao excluir.' });
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao excluir.', life: 5000 });
   }
 };
 
@@ -275,6 +287,7 @@ const excluirAcao = async (id) => {
 // ==========================================
 const menuOpcoes = ref();
 const acaoSelecionada = ref(null);
+
 const toggleMenu = (event, acao) => {
   acaoSelecionada.value = acao;
   menuOpcoes.value.toggle(event);
@@ -329,10 +342,9 @@ const obterSLA = (acao) => {
   return { texto: `${diff} dias`, cor: 'text-slate-500 bg-slate-50 dark:bg-slate-800' };
 };
 
-const gerarIniciais = (nome) => nome ? nome.split(' ').map((n, i, a) => i === 0 || i === a.length - 1 ? n[0] : '').join('').toUpperCase() : 'G';
+const gerarIniciais = (nome) => nome ? nome.split(' ').map((n, i, a) => i === 0 || i === a.length - 1 ? n[0] : '').join('').toUpperCase() : 'U';
 
 onMounted(async () => {
-  // 1. Carrega todos os dados necessários primeiro
   await Promise.all([
     carregarRegrasSLA(),
     carregarAcoes(),
@@ -341,24 +353,11 @@ onMounted(async () => {
     carregarCompanhias()
   ]);
 
-  // 2. Verifica se existe uma empresa na URL para filtrar
-  if (route.query.empresa) {
-    const empresaUrl = route.query.empresa;
-    
-    // Se a empresa vinda da URL existir na nossa lista de opções, ativa o filtro
-    if (empresasLista.value.includes(empresaUrl)) {
-      filtroEmpresa.value = [empresaUrl]; // Define como array pois o filtro agora é MultiSelect
-      
-      toast.add({ 
-        severity: 'info', 
-        summary: 'Filtro Aplicado', 
-        detail: `A exibir ações para: ${empresaUrl}`, 
-        life: 3000 
-      });
-    }
+  if (route.query.empresa && empresasLista.value.includes(route.query.empresa)) {
+    filtroEmpresa.value = [route.query.empresa];
+    toast.add({ severity: 'info', summary: 'Filtro Aplicado', detail: `A exibir ações para: ${route.query.empresa}`, life: 4000 });
   }
 });
-
 </script>
 
 <template>
@@ -377,70 +376,48 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="flex flex-wrap lg:flex-nowrap gap-4 mb-8 p-4 bg-white dark:bg-slate-900 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm items-end">
+    <div class="bg-white dark:bg-slate-900 p-3 pl-4 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-nowrap items-center w-full overflow-x-auto hide-scrollbar relative mb-8 gap-4">
       
-      <div class="flex flex-col gap-2 flex-1 min-w-[200px]">
-        <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Companhia</label>
-        <MultiSelect 
-            v-model="filtroCompanhia" 
-            :options="companhiasLista" 
-            placeholder="Todas as companhias" 
-            display="chip" 
-            class="custom-input !p-1.5 shadow-sm border-none bg-slate-50 dark:bg-slate-800 w-full" 
-        />
+      <div class="absolute left-0 top-0 w-1.5 h-full bg-sky-500 rounded-l-[1.5rem]"></div>
+      
+      <div class="flex flex-col gap-1 shrink-0 w-[180px]">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-sitemap text-[8px]"></i> Companhia</span>
+        <MultiSelect v-model="filtroCompanhia" :options="companhiasLista" placeholder="Todas as companhias" display="chip" class="custom-dropdown-minimal w-full" />
       </div>
 
-      <div class="flex flex-col gap-2 flex-1 min-w-[200px]">
-        <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Responsável</label>
-        <MultiSelect 
-            v-model="filtroResponsavel" 
-            :options="gestoresLista" 
-            optionLabel="nome" 
-            optionValue="id" 
-            placeholder="Todos os gestores" 
-            display="chip" 
-            class="custom-input !p-1.5 shadow-sm border-none bg-slate-50 dark:bg-slate-800 w-full" 
-        />
+      <div class="w-px h-8 bg-slate-100 dark:bg-slate-800 shrink-0"></div>
+
+      <div class="flex flex-col gap-1 shrink-0 w-[180px]">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-user text-[8px]"></i> Responsável</span>
+        <MultiSelect v-model="filtroResponsavel" :options="gestoresLista" optionLabel="nome" optionValue="id" placeholder="Todos os gestores" display="chip" class="custom-dropdown-minimal w-full" />
       </div>
 
-      <div class="flex flex-col gap-2 flex-1 min-w-[200px]">
-        <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Empresa</label>
-        <MultiSelect 
-            v-model="filtroEmpresa" 
-            :options="empresasLista" 
-            placeholder="Todas as empresas" 
-            display="chip" 
-            class="custom-input !p-1.5 shadow-sm border-none bg-slate-50 dark:bg-slate-800 w-full" 
-        />
+      <div class="w-px h-8 bg-slate-100 dark:bg-slate-800 shrink-0"></div>
+
+      <div class="flex flex-col gap-1 shrink-0 w-[180px]">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-building text-[8px]"></i> Empresa</span>
+        <MultiSelect v-model="filtroEmpresa" :options="empresasLista" placeholder="Todas as empresas" display="chip" class="custom-dropdown-minimal w-full" />
       </div>
 
-      <div class="flex flex-col gap-2 flex-1 min-w-[200px]">
-        <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Contexto (NPS)</label>
-        <MultiSelect 
-            v-model="filtroContexto" 
-            :options="opcoesContexto" 
-            optionLabel="label" 
-            optionValue="value" 
-            placeholder="Todas as notas" 
-            display="chip" 
-            class="custom-input !p-1.5 shadow-sm border-none bg-slate-50 dark:bg-slate-800 w-full" 
-        />
+      <div class="w-px h-8 bg-slate-100 dark:bg-slate-800 shrink-0"></div>
+
+      <div class="flex flex-col gap-1 shrink-0 w-[180px]">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-star text-[8px]"></i> Contexto</span>
+        <MultiSelect v-model="filtroContexto" :options="opcoesContexto" optionLabel="label" optionValue="value" placeholder="Todas as notas" display="chip" class="custom-dropdown-minimal w-full" />
       </div>
 
-        <div class="flex flex-col gap-2 flex-1 min-w-[200px]">
-        <label class="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Data de Criação</label>
-        <Calendar 
-            v-model="filtroData" 
-            selectionMode="range" 
-            :manualInput="false" 
-            placeholder="Todos os períodos" 
-            showIcon 
-            class="custom-calendar-filter" 
-        />
-        </div>
+      <div class="w-px h-8 bg-slate-100 dark:bg-slate-800 shrink-0"></div>
 
-      <Button icon="pi pi-filter-slash" @click="limparFiltros" class="!bg-slate-50 dark:!bg-slate-800 !text-slate-400 hover:!text-orange-500 !border-none !rounded-xl h-[46px] w-[46px] shrink-0 transition-colors" v-tooltip.top="'Limpar Filtros'" />
-    </div>
+      <div class="flex flex-col gap-1 shrink-0 w-[180px]">
+        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-calendar text-[8px]"></i> Data de Criação</span>
+        <Calendar v-model="filtroData" selectionMode="range" :manualInput="false" placeholder="Todos os períodos" class="custom-calendar-minimal w-full" />
+      </div>
+
+      <div class="shrink-0 ml-auto pr-2">
+        <Button @click="limparFiltros" icon="pi pi-filter-slash" class="!bg-slate-50 dark:!bg-slate-800 hover:!bg-rose-50 dark:hover:!bg-rose-500/10 !text-slate-400 hover:!text-rose-500 !border-none transition-all w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer" v-tooltip.top="'Limpar Filtros'" />
+      </div>
+
+    </div>  
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
       
@@ -474,7 +451,11 @@ onMounted(async () => {
             </p>
             
             <div class="flex items-center gap-3 pt-3 border-t border-slate-50 dark:border-slate-700/50 mt-auto">
-              <Avatar :label="gerarIniciais(getGestor(acao.gestor_id)?.nome)" shape="circle" class="!w-6 !h-6 !text-[9px] !font-black !bg-slate-100 dark:!bg-slate-700 !text-slate-600 dark:!text-slate-300" v-tooltip.top="getGestor(acao.gestor_id)?.nome || 'Sem gestor atribuído'" />
+              
+              <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm" v-tooltip.top="getGestor(acao.gestor_id)?.nome || acao.gestor_nome || 'Sem gestor'">
+                <img v-if="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" :src="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
+                <span v-else class="text-[9px] font-black text-slate-500 dark:text-slate-300">{{ gerarIniciais(getGestor(acao.gestor_id)?.nome || acao.gestor_nome) }}</span>
+              </div>
               
               <div v-if="obterSLA(acao)" class="px-2 py-1 rounded-md text-[9px] uppercase tracking-widest" :class="obterSLA(acao).cor">
                 {{ obterSLA(acao).texto }}
@@ -518,7 +499,11 @@ onMounted(async () => {
             </p>
             
             <div class="flex items-center gap-3 pt-3 border-t border-slate-50 dark:border-slate-700/50 mt-auto">
-              <Avatar :label="gerarIniciais(getGestor(acao.gestor_id)?.nome)" shape="circle" class="!w-6 !h-6 !text-[9px] !font-black !bg-slate-100 dark:!bg-slate-700 !text-slate-600 dark:!text-slate-300" v-tooltip.top="getGestor(acao.gestor_id)?.nome || 'Sem gestor atribuído'" />
+              
+              <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm" v-tooltip.top="getGestor(acao.gestor_id)?.nome || acao.gestor_nome || 'Sem gestor'">
+                <img v-if="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" :src="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
+                <span v-else class="text-[9px] font-black text-slate-500 dark:text-slate-300">{{ gerarIniciais(getGestor(acao.gestor_id)?.nome || acao.gestor_nome) }}</span>
+              </div>
               
               <div v-if="obterSLA(acao)" class="px-2 py-1 rounded-md text-[9px] uppercase tracking-widest" :class="obterSLA(acao).cor">
                 {{ obterSLA(acao).texto }}
@@ -559,7 +544,12 @@ onMounted(async () => {
             </h4>
             
             <div class="flex items-center gap-3 pt-3 mt-auto">
-              <Avatar :label="gerarIniciais(getGestor(acao.gestor_id)?.nome)" shape="circle" class="!w-6 !h-6 !text-[9px] !font-black !bg-slate-100 dark:!bg-slate-800 !text-slate-400" v-tooltip.top="getGestor(acao.gestor_id)?.nome || 'Sem gestor atribuído'" />
+              
+              <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm" v-tooltip.top="getGestor(acao.gestor_id)?.nome || acao.gestor_nome || 'Sem gestor'">
+                <img v-if="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" :src="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" class="w-full h-full object-cover opacity-60" @error="(e) => e.target.style.display = 'none'" />
+                <span v-else class="text-[9px] font-black text-slate-400 dark:text-slate-500">{{ gerarIniciais(getGestor(acao.gestor_id)?.nome || acao.gestor_nome) }}</span>
+              </div>
+
               <div class="ml-auto flex items-center gap-1.5 text-[9px] font-black text-emerald-500 uppercase tracking-widest">
                 <i class="pi pi-check"></i> Fechado
               </div>
@@ -599,16 +589,24 @@ onMounted(async () => {
           <div class="flex flex-col gap-1.5">
             <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Responsável</label>
             <Dropdown v-model="acaoAtual.gestor_id" :options="gestoresLista" optionLabel="nome" optionValue="id" filter placeholder="Atribuir gestor" class="custom-input !p-0">
+              
               <template #value="slotProps">
                 <div v-if="slotProps.value" class="flex items-center gap-2 px-3 py-2.5">
-                  <Avatar :label="gerarIniciais(getGestor(slotProps.value)?.nome)" shape="circle" class="!w-6 !h-6 !text-[9px] !font-black !bg-slate-200 dark:!bg-slate-700 !text-slate-600 dark:!text-slate-300" />
+                  <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-300 dark:border-slate-600 shadow-sm">
+                    <img v-if="getGestor(slotProps.value)?.avatar" :src="getGestor(slotProps.value)?.avatar" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
+                    <span v-else class="text-[9px] font-black text-slate-600 dark:text-slate-300">{{ gerarIniciais(getGestor(slotProps.value)?.nome) }}</span>
+                  </div>
                   <span class="text-sm font-bold">{{ getGestor(slotProps.value)?.nome }}</span>
                 </div>
                 <span v-else class="p-3.5 text-sm text-slate-400">Selecionar...</span>
               </template>
+              
               <template #item="slotProps">
                 <div class="flex items-center gap-3">
-                  <Avatar :label="gerarIniciais(slotProps.option.nome)" shape="circle" class="!w-8 !h-8 !text-[10px] !font-black !bg-slate-100 dark:!bg-slate-700 !text-slate-600 dark:!text-slate-300" />
+                  <div class="w-8 h-8 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-300 dark:border-slate-600 shadow-sm">
+                    <img v-if="slotProps.option.avatar" :src="slotProps.option.avatar" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
+                    <span v-else class="text-[10px] font-black text-slate-600 dark:text-slate-300">{{ gerarIniciais(slotProps.option.nome) }}</span>
+                  </div>
                   <div class="flex flex-col">
                     <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ slotProps.option.nome }}</span>
                     <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{{ slotProps.option.papel || 'Gestor' }}</span>
@@ -617,6 +615,7 @@ onMounted(async () => {
               </template>
             </Dropdown>
           </div>
+          
           <div class="grid grid-cols-2 gap-2">
             <div class="flex flex-col gap-1.5">
               <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Prioridade</label>
@@ -636,7 +635,7 @@ onMounted(async () => {
         
         <div class="pt-2 flex gap-3 w-full">
           <Button label="Cancelar" text class="flex-1 text-slate-500 font-bold" @click="dialogAcao = false" />
-          <Button v-if="temPermissao('acoes:editar')" label="Salvar Ação" icon="pi pi-check" :loading="saving" class="!bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !px-6 !py-3 !font-black !uppercase !text-[10px] tracking-widest hover:scale-105 transition-transform shadow-lg shadow-orange-500/20" @click="salvarAcao" />
+          <Button v-if="temPermissao('acoes:editar')" label="Salvar Ação" icon="pi pi-check" :loading="salvando" class="!bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !px-6 !py-3 !font-black !uppercase !text-[10px] tracking-widest hover:scale-105 transition-transform shadow-lg shadow-orange-500/20" @click="salvarAcao" />
         </div>
       </div>
     </Dialog>
@@ -645,43 +644,82 @@ onMounted(async () => {
 
 <style scoped lang="postcss">
 @reference "tailwindcss";
+
 .animate-fadein { animation: fadeIn 0.3s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 .animate-spin-slow { animation: spin 3s linear infinite; }
 
+/* ==========================================
+   🌟 FILTROS PADRONIZADOS
+   ========================================== */
+:deep(.custom-input-minimal),
+:deep(.custom-dropdown-minimal),
+:deep(.custom-calendar-minimal .p-inputtext) {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    color: inherit !important;
+    @apply text-[10px] font-black uppercase text-slate-800 dark:text-white w-full outline-none ring-0;
+}
+
+:deep(.custom-input-minimal::placeholder),
+:deep(.custom-calendar-minimal .p-inputtext::placeholder),
+:deep(.custom-dropdown-minimal .p-dropdown-label.p-placeholder),
+:deep(.custom-dropdown-minimal .p-multiselect-label.p-placeholder) {
+    @apply text-slate-300 dark:text-slate-600 font-black !important;
+}
+
+:deep(.p-inputtext:enabled:focus),
+:deep(.p-inputtext:enabled:hover),
+:deep(.p-dropdown:not(.p-disabled):focus),
+:deep(.p-dropdown:not(.p-disabled):hover),
+:deep(.p-multiselect:not(.p-disabled):focus),
+:deep(.p-multiselect:not(.p-disabled):hover) {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+:deep(.custom-dropdown-minimal .p-dropdown-label),
+:deep(.custom-dropdown-minimal .p-multiselect-label) {
+    @apply p-0 font-black flex items-center text-[10px] uppercase text-slate-800 dark:text-white !important;
+}
+
+:deep(.custom-dropdown-minimal .p-dropdown-trigger),
+:deep(.custom-dropdown-minimal .p-multiselect-trigger) {
+    @apply w-4 text-slate-400 !important;
+}
+
+/* O FUNDO AZUL (SKY) DOS MENUS DROP NO MODO ESCURO */
+:deep(.p-dropdown-panel), :deep(.p-datepicker), :deep(.p-multiselect-panel) {
+    @apply dark:bg-slate-800 dark:border-slate-700 shadow-xl !important;
+}
+:deep(.p-dropdown-panel .p-dropdown-item), :deep(.p-multiselect-panel .p-multiselect-item) {
+    @apply text-xs font-medium text-slate-600 dark:text-slate-300 !important;
+}
+:deep(.p-dropdown-panel .p-dropdown-item.p-highlight), :deep(.p-multiselect-panel .p-multiselect-item.p-highlight) {
+    @apply bg-sky-500/10 text-sky-600 dark:text-sky-400 !important;
+}
+
+/* O fundo azul das "Chips" nos filtros do Kanban de Ações */
+:deep(.custom-dropdown-minimal .p-multiselect-token) {
+    @apply bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest mr-1 mb-0;
+}
+
 /* Ajuste sutil para o MultiSelect (Padding interno dos chips) */
-:deep(.p-multiselect-label) {
-  @apply py-1.5 px-3 flex flex-wrap gap-1.5;
-}
-:deep(.p-multiselect-token) {
-  @apply bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-md px-2 py-0.5 text-[11px] font-bold;
+:deep(.custom-dropdown-minimal .p-multiselect-label) {
+  @apply py-0 px-0 flex flex-wrap gap-1.5 !important;
 }
 
-/* Padronização Total do Filtro de Calendário */
-:deep(.custom-calendar-filter) {
-  @apply w-full !h-[46px] flex items-center; 
-}
+/* Scroll invisível na barra horizontal */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-:deep(.custom-calendar-filter .p-inputtext) {
-  @apply bg-slate-50 dark:bg-slate-800 border-none rounded-xl shadow-sm 
-         text-[12px] font-bold text-slate-700 dark:text-slate-200 
-         w-full pl-4 pr-10 !h-[46px] flex items-center
-         outline-none focus:ring-2 focus:ring-orange-500/20 transition-all;
-  line-height: normal !important; /* Resolve o desalinhamento de altura */
-}
-
-:deep(.custom-calendar-filter .p-datepicker-trigger) {
-  @apply absolute right-0 top-0 h-full w-10 bg-transparent border-none 
-         text-slate-400 hover:text-orange-500 transition-colors 
-         rounded-r-xl p-0 m-0 flex items-center justify-center;
-}
-
-/* Remove a borda que o PrimeVue às vezes coloca no foco do span pai */
-:deep(.p-calendar.custom-calendar-filter:not(.p-calendar-disabled).p-focus > .p-inputtext) {
-    @apply ring-2 ring-orange-500/20;
-}
-
+/* ==========================================
+   📌 MODAIS, SCROLL E OUTROS COMPONENTES
+   ========================================== */
 :deep(.custom-dialog-no-header .p-dialog-header) { display: none !important; }
 :deep(.custom-dialog-no-header .p-dialog-content) { padding: 0 !important; @apply rounded-3xl bg-transparent; }
 

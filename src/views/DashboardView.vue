@@ -448,12 +448,12 @@ onMounted(() => {
         <div class="flex flex-wrap md:flex-nowrap gap-3">
           
           <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 h-10 shadow-sm transition-all focus-within:ring-2 focus-within:ring-orange-500/20">
-            <i class="pi pi-briefcase text-slate-400 text-xs"></i>
+            <i class="pi pi-briefcase text-slate-400 text-xs mr-2"></i>
             <Dropdown 
               v-model="companhiaSelecionada" 
               :options="listaCompanhias" 
               placeholder="Todas as Companhias" 
-              class="border-none shadow-none !text-[11px] !font-bold bg-transparent w-48 xl:w-56 custom-dropdown focus:shadow-none" 
+              class="custom-dropdown-minimal border-none shadow-none w-48 xl:w-56 bg-transparent" 
             />
             <i v-if="companhiaSelecionada && companhiaSelecionada !== 'Todas as Companhias'" 
                class="pi pi-times-circle text-slate-300 hover:text-rose-500 cursor-pointer ml-2 transition-colors" 
@@ -463,14 +463,14 @@ onMounted(() => {
           </div>
 
           <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 h-10 shadow-sm transition-all focus-within:ring-2 focus-within:ring-orange-500/20">
-            <i class="pi pi-calendar text-slate-400 text-xs"></i>
+            <i class="pi pi-calendar text-slate-400 text-xs mr-2"></i>
             <Calendar 
               v-model="datasFiltro" 
               selectionMode="range" 
               :manualInput="false" 
               placeholder="Filtrar por período..." 
               dateFormat="dd/mm/yy" 
-              class="border-none shadow-none !text-[11px] !font-bold bg-transparent w-48 xl:w-56 custom-calendar" 
+              class="custom-calendar-minimal border-none shadow-none w-48 xl:w-56 bg-transparent" 
               @hide="carregarDashboard" 
             />
             <i v-if="datasFiltro && datasFiltro[1]" 
@@ -527,7 +527,6 @@ onMounted(() => {
           </div>
 
           <div class="bg-white dark:bg-slate-900/80 p-6 xl:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
-            
             <div class="flex justify-between items-start mb-2">
               <div>
                 <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Polaridade</span>
@@ -627,50 +626,80 @@ onMounted(() => {
 
         </div>
 
-        <div v-if="alertasPrioritarios.length > 0" class="flex flex-col gap-4 animate-fadein mb-8">
+        <div v-if="alertasPrioritarios.length > 0" class="flex flex-col gap-5 animate-fadein mb-8">
           
-          <div class="flex items-center gap-2 mb-2">
-            <div class="w-1.5 h-4 bg-rose-500 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.4)]"></div>
-            <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-rose-500">
-              Atenção Prioritária (Maior Risco)
-            </h3>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center border border-rose-100 dark:border-rose-500/20 shadow-sm">
+                <i class="pi pi-shield text-rose-500 text-lg animate-pulse"></i>
+              </div>
+              <div>
+                <h3 class="text-xs font-black uppercase tracking-[0.2em] text-rose-500">
+                  Radar de Retenção
+                </h3>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Clientes a precisar de atenção imediata</p>
+              </div>
+            </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-3">
+          <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
             
             <div v-for="item in alertasPrioritarios" :key="item.nome" 
-                class="bg-white dark:bg-slate-900 border-l-4 border-rose-500 p-3.5 rounded-2xl shadow-sm hover:shadow-md transition-all group border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                class="bg-white dark:bg-slate-900 rounded-[2rem] p-5 flex flex-col justify-between border border-slate-100 dark:border-slate-800 shadow-xl shadow-rose-500/5 relative overflow-hidden group hover:border-rose-200 dark:hover:border-rose-500/30 transition-all duration-300 hover:-translate-y-1">
               
+              <div class="absolute -right-8 -top-8 w-32 h-32 bg-rose-500/5 rounded-full blur-[40px] pointer-events-none group-hover:bg-rose-500/20 transition-colors duration-500"></div>
+
               <div>
-                <div class="flex flex-wrap justify-between items-start gap-2 mb-3">
-                  <div class="bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 px-2 py-1 rounded-lg flex items-center gap-1.5 shrink-0">
-                    <span class="text-[8px] font-black text-rose-400 uppercase tracking-wider">NPS</span>
-                    <span class="text-sm font-black text-rose-600 leading-none">{{ item.nps }}</span>
+                <div class="flex justify-between items-start gap-3 mb-5 relative z-10">
+                  <div class="flex items-center gap-3 w-full">
+                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-100 to-rose-50 dark:from-rose-500/20 dark:to-rose-500/5 flex items-center justify-center text-rose-500 text-sm font-black shadow-sm shrink-0 border border-rose-200/50 dark:border-rose-500/20 group-hover:scale-110 transition-transform">
+                      {{ item.nome.charAt(0).toUpperCase() }}
+                    </div>
+                    <div class="flex flex-col overflow-hidden pr-2 w-full">
+                      <span class="text-[12px] font-black text-slate-800 dark:text-white truncate">{{ item.nome }}</span>
+                      <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 truncate flex items-center gap-1.5">
+                        <i class="pi pi-clock text-[8px]"></i> {{ formatarData(item.data_ultima_resposta) }}
+                      </span>
+                    </div>
                   </div>
+                </div>
+
+                <div class="mb-5 relative z-10">
+                  <div class="flex items-end gap-2 mb-2">
+                    <span class="text-3xl font-black text-rose-500 tracking-tighter leading-none drop-shadow-sm">{{ item.nps }}</span>
+                    <span class="text-[9px] font-black uppercase text-rose-400/70 tracking-widest mb-1 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-100 dark:border-rose-500/20">NPS</span>
+                  </div>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                    Sinal de risco detetado. Uma chamada rápida pode ser a chave para <strong class="text-rose-500 dark:text-rose-400 font-black">reverter este cenário</strong>.
+                  </p>
+                </div>
+
+                <div v-if="item.gestor" class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 rounded-xl border border-slate-100 dark:border-slate-700/50 mb-5 relative z-10">
                   
-                  <span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 text-[8px] font-black uppercase tracking-widest rounded-md shrink-0">
-                    {{ formatarData(item.data_ultima_resposta) }}
-                  </span>
-                </div>
+                  <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-white dark:border-slate-600 shadow-sm">
+                    <img 
+                      v-if="item.gestor_avatar" 
+                      :src="item.gestor_avatar" 
+                      class="w-full h-full object-cover"
+                      @error="(e) => e.target.style.display = 'none'"
+                    />
+                    <i v-else class="pi pi-user text-[8px] text-slate-500"></i>
+                  </div>
 
-                <div v-if="item.gestor" class="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 mb-2 truncate">
-                  Gestor: {{ item.gestor }}
+                  <div class="flex flex-col overflow-hidden">
+                    <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Responsável</span>
+                    <span class="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate mt-0.5">{{ item.gestor }}</span>
+                  </div>
                 </div>
-
-                <p class="text-[10px] text-slate-600 dark:text-slate-400 font-medium leading-relaxed mb-4">
-                  O cliente <strong class="text-slate-900 dark:text-white">{{ item.nome }}</strong> 
-                  registou um NPS de risco. Ação de retenção aconselhada.
-                </p>
               </div>
 
-              <div class="flex justify-between items-center mt-auto pt-2 border-t border-slate-100 dark:border-slate-800/50">
-                <span class="text-[8px] uppercase tracking-widest font-bold text-rose-500/60">Ação Requerida</span>
-                
+              <div class="mt-auto relative z-10">
                 <Button 
-                  icon="pi pi-chevron-right" 
-                  class="!bg-slate-100 dark:!bg-slate-800 !text-slate-600 !border-none !rounded-xl hover:!bg-rose-500 hover:!text-white transition-all shadow-sm !w-8 !h-8"
+                  label="Tratar Pendência" 
+                  icon="pi pi-arrow-right" 
+                  iconPos="right"
+                  class="w-full !bg-rose-50 hover:!bg-rose-500 !text-rose-600 hover:!text-white dark:!bg-rose-500/10 dark:hover:!bg-rose-500 dark:!text-rose-400 dark:hover:!text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !py-3.5 shadow-sm hover:shadow-rose-500/25 transition-all duration-300 hover:scale-[1.02]"
                   @click="abrirDetalhesCliente(item)"
-                  v-tooltip.top="'Abrir no Kanban'"
                 />
               </div>
 
@@ -920,13 +949,16 @@ onMounted(() => {
 <style scoped lang="postcss">
 @reference "tailwindcss";
 
+/* ==========================================
+   ✨ ANIMAÇÕES E COMPONENTES GERAIS
+   ========================================== */
 .animate-fadein { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
 .animate-ping { animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
 @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
 
-/* --- Slider Customizado (Resiliente ao Dark Mode) --- */
+/* --- Slider Customizado (Simulador de Retenção) --- */
 :deep(.custom-slider.p-slider) {
   @apply bg-slate-200 dark:bg-white/20 h-1.5 border-none;
 }
@@ -937,28 +969,74 @@ onMounted(() => {
   @apply bg-white dark:bg-slate-100 border-2 border-indigo-500 w-4 h-4 shadow-lg hover:bg-indigo-50 transition-colors focus:ring-4 focus:ring-indigo-500/30;
 }
 
-/* --- Calendário Customizado --- */
-:deep(.custom-calendar .p-inputtext) { 
-  border: none; 
-  @apply bg-transparent p-2 outline-none shadow-none text-slate-700 dark:text-slate-100 font-medium;
+/* ==========================================
+   🌟 FILTROS DO CABEÇALHO (TRANSPARENTES)
+   ========================================== */
+
+/* --- Calendário --- */
+:deep(.custom-calendar .p-inputtext),
+:deep(.custom-calendar-minimal .p-inputtext) { 
+  background-color: transparent !important;
+  border: none !important; 
+  box-shadow: none !important;
+  @apply outline-none text-slate-700 dark:text-slate-100 font-bold p-2;
 }
 
-/* --- Dropdown Customizado --- */
-:deep(.custom-dropdown) {
+/* --- Dropdown (Companhias) --- */
+:deep(.custom-dropdown),
+:deep(.custom-dropdown-minimal) {
+  background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  @apply bg-transparent outline-none text-slate-700 dark:text-slate-100 font-medium;
-}
-:deep(.custom-dropdown .p-dropdown-label) {
-  @apply p-2;
-}
-:deep(.custom-dropdown.p-focus) {
-  box-shadow: none !important;
 }
 
-/* Esconder Scrollbars */
+:deep(.custom-dropdown .p-inputtext),
+:deep(.custom-dropdown-minimal .p-inputtext) {
+  background-color: transparent !important;
+  @apply text-[11px] font-bold text-slate-700 dark:text-slate-100 p-2 outline-none border-none shadow-none !important;
+}
+
+/* Garante que o texto de Placeholder não fique invisível no modo escuro */
+:deep(.custom-dropdown .p-dropdown-label.p-placeholder),
+:deep(.custom-dropdown-minimal .p-dropdown-label.p-placeholder),
+:deep(.custom-calendar .p-inputtext::placeholder),
+:deep(.custom-calendar-minimal .p-inputtext::placeholder) {
+  @apply text-slate-400 dark:text-slate-500 !important;
+}
+
+/* ==========================================
+   🌙 MENUS SUSPENSOS (AZUL ESCURO / SKY)
+   ========================================== */
+:deep(.p-dropdown-panel), 
+:deep(.p-datepicker), 
+:deep(.p-multiselect-panel) {
+  /* Fundo azul marinho profundo para os menus no dark mode */
+  @apply dark:bg-slate-800 dark:border-slate-700 shadow-2xl !important;
+}
+
+/* Cores dos textos nos itens da lista e dias do calendário */
+:deep(.p-dropdown-panel .p-dropdown-items .p-dropdown-item),
+:deep(.p-datepicker table td > span) {
+  @apply text-xs font-medium dark:text-slate-300 !important;
+}
+
+/* Destaque em Azul Sky para o item selecionado */
+:deep(.p-dropdown-panel .p-dropdown-items .p-dropdown-item.p-highlight),
+:deep(.p-datepicker table td > span.p-highlight) {
+  @apply bg-sky-500/10 text-sky-600 dark:text-sky-400 !important;
+}
+
+/* Efeito de Hover (Passar o rato) nos itens */
+:deep(.p-dropdown-panel .p-dropdown-items .p-dropdown-item:not(.p-highlight):not(.p-disabled):hover),
+:deep(.p-datepicker table td > span:not(.p-highlight):not(.p-disabled):hover) {
+  @apply bg-slate-100 dark:bg-slate-700/50 !important;
+}
+
+/* ==========================================
+   📜 SCROLLBARS
+   ========================================== */
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { @apply bg-transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-slate-200 dark:bg-slate-700 rounded-full; }
-::-webkit-scrollbar { display: none; } /* Oculta a principal */
+::-webkit-scrollbar { display: none; } /* Oculta a scrollbar principal do ecrã */
 </style>

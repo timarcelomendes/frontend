@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
+import { FilterMatchMode } from 'primevue/api';
 import { temPermissao } from '../utils/permissoes';
 
 import DataTable from 'primevue/datatable';
@@ -59,12 +60,19 @@ const cargoForm = ref({ id: null, nome: '' });
 
 const dialogGestor = ref(false);
 const editandoGestor = ref(false);
-const gestorForm = ref({ id: null, nome: '', papel: '', email: '', teams_webhook: '' });
 
-// 👈 MÉTODOS PARA COMPANHIAS
 const dialogCompanhia = ref(false);
 const editandoCompanhia = ref(false);
 const companhiaForm = ref({ id: null, nome: '' });
+
+// 👇 VARIÁVEIS PARA A PESQUISA GLOBAL 👇
+const pesquisa = ref('');
+const filtrosTabela = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+});
+const atualizarFiltro = () => {
+  filtrosTabela.value.global.value = pesquisa.value;
+};
 
 const carregarTudo = async () => {
   loading.value = true;
@@ -124,7 +132,7 @@ const executarExclusao = async () => {
   try { 
     // Apaga na rota dinâmica com base na aba clicada
     await api.delete(`/${tipoExclusao.value}/${idParaExcluir.value}`); 
-    toast.add({ severity: 'success', summary: 'Removido', detail: 'Registo excluído com sucesso.' }); 
+    toast.add({ severity: 'success', summary: 'Removido', detail: 'Registo excluído com sucesso.', life: 3000 });
     dialogExclusao.value = false; 
     carregarTudo(); 
   } catch (error) { 
@@ -230,7 +238,14 @@ const abrirNovoGestor = () => {
   editandoGestor.value = false; 
   dialogGestor.value = true; 
 };
-const editarFichaGestor = (dados) => { gestorForm.value = { ...dados }; editandoGestor.value = true; dialogGestor.value = true; };
+
+const gestorForm = ref({ id: null, nome: '', papel: '', email: '', teams_webhook: '', avatar: '' });
+const editarFichaGestor = (dados) => { 
+  gestorForm.value = { ...dados, avatar: dados.avatar || '' }; 
+  editandoGestor.value = true; 
+  dialogGestor.value = true; 
+};
+
 const salvarGestor = async () => {
   if (!gestorForm.value.nome) return toast.add({ severity: 'warn', summary: 'Atenção', detail: 'O nome do gestor é obrigatório.', life: 3000 });
   saving.value = true;
@@ -296,7 +311,20 @@ onMounted(carregarTudo);
           <h1 class="text-4xl font-black tracking-tighter italic text-slate-900 dark:text-white">Contas <span class="text-orange-500">.</span></h1>
           <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">Gestão de Contas e Receita</p>
         </div>
-        <Button icon="pi pi-refresh" @click="carregarTudo" :loading="loading" class="w-10 h-10 !bg-white dark:!bg-slate-900 !text-slate-600 dark:!text-slate-300 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm hover:!bg-slate-50" />
+        
+        <div class="flex items-center gap-3 w-full md:w-auto">
+          <div class="relative w-full md:w-64">
+            <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <InputText 
+              v-model="pesquisa" 
+              @input="atualizarFiltro" 
+              placeholder="Pesquisar..." 
+              class="!pl-9 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !py-2 !rounded-xl w-full text-sm font-bold shadow-sm transition-all focus:!ring-2 focus:!ring-orange-500/20 outline-none" 
+            />
+          </div>
+          
+          <Button icon="pi pi-refresh" @click="carregarTudo" :loading="loading" class="w-10 h-10 shrink-0 !bg-white dark:!bg-slate-900 !text-slate-600 dark:!text-slate-300 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm hover:!bg-slate-50" v-tooltip.top="'Atualizar'" />
+        </div>
       </div>
 
       <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-2 sm:p-4">
@@ -307,7 +335,7 @@ onMounted(carregarTudo);
             <div class="pt-4">
               <div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
               
-              <DataTable :value="clientes" :paginator="true" :rows="10" dataKey="cliente_id" :loading="loading" class="p-datatable-sm custom-table" rowHover>
+              <DataTable :value="clientes" v-model:filters="filtrosTabela" :globalFilterFields="['nome', 'email', 'empresa', 'cargo', 'perfil_decisor']" :paginator="true" :rows="10" dataKey="cliente_id" :loading="loading" class="p-datatable-sm custom-table" rowHover>
                 
                 <Column header="Pessoa" sortable field="nome" style="min-width: 250px">
                   <template #body="{ data }">
@@ -364,9 +392,15 @@ onMounted(carregarTudo);
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-building text-orange-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Empresas</span></div></template>
             <div class="pt-4">
               <div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Nova Empresa" icon="pi pi-plus" @click="abrirNovaEmpresa" class="!bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
-              <DataTable :value="empresas" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
-                <Column field="nome" header="Conta" sortable>
-                  <template #body="{ data }"><span class="text-sm font-black text-slate-800 dark:text-white flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-orange-500"><i class="pi pi-building text-xs"></i></div>{{ data.nome }}</span></template>
+              <DataTable :value="empresas" v-model:filters="filtrosTabela" :globalFilterFields="['nome', 'companhia', 'gestor', 'segmento']" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
+                <Column field="nome" header="Nome" sortable>
+                  <template #body="{ data }">
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-3">
+                      <Avatar v-if="data.avatar" :image="data.avatar" shape="circle" class="w-7 h-7 shadow-sm shrink-0 border border-slate-200 dark:border-slate-700" />
+                      <i v-else class="pi pi-user text-sky-500"></i> 
+                      {{ data.nome }}
+                    </span>
+                  </template>
                 </Column>
 
                 <Column field="companhia" header="Companhia do Grupo">
@@ -407,7 +441,7 @@ onMounted(carregarTudo);
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-sitemap text-indigo-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Companhias</span></div></template>
             <div class="pt-4">
               <div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Nova Companhia" icon="pi pi-plus" @click="abrirNovaCompanhia" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
-              <DataTable :value="companhias" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
+              <DataTable :value="companhias" v-model:filters="filtrosTabela" :globalFilterFields="['nome']" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
                 <Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column>
                 <Column field="nome" header="Companhia do Grupo" sortable>
                   <template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-sitemap text-indigo-500"></i> {{ data.nome }}</span></template>
@@ -428,7 +462,7 @@ onMounted(carregarTudo);
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-star-fill text-sky-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Gestores</span></div></template>
             <div class="pt-4">
               <div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Novo Gestor" icon="pi pi-plus" @click="abrirNovoGestor" class="!bg-sky-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
-              <DataTable :value="gestores" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
+              <DataTable :value="gestores" v-model:filters="filtrosTabela" :globalFilterFields="['nome', 'papel', 'email']" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
                 <Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column>
                 <Column field="nome" header="Nome" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-user text-sky-500"></i> {{ data.nome }}</span></template></Column>
                 <Column field="papel" header="Papel / Função"><template #body="{ data }"><span class="text-[11px] font-medium text-slate-500 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-md border border-slate-100 dark:border-slate-700">{{ data.papel || 'Não definido' }}</span></template></Column>
@@ -448,7 +482,7 @@ onMounted(carregarTudo);
           <TabPanel>
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-chart-pie text-emerald-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Segmentos</span></div></template>
             <div class="pt-4"><div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Novo Segmento" icon="pi pi-plus" @click="abrirNovoSegmento" class="!bg-emerald-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
-            <DataTable :value="segmentos" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
+            <DataTable :value="segmentos" v-model:filters="filtrosTabela" :globalFilterFields="['nome']" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
               <Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column>
               <Column field="nome" header="Nome do Segmento" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300">{{ data.nome }}</span></template></Column>
               <Column alignFrozen="right" style="width: 100px">
@@ -463,7 +497,7 @@ onMounted(carregarTudo);
           </TabPanel>
           <TabPanel>
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-id-card text-rose-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Perfis</span></div></template>
-            <div class="pt-4"><div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Novo Perfil" icon="pi pi-plus" @click="abrirNovoPerfil" class="!bg-rose-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div><DataTable :value="perfis" :paginator="true" :rows="10" class="p-datatable-sm custom-table"><Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column><Column field="nome" header="Papel na Conta" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-user text-rose-500"></i> {{ data.nome }}</span></template></Column>
+            <div class="pt-4"><div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Novo Perfil" icon="pi pi-plus" @click="abrirNovoPerfil" class="!bg-rose-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div><DataTable :value="perfis" v-model:filters="filtrosTabela" :globalFilterFields="['nome']" :paginator="true" :rows="10" class="p-datatable-sm custom-table"><Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column><Column field="nome" header="Papel na Conta" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-user text-rose-500"></i> {{ data.nome }}</span></template></Column>
             <Column alignFrozen="right" style="width: 100px">
               <template #body="{ data }">
                 <div class="flex gap-2 justify-end">
@@ -476,7 +510,7 @@ onMounted(carregarTudo);
           </TabPanel>
           <TabPanel>
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-briefcase text-purple-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Cargos</span></div></template>
-            <div class="pt-4"><div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Novo Cargo" icon="pi pi-plus" @click="abrirNovoCargo" class="!bg-purple-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div><DataTable :value="cargos" :paginator="true" :rows="10" class="p-datatable-sm custom-table"><Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column><Column field="nome" header="Cargo" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-briefcase text-purple-500"></i> {{ data.nome }}</span></template></Column>
+            <div class="pt-4"><div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Novo Cargo" icon="pi pi-plus" @click="abrirNovoCargo" class="!bg-purple-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div><DataTable :value="cargos" v-model:filters="filtrosTabela" :globalFilterFields="['nome']" :paginator="true" :rows="10" class="p-datatable-sm custom-table"><Column field="id" header="ID" style="width: 80px" class="text-slate-400 text-xs font-bold"></Column><Column field="nome" header="Cargo" sortable><template #body="{ data }"><span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i class="pi pi-briefcase text-purple-500"></i> {{ data.nome }}</span></template></Column>
               <Column alignFrozen="right" style="width: 100px">
                 <template #body="{ data }">
                   <div class="flex gap-2 justify-end">
@@ -557,33 +591,95 @@ onMounted(carregarTudo);
         <template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900"><Button :label="editandoCompanhia ? 'Atualizar Companhia' : 'Criar Companhia'" @click="salvarCompanhia" :loading="saving" class="w-full !bg-indigo-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-transform" /></div></template>
       </Dialog>
 
-      <Dialog v-model:visible="dialogGestor" :header="editandoGestor ? 'Editar Gestor' : 'Novo Gestor'" modal :style="{width: '500px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
-        <div class="p-6 md:p-8 grid grid-cols-1 gap-4 bg-slate-50/50 dark:bg-slate-900">
-          <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome do Gestor *</label><InputText v-model="gestorForm.nome" class="custom-input w-full" /></div>
-          <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Papel / Função</label><InputText v-model="gestorForm.papel" class="custom-input w-full" /></div>
-          <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">E-mail de Contacto</label><InputText v-model="gestorForm.email" type="email" class="custom-input w-full" /></div>
+      <Dialog 
+        v-model:visible="dialogGestor" 
+        :header="editandoGestor ? 'Editar Perfil do Gestor' : 'Novo Gestor'" 
+        modal 
+        :style="{ width: '500px' }" 
+        class="custom-dialog"
+        :draggable="false"
+      >
+        <div class="p-6 md:p-8 flex flex-col gap-6 bg-white dark:bg-slate-900">
           
-          <div class="flex flex-col gap-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
-            <div class="flex items-center justify-between">
-              <label class="text-[10px] font-black uppercase text-indigo-500 ml-1 flex items-center gap-1.5">
-                <i class="pi pi-microsoft"></i> Webhook do Teams (Opcional)
-              </label>
+          <div class="flex flex-col items-center justify-center gap-4 py-4 bg-slate-50/50 dark:bg-slate-800/40 rounded-[2rem] border border-dashed border-slate-200 dark:border-slate-700">
+            <div class="relative group">
+              <div class="w-24 h-24 rounded-full overflow-hidden border-4 border-white dark:border-slate-700 shadow-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                <img 
+                  v-if="gestorForm.avatar" 
+                  :src="gestorForm.avatar" 
+                  @error="(e) => e.target.src = 'https://cdn-icons-png.flaticon.com/512/149/149071.png'"
+                  class="w-full h-full object-cover"
+                />
+                <i v-else class="pi pi-user text-4xl text-slate-400"></i>
+              </div>
               
-              <Button 
-                v-if="gestorForm.teams_webhook" 
-                label="Testar Conexão" 
-                icon="pi pi-send" 
-                class="!text-[9px] !font-bold !py-1 !px-2.5 !bg-indigo-50 dark:!bg-indigo-500/10 !text-indigo-600 dark:!text-indigo-400 !border-none hover:scale-105 transition-transform" 
-                :loading="testandoWebhook" 
-                @click="testarWebhook" 
+              <div class="absolute bottom-0 right-0 w-8 h-8 bg-sky-500 rounded-full border-4 border-white dark:border-slate-900 flex items-center justify-center shadow-lg">
+                <i class="pi pi-camera text-[10px] text-white"></i>
+              </div>
+            </div>
+
+            <div class="w-full px-6">
+              <label class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-2 text-center">URL da Imagem de Perfil</label>
+              <InputText 
+                v-model="gestorForm.avatar" 
+                placeholder="https://link-da-foto.com/foto.jpg" 
+                class="!bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl !py-2.5 !text-[11px] w-full text-center focus:!ring-2 focus:!ring-sky-500/20" 
               />
             </div>
-            
-            <InputText v-model="gestorForm.teams_webhook" class="custom-input w-full" placeholder="https://sua-empresa.webhook.office.com/..." />
-            <span class="text-[9px] text-slate-400 ml-1 mt-0.5 leading-tight">Cole a URL do canal do Teams para que este gestor receba o resumo diário de ações pendentes.</span>
+          </div>
+
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Nome Completo</label>
+                <InputText v-model="gestorForm.nome" placeholder="Ex: Marcelo Mendes" class="custom-input-alt" />
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Cargo / Papel</label>
+                <InputText v-model="gestorForm.papel" placeholder="Ex: Chapter Lead" class="custom-input-alt" />
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">E-mail de Trabalho</label>
+              <InputText v-model="gestorForm.email" placeholder="email@empresa.com" class="custom-input-alt" />
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 flex items-center gap-2">
+                <i class="pi pi-microsoft text-indigo-500 text-[9px]"></i> Teams Webhook
+              </label>
+              <div class="flex gap-2">
+                <InputText v-model="gestorForm.teams_webhook" placeholder="https://outlook.office.com/webhook/..." class="custom-input-alt flex-1" />
+                <Button 
+                  icon="pi pi-send" 
+                  @click="testarWebhook" 
+                  :loading="testandoWebhook" 
+                  v-tooltip.top="'Enviar teste'"
+                  class="!bg-indigo-50 dark:!bg-indigo-500/10 !text-indigo-600 dark:!text-indigo-400 !border-none !rounded-xl !w-12 hover:!bg-indigo-500 hover:!text-white transition-all shadow-sm" 
+                />
+              </div>
+            </div>
           </div>
         </div>
-        <template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900 flex gap-3 w-full"><Button label="Cancelar" text class="flex-1 font-bold text-[11px] text-slate-400" @click="dialogGestor = false" /><Button :label="editandoGestor ? 'Atualizar' : 'Criar'" @click="salvarGestor" :loading="saving" class="flex-1 !bg-sky-500 !text-white py-3 !rounded-xl font-bold text-[11px] uppercase tracking-widest shadow-xl border-none" /></div></template>
+
+        <template #footer>
+          <div class="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end items-center gap-4">
+            <button 
+              @click="dialogGestor = false" 
+              class="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            >
+              Cancelar
+            </button>
+            <Button 
+              label="Guardar Alterações" 
+              icon="pi pi-check" 
+              @click="salvarGestor" 
+              :loading="saving" 
+              class="!bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 !py-3 !px-8 !rounded-2xl !font-black !text-[11px] uppercase tracking-widest !border-none shadow-xl hover:scale-105 active:scale-95 transition-all" 
+            />
+          </div>
+        </template>
       </Dialog>
 
       <Dialog v-model:visible="dialogExclusao" header="Confirmar Exclusão" modal :style="{width: '400px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
