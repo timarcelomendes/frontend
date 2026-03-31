@@ -286,7 +286,7 @@ const dispararLote = async () => {
     toast.add({ 
       severity: 'info', 
       summary: 'Trabalho em curso! 🛠️', 
-      detail: `Estamos a processar o envio para ${total} contactos. Pode continuar a navegar, o sistema cuidará do resto.`, 
+      detail: `Estamos a processar o envio para ${total} contatos. Pode continuar a navegar, o sistema cuidará do resto.`, 
       life: 8000 
     });
     
@@ -420,7 +420,7 @@ onMounted(() => {
           Audiência <span class="text-orange-500">.</span>
         </h1>
         <div class="flex items-center gap-3 mt-2">
-          <p class="text-[13px] text-slate-500 dark:text-slate-400 font-medium">Gira a base de contactos e dispare pesquisas.</p>
+          <p class="text-[13px] text-slate-500 dark:text-slate-400 font-medium">Olhe a base de contatos e dispare pesquisas.</p>
           <Tag :value="'Ciclo: ' + regrasNPS.recorrencia_dias + ' dias'" icon="pi pi-sync" class="!bg-orange-50 dark:!bg-orange-500/10 !text-orange-600 dark:!text-orange-400 !text-[9px] !font-black uppercase tracking-widest border border-orange-200 dark:border-orange-500/20 !px-2" v-tooltip.top="'Tempo de carência configurado entre disparos para o mesmo cliente'" />
         </div>
       </div>

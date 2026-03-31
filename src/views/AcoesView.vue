@@ -18,8 +18,11 @@ const toast = useToast();
 
 const acoes = ref([]);
 const loading = ref(true);
-const regrasSLA = ref({ sla_detrator_dias: 2, sla_neutro_dias: 5, sla_promotor_dias: 7 });
-
+const regrasSLA = ref({ 
+  sla_detrator_dias: 2, 
+  sla_neutro_dias: 5, 
+  sla_promotor_dias: 7 
+});
 const route = useRoute();
 const router = useRouter();
 
@@ -166,8 +169,14 @@ const carregarEmpresas = async () => {
 const carregarRegrasSLA = async () => {
   try {
     const res = await api.get('/config/regras');
-    if (res.data) regrasSLA.value = res.data;
-  } catch (error) {}
+    if (res.data) {
+      if (res.data.sla_detrator_dias) regrasSLA.value.sla_detrator_dias = parseInt(res.data.sla_detrator_dias);
+      if (res.data.sla_neutro_dias)   regrasSLA.value.sla_neutro_dias = parseInt(res.data.sla_neutro_dias);
+      if (res.data.sla_promotor_dias) regrasSLA.value.sla_promotor_dias = parseInt(res.data.sla_promotor_dias);
+    }
+  } catch (error) {
+    console.error("Erro ao carregar regras de SLA:", error);
+  }
 };
 
 const carregarGestores = async () => {
@@ -211,8 +220,19 @@ const dialogAcao = ref(false);
 const salvando = ref(false);
 const acaoAtual = ref({});
 
-const abrirNovo = () => {
-  acaoAtual.value = { id: null, titulo: '', descricao: '', empresa_nome: '', empresa_id: null, companhia: '', gestor_id: null, prioridade: 'Média', status: 'Pendente' };
+const abrirNovaAcao = () => {
+  acaoAtual.value = { 
+    id: null, 
+    titulo: '', 
+    descricao: '', 
+    empresa_nome: '', 
+    empresa_id: null, 
+    companhia: '', 
+    gestor_id: null, 
+    prioridade: 'Média', 
+    status: 'Pendente',
+    contexto: 'promotor'
+  };
   dialogAcao.value = true;
 };
 
@@ -244,6 +264,19 @@ const salvarAcao = async () => {
   try {
     const emp = empresasDetalhes.value.find(e => (e.empresa || e.nome) === acaoAtual.value.empresa_nome);
     
+    // 👇 CÁLCULO DINÂMICO DO PRAZO (SLA) BASEADO NAS REGRAS DO BANCO
+    let dataPrazo = null;
+    if (!acaoAtual.value.id) {
+       const hoje = new Date();
+       let dias = regrasSLA.value.sla_promotor_dias; // Default
+       
+       if (acaoAtual.value.contexto === 'detrator') dias = regrasSLA.value.sla_detrator_dias;
+       else if (acaoAtual.value.contexto === 'neutro') dias = regrasSLA.value.sla_neutro_dias;
+       
+       hoje.setDate(hoje.getDate() + dias);
+       dataPrazo = hoje.toISOString();
+    }
+
     const payload = {
       titulo: acaoAtual.value.titulo,
       descricao: acaoAtual.value.descricao,
@@ -252,13 +285,14 @@ const salvarAcao = async () => {
       companhia: acaoAtual.value.companhia,
       prioridade: acaoAtual.value.prioridade,
       status: acaoAtual.value.status,
+      prazo_limite: dataPrazo || acaoAtual.value.prazo_limite, // 👈 Garante que o SLA é enviado ao banco
       resposta_id: acaoAtual.value.resposta_id || null
     };
 
     if (acaoAtual.value.id) {
-      await api.put(`/acoes/${acaoAtual.value.id}`, payload);
+      await api.put(`/api/acoes/${acaoAtual.value.id}`, payload);
     } else {
-      await api.post('/acoes', payload);
+      await api.post('/api/acoes', payload);
     }
     
     dialogAcao.value = false;
@@ -562,80 +596,104 @@ onMounted(async () => {
 
     <Menu ref="menuOpcoes" :model="menuItens" :popup="true" class="!rounded-xl !border-slate-200 dark:!border-slate-700 text-xs w-40" />
 
-    <Dialog v-model:visible="dialogAcao" :modal="true" :style="{width: '520px'}" :closable="false" class="custom-dialog-no-header">
-      <div class="bg-slate-900 p-6 flex justify-between items-center rounded-t-3xl">
-        <h2 class="text-lg font-black italic tracking-tight text-white">{{ acaoAtual.id ? 'Editar Ação' : 'Nova Ação' }}</h2>
-        <button @click="dialogAcao = false" class="text-slate-400 hover:text-white p-2"><i class="pi pi-times"></i></button>
+    <Dialog 
+      v-model:visible="dialogAcao" 
+      :modal="true" 
+      :style="{width: '550px'}" 
+      :closable="false" 
+      class="custom-dialog-no-header"
+    >
+      <div class="bg-slate-900 p-6 flex justify-between items-center rounded-t-[2rem]">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-500 shadow-lg shadow-orange-500/10">
+            <i :class="acaoAtual.id ? 'pi pi-pencil' : 'pi pi-plus-circle'" class="text-lg"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-black italic tracking-tight text-white leading-none">
+              {{ acaoAtual.id ? 'Editar Plano' : 'Novo Plano de Ação' }}
+            </h2>
+            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Gestão de Close-the-Loop</p>
+          </div>
+        </div>
+        <button @click="dialogAcao = false" class="text-slate-500 hover:text-white p-2 transition-all hover:bg-white/10 rounded-full">
+          <i class="pi pi-times"></i>
+        </button>
       </div>
       
-      <div class="p-6 space-y-5 bg-white dark:bg-slate-900 rounded-b-3xl">
+      <div class="p-8 space-y-6 bg-white dark:bg-slate-900 rounded-b-[2rem] border-x border-b border-slate-100 dark:border-slate-800">
+        
         <div class="flex flex-col gap-1.5">
-          <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Título da Ação *</label>
-          <InputText v-model="acaoAtual.titulo" class="custom-input w-full font-bold" placeholder="Ex: Analisar feedback negativo do cliente" />
+          <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Título do Plano de Ação *</label>
+          <InputText v-model="acaoAtual.titulo" class="custom-input w-full font-bold" placeholder="Ex: Resolver pendência técnica no checkout" />
         </div>
         
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-5">
           <div class="flex flex-col gap-1.5">
-            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Empresa *</label>
-            <Dropdown v-model="acaoAtual.empresa_nome" :options="empresasLista" editable filter placeholder="Selecionar/Digitar" class="custom-input !p-0" @change="aoMudarEmpresa" />
+            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Conta (Empresa) *</label>
+            <Dropdown v-model="acaoAtual.empresa_nome" :options="empresasLista" editable filter placeholder="Selecionar..." class="custom-input !p-0" @change="aoMudarEmpresa" />
           </div>
           <div class="flex flex-col gap-1.5">
-            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Companhia</label>
+            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Grupo (Companhia)</label>
             <Dropdown v-model="acaoAtual.companhia" :options="companhiasLista" editable filter placeholder="Opcional" class="custom-input !p-0" />
           </div>
         </div>
         
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-5">
           <div class="flex flex-col gap-1.5">
-            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Responsável</label>
-            <Dropdown v-model="acaoAtual.gestor_id" :options="gestoresLista" optionLabel="nome" optionValue="id" filter placeholder="Atribuir gestor" class="custom-input !p-0">
-              
+            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Gestor Responsável</label>
+            <Dropdown v-model="acaoAtual.gestor_id" :options="gestoresLista" optionLabel="nome" optionValue="id" filter placeholder="Atribuir..." class="custom-input !p-0">
               <template #value="slotProps">
                 <div v-if="slotProps.value" class="flex items-center gap-2 px-3 py-2.5">
-                  <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-300 dark:border-slate-600 shadow-sm">
-                    <img v-if="getGestor(slotProps.value)?.avatar" :src="getGestor(slotProps.value)?.avatar" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
-                    <span v-else class="text-[9px] font-black text-slate-600 dark:text-slate-300">{{ gerarIniciais(getGestor(slotProps.value)?.nome) }}</span>
+                  <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center shrink-0 border border-slate-300 shadow-sm">
+                    <img v-if="getGestor(slotProps.value)?.avatar" :src="getGestor(slotProps.value)?.avatar" class="w-full h-full object-cover" />
+                    <span v-else class="text-[9px] font-black text-slate-600">{{ gerarIniciais(getGestor(slotProps.value)?.nome) }}</span>
                   </div>
-                  <span class="text-sm font-bold">{{ getGestor(slotProps.value)?.nome }}</span>
+                  <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ getGestor(slotProps.value)?.nome }}</span>
                 </div>
-                <span v-else class="p-3.5 text-sm text-slate-400">Selecionar...</span>
-              </template>
-              
-              <template #item="slotProps">
-                <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-300 dark:border-slate-600 shadow-sm">
-                    <img v-if="slotProps.option.avatar" :src="slotProps.option.avatar" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
-                    <span v-else class="text-[10px] font-black text-slate-600 dark:text-slate-300">{{ gerarIniciais(slotProps.option.nome) }}</span>
-                  </div>
-                  <div class="flex flex-col">
-                    <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ slotProps.option.nome }}</span>
-                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{{ slotProps.option.papel || 'Gestor' }}</span>
-                  </div>
-                </div>
+                <span v-else class="p-3.5 text-sm text-slate-400 italic">Selecionar gestor</span>
               </template>
             </Dropdown>
           </div>
           
-          <div class="grid grid-cols-2 gap-2">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Prioridade</label>
-              <Dropdown v-model="acaoAtual.prioridade" :options="['Alta', 'Média', 'Baixa']" class="custom-input !p-0" />
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Status</label>
-              <Dropdown v-model="acaoAtual.status" :options="['Pendente', 'Em Andamento', 'Concluído']" class="custom-input !p-0" />
-            </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase tracking-widest text-orange-500 ml-1 flex items-center gap-1.5">
+               <i class="pi pi-stopwatch"></i> Tipo de SLA (Ciclo)
+            </label>
+            <Dropdown v-model="acaoAtual.contexto" :options="opcoesContexto" optionLabel="label" optionValue="value" class="custom-input !p-0" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-5">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Prioridade Crítica</label>
+            <Dropdown v-model="acaoAtual.prioridade" :options="['Alta', 'Média', 'Baixa']" class="custom-input !p-0" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Fase do Workflow</label>
+            <Dropdown v-model="acaoAtual.status" :options="['Pendente', 'Em Andamento', 'Concluído']" class="custom-input !p-0" />
           </div>
         </div>
         
         <div class="flex flex-col gap-1.5">
-          <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Plano de Ação (Notas / Detalhes)</label>
-          <Textarea v-model="acaoAtual.descricao" rows="4" class="custom-input w-full resize-none" placeholder="Descreva os passos que precisam ser tomados..." />
+          <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Detalhamento e Notas Internas</label>
+          <Textarea v-model="acaoAtual.descricao" rows="3" class="custom-input w-full resize-none" placeholder="Descreva os próximos passos ou observações..." />
         </div>
         
-        <div class="pt-2 flex gap-3 w-full">
-          <Button label="Cancelar" text class="flex-1 text-slate-500 font-bold" @click="dialogAcao = false" />
-          <Button v-if="temPermissao('acoes:editar')" label="Salvar Ação" icon="pi pi-check" :loading="salvando" class="!bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !px-6 !py-3 !font-black !uppercase !text-[10px] tracking-widest hover:scale-105 transition-transform shadow-lg shadow-orange-500/20" @click="salvarAcao" />
+        <div class="pt-6 flex gap-4 w-full border-t border-slate-50 dark:border-slate-800">
+          <Button 
+            label="Descartar Alterações" 
+            text 
+            class="flex-1 !text-slate-400 !font-black !uppercase !text-[10px] !tracking-[0.15em]" 
+            @click="dialogAcao = false" 
+          />
+          <Button 
+            v-if="temPermissao('acoes:editar') || temPermissao('acoes:criar')" 
+            :label="acaoAtual.id ? 'Atualizar Registro' : 'Lançar Nova Ação'" 
+            icon="pi pi-check" 
+            :loading="salvando" 
+            class="flex-1 !bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !px-6 !py-4 !font-black !uppercase !text-[10px] !tracking-[0.15em] shadow-lg shadow-orange-500/20 hover:scale-[1.02] active:scale-100 transition-all" 
+            @click="salvarAcao" 
+          />
         </div>
       </div>
     </Dialog>
