@@ -35,7 +35,8 @@ const config = ref({
   client_secret: '',
   email_remetente: '',
   base_url_frontend: window.location.origin,
-  refresh_token: null
+  refresh_token: null,
+  envios_ativos: true
 });
 
 // --- ESTADO: INTELIGÊNCIA ARTIFICIAL (MAGIC AI) ---
@@ -186,16 +187,21 @@ const carregarDadosConfig = async () => {
   }
 };
 
-const salvarConfiguracoes = async () => {
+const salvarConfigEmail = async () => { // Pode ter outro nome no seu ficheiro
   loading.value = true;
   try {
-    const payload = { ...config.value };
-    delete payload.base_url_frontend; 
-    await api.post('/config/email', payload);
-    toast.add({ severity: 'success', summary: 'Guardado', detail: 'Configurações salvas no banco.', life: 3000 });
-    carregarDadosConfig();
+    await api.post('/config/email', {
+      tenant_id: config.value.tenant_id,
+      client_id: config.value.client_id,
+      client_secret: config.value.client_secret,
+      email_remetente: config.value.email_remetente,
+      base_url_frontend: config.value.base_url_frontend,
+      envios_ativos: config.value.envios_ativos 
+    });
+    
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Configurações de e-mail atualizadas!', life: 3000 });
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao salvar no banco.', life: 5000 });
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao salvar configurações.' });
   } finally {
     loading.value = false;
   }
@@ -759,6 +765,26 @@ onMounted(() => {
           </div>
         </template>
         <div class="space-y-8 animate-fadein py-4 ">
+
+          <div class="mb-8 p-6 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-between shadow-sm">
+            <div>
+              <h3 class="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <i class="pi pi-power-off" :class="config.envios_ativos ? 'text-emerald-500' : 'text-rose-500'"></i> 
+                Motor de Disparos de E-mail
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium max-w-xl">
+                Se desligar esta chave, <span class="text-rose-500 font-bold">NENHUM e-mail de NPS será enviado</span>. 
+                O sistema continuará a calcular as datas, mas as mensagens ficarão retidas até que o motor seja reativado.
+              </p>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <InputSwitch v-model="config.envios_ativos" @change="salvarConfigEmail" />
+              
+              <span class="text-[10px] font-black uppercase tracking-widest" :class="config.envios_ativos ? 'text-emerald-500' : 'text-rose-500'">
+                {{ config.envios_ativos ? 'ATIVADO' : 'PAUSADO' }}
+              </span>
+            </div>
+          </div>
           
           <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 pb-6 border-b border-slate-50 dark:border-slate-800 gap-4">
