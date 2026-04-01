@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
 
@@ -8,13 +8,13 @@ import ProgressBar from 'primevue/progressbar';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import InputSwitch from 'primevue/inputswitch';
-import MultiSelect from 'primevue/multiselect'; // 🟢 Importado
+import MultiSelect from 'primevue/multiselect';
 
 const toast = useToast();
 
 // --- ESTADOS DO WIZARD ---
 const passoAtual = ref(1); 
-const tipoImportacao = ref('clientes'); 
+const tipoImportacao = ref('clientes'); // 'clientes' | 'respostas'
 const fileInput = ref(null);
 const ficheiroSelecionado = ref(null);
 const isProcessando = ref(false);
@@ -22,10 +22,11 @@ const progresso = ref(0);
 
 // --- ESTADOS DE DADOS & CHAVES DINÂMICAS ---
 const dadosPreview = ref([]);
-const colunasDisponiveis = ref([]); // 🟢 Guarda os cabeçalhos do Excel
-const chavesCliente = ref([]); // 🟢 Chaves escolhidas pelo usuário para identificar o cliente
-const chavesResposta = ref([]); // 🟢 Chaves para evitar duplicar respostas (ex: data)
+const colunasDisponiveis = ref([]); 
+const chavesCliente = ref([]); 
+const chavesResposta = ref([]); 
 const configuracaoImportacao = ref({ overwrite: true });
+const ignorarErros = ref(false);
 const resumoFinal = ref(null);
 
 // ==========================================
@@ -36,377 +37,403 @@ const baixarTemplate = () => {
 
   if (tipoImportacao.value === 'clientes') {
     cabecalhos = ['nome', 'email', 'empresa', 'perfil_decisor', 'segmento', 'telefone', 'cargo', 'valor_contrato', 'ativo'];
-    exemplo = ['João Silva', 'joao.silva@empresa.com', 'Stefanini', 'Decisor', 'Tecnologia', '11999999999', 'Diretor', '150000.00', 'true'];
-    nomeArquivo = 'modelo_clientes.csv';
+    exemplo = ['João Silva', 'joao@empresa.com', 'Empresa X', 'Decisor', 'Varejo', '11999999999', 'Diretor', '15000', 'true'];
+    nomeArquivo = 'template_clientes.csv';
   } else {
-    cabecalhos = ['email_cliente', 'nota', 'motivo', 'data_resposta'];
-    exemplo = ['joao.silva@empresa.com', '10', 'Excelente plataforma!', '2026-03-15'];
-    nomeArquivo = 'modelo_respostas.csv';
+    cabecalhos = ['email', 'empresa', 'data_resposta', 'nota', 'comentario'];
+    exemplo = ['joao@empresa.com', 'Empresa X', '2023-10-27', '9', 'Ótimo serviço!'];
+    nomeArquivo = 'template_respostas.csv';
   }
-  
-  const conteudoCSV = [cabecalhos.join(','), exemplo.join(',')].join('\n');
-  const blob = new Blob([conteudoCSV], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.setAttribute('href', URL.createObjectURL(blob));
-  link.setAttribute('download', nomeArquivo);
+
+  const csvContent = "data:text/csv;charset=utf-8," + cabecalhos.join(",") + "\n" + exemplo.join(",");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", nomeArquivo);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  
-  toast.add({ severity: 'success', summary: 'Download Iniciado', detail: 'O modelo CSV foi baixado.', life: 3000 });
 };
 
 // ==========================================
-// 🧠 LÓGICA DE VALIDAÇÃO DINÂMICA
+// 🛡️ VALIDAÇÃO DINÂMICA ROBUSTA
 // ==========================================
-const revalidarDados = () => {
-  dadosPreview.value = dadosPreview.value.map(item => {
-    let valido = true;
-    if (tipoImportacao.value === 'clientes') {
-      if (!item.nome || !item.email || !item.empresa) valido = false;
-    } else {
-      // Importação de Respostas: Valida usando as chaves que o usuário escolheu no ecrã!
-      if (chavesCliente.value.length === 0) valido = false;
-      for (const key of chavesCliente.value) {
-        if (!item[key] || item[key].toString().trim() === '') valido = false;
-      }
-      if (item.nota === undefined || item.nota === '') valido = false;
+const getMotivoErro = (row) => {
+  // 1. Erros já vindos do Backend (se aplicável)
+  if (row.detalhe) return row.detalhe;
+  if (row.tipo_pendencia) return 'Pendência: ' + row.tipo_pendencia;
+
+  // 2. Validação Específica para CLIENTES
+  if (tipoImportacao.value === 'clientes') {
+    if (!row.email || String(row.email).trim() === '') return "Email ausente (Obrigatório)";
+    if (!row.nome || String(row.nome).trim() === '') return "Nome ausente (Obrigatório)";
+    if (!row.empresa || String(row.empresa).trim() === '') return "Empresa não vinculada";
+  } 
+  
+  // 3. Validação Específica para RESPOSTAS (NPS)
+  else if (tipoImportacao.value === 'respostas') {
+    if (!row.email || String(row.email).trim() === '') return "Email ausente (Obrigatório)";
+    if (!row.empresa || String(row.empresa).trim() === '') return "Empresa não vinculada";
+    
+    if (row.nota === null || row.nota === undefined || String(row.nota).trim() === '') return "Nota NPS ausente";
+    
+    const notaNum = Number(row.nota);
+    if (isNaN(notaNum) || notaNum < 0 || notaNum > 10) return "A nota deve ser entre 0 e 10";
+    
+    if (!row.data_resposta || String(row.data_resposta).trim() === '') return "Data de resposta ausente";
+  }
+
+  // 4. Validação Dinâmica de Chaves escolhidas pelo utilizador
+  const chavesSelecionadas = tipoImportacao.value === 'clientes' 
+    ? chavesCliente.value 
+    : [...chavesCliente.value, ...chavesResposta.value];
+
+  if (chavesSelecionadas && chavesSelecionadas.length > 0) {
+    const chavesFaltando = chavesSelecionadas.filter(chave => {
+      const valor = row[chave];
+      return valor === null || valor === undefined || String(valor).trim() === '';
+    });
+    
+    if (chavesFaltando.length > 0) {
+      return `Falta a chave: ${chavesFaltando.join(', ')}`;
     }
-    return { ...item, valido };
-  });
+  }
+
+  return null;
 };
 
-// Se o utilizador alterar os Dropdowns de Chave, a tabela revalida imediatamente.
-watch([chavesCliente, chavesResposta], () => {
-  if (dadosPreview.value.length > 0) revalidarDados();
+const isRegistroValido = (row) => getMotivoErro(row) === null;
+
+// Filtros e Scorecards
+const mostrarApenasInvalidos = ref(false);
+
+const registrosComErro = computed(() => dadosPreview.value.filter(row => !isRegistroValido(row)));
+const errosCount = computed(() => registrosComErro.value.length);
+const prontosCount = computed(() => dadosPreview.value.length - errosCount.value);
+
+const dadosFiltrados = computed(() => {
+  if (mostrarApenasInvalidos.value) return registrosComErro.value;
+  return dadosPreview.value;
 });
 
-const colunasExtra = computed(() => {
-  if (!colunasDisponiveis.value.length) return [];
-  const ignorarClientes = ['nome', 'email', 'empresa', 'valido'];
-  const ignorarRespostas = ['nota', 'valido', ...chavesCliente.value, ...chavesResposta.value];
-  
-  const ignorar = tipoImportacao.value === 'clientes' ? ignorarClientes : ignorarRespostas;
-  return colunasDisponiveis.value.filter(c => !ignorar.includes(c));
-});
-
-const totalInvalidos = computed(() => dadosPreview.value.filter(d => !d.valido).length);
+const rowClass = (data) => {
+  return isRegistroValido(data) ? '' : '!bg-rose-50/50 dark:!bg-rose-500/5';
+};
 
 // ==========================================
-// PASSO 1: SELEÇÃO E PREVIEW
+// 🔄 PROCESSAMENTO DO FICHEIRO
 // ==========================================
-const selecionarFicheiro = () => fileInput.value.click();
+const triggerFileInput = () => { fileInput.value.click(); };
 
-const aoMudarFicheiro = async (event) => {
+const processarFicheiro = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
 
-  const tiposValidos = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv', 'application/vnd.ms-excel'];
-  if (!tiposValidos.includes(file.type) && !file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
-    toast.add({ severity: 'error', summary: 'Ficheiro Inválido', detail: 'Usa apenas .xlsx ou .csv', life: 3000 });
-    return;
-  }
-
   ficheiroSelecionado.value = file;
-  await gerarPreview(file);
-};
-
-const gerarPreview = async (file) => {
   isProcessando.value = true;
   progresso.value = 30;
+
   const formData = new FormData();
   formData.append('file', file);
 
   try {
     const response = await api.post('/importar/preview', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (p) => progresso.value = Math.round((p.loaded * 100) / p.total)
+      headers: { 'Content-Type': 'multipart/form-data' }
     });
-
-    const dadosBase = response.data;
-    if (dadosBase.length > 0) {
-      colunasDisponiveis.value = Object.keys(dadosBase[0]);
-      
-      // 🟢 Auto-seleção inteligente de Chaves (Para facilitar a vida do utilizador)
-      if (tipoImportacao.value === 'respostas') {
-        const mailKey = colunasDisponiveis.value.find(c => c.toLowerCase().includes('email') || c.toLowerCase().includes('cliente'));
-        if (mailKey) chavesCliente.value = [mailKey];
-        
-        const dateKey = colunasDisponiveis.value.find(c => c.toLowerCase().includes('data'));
-        if (dateKey) chavesResposta.value = [dateKey];
-      }
+    
+    dadosPreview.value = response.data;
+    if (dadosPreview.value.length > 0) {
+      colunasDisponiveis.value = Object.keys(dadosPreview.value[0]).filter(k => k !== 'tipo_pendencia' && k !== 'detalhe');
     }
+    
+    progresso.value = 100;
+    setTimeout(() => { passoAtual.value = 2; isProcessando.value = false; }, 500);
 
-    dadosPreview.value = dadosBase;
-    revalidarDados();
-
-    toast.add({ severity: 'info', summary: 'Leitura Concluída', detail: `Foram encontrados ${dadosPreview.value.length} registos.`, life: 3000 });
-    passoAtual.value = 2;
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Falha na Leitura', detail: 'Verifique se as colunas estão corretas.', life: 5000 });
-    removerFicheiro();
-  } finally { isProcessando.value = false; }
+    console.error("Erro na pré-visualização:", error);
+    toast.add({ severity: 'error', summary: 'Erro de Leitura', detail: 'Não foi possível ler o ficheiro. Verifique o formato.' });
+    isProcessando.value = false;
+  }
 };
 
-const removerFicheiro = () => {
+// ==========================================
+// 🚀 ENVIO FINAL PARA O BACKEND
+// ==========================================
+const enviarParaBackend = async () => {
+  if (errosCount.value > 0 && !ignorarErros.value) {
+    toast.add({ severity: 'warn', summary: 'Ação Necessária', detail: `Existem ${errosCount.value} registos inválidos. Corrija-os ou ative a opção de ignorá-los.`, life: 5000 });
+    return;
+  }
+
+  const dadosFinais = ignorarErros.value 
+    ? dadosPreview.value.filter(row => isRegistroValido(row)) 
+    : dadosPreview.value;
+
+  if (dadosFinais.length === 0) {
+    toast.add({ severity: 'error', summary: 'Operação Abortada', detail: 'Não há registos válidos para importar.' });
+    return;
+  }
+
+  isProcessando.value = true;
+  progresso.value = 20;
+
+  try {
+    const payload = {
+      tipo: tipoImportacao.value,
+      dados: dadosFinais,
+      chaves_cliente: chavesCliente.value, 
+      chaves_resposta: tipoImportacao.value === 'respostas' ? chavesResposta.value : [],
+      configuracao: configuracaoImportacao.value
+    };
+
+    progresso.value = 60;
+    const response = await api.post('/importar/processar', payload);
+
+    progresso.value = 100;
+    resumoFinal.value = {
+        inseridos: response.data.inseridos || dadosFinais.length,
+        erros: response.data.erros || 0,
+        detalhes: response.data.detalhes || []
+    };
+    
+    setTimeout(() => { passoAtual.value = 3; isProcessando.value = false; }, 600);
+    toast.add({ severity: 'success', summary: 'Importação Concluída', detail: 'Dados gravados com sucesso!' });
+
+  } catch (error) {
+    console.error("Erro na importação:", error);
+    toast.add({ severity: 'error', summary: 'Erro do Servidor', detail: error.response?.data?.detail || 'Ocorreu um erro crítico ao processar no banco de dados.' });
+    isProcessando.value = false;
+  }
+};
+
+const reiniciar = () => {
+  passoAtual.value = 1;
   ficheiroSelecionado.value = null;
   dadosPreview.value = [];
   colunasDisponiveis.value = [];
   chavesCliente.value = [];
   chavesResposta.value = [];
-  passoAtual.value = 1;
-  if (fileInput.value) fileInput.value.value = '';
-};
-
-// ==========================================
-// PASSO 2: CONFIRMAÇÃO FINAL
-// ==========================================
-const confirmarImportacaoBase = async () => {
-  isProcessando.value = true;
-  try {
-    // 🟢 O Payload agora carrega as chaves escolhidas
-    const payload = { 
-      overwrite: configuracaoImportacao.value.overwrite, 
-      chaves_cliente: chavesCliente.value,
-      chaves_resposta: chavesResposta.value,
-      dados: dadosPreview.value 
-    };
-    
-    const endpoint = tipoImportacao.value === 'clientes' 
-      ? '/importar/confirmar' 
-      : '/importar/respostas'; 
-
-    const response = await api.post(endpoint, payload);
-    
-    if (response.data.status === 'success') {
-      resumoFinal.value = response.data.resultado;
-      passoAtual.value = 3;
-      toast.add({ severity: 'success', summary: 'Importação Concluída', detail: 'Base de dados atualizada.', life: 3000 });
-    }
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro Crítico', detail: error.response?.data?.detail || 'Falha ao gravar no banco de dados.', life: 5000 });
-  } finally { isProcessando.value = false; }
-};
-
-const reiniciarProcesso = () => {
-  removerFicheiro();
   resumoFinal.value = null;
-  passoAtual.value = 1;
+  ignorarErros.value = false;
+  mostrarApenasInvalidos.value = false;
+  if (fileInput.value) fileInput.value.value = '';
 };
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto animate-fadein px-4 md:px-8 py-4">
+  <div class="max-w-[1400px] mx-auto animate-fadein p-4 lg:p-8">
     
-    <div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+    <div class="flex flex-col md:flex-row md:justify-between md:items-end mb-8 gap-4">
       <div>
         <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight italic">
-          Importação <span class="text-orange-500">.</span>
+          Importação de Dados <span class="text-orange-500">.</span>
         </h1>
-        <p class="text-[12px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Gestão de Base em Massa</p>
-      </div>
-      
-      <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-300">
-        <span :class="{'text-orange-500': passoAtual >= 1}">1. <span class="hidden sm:inline">Upload</span></span>
-        <i class="pi pi-angle-right"></i>
-        <span :class="{'text-orange-500': passoAtual >= 2}">2. <span class="hidden sm:inline">Mapeamento & Validação</span></span>
-        <i class="pi pi-angle-right"></i>
-        <span :class="{'text-orange-500': passoAtual === 3}">3. <span class="hidden sm:inline">Conclusão</span></span>
+        <p class="text-[12px] text-slate-500 font-medium mt-1">Carregamento robusto de Clientes e Respostas NPS.</p>
       </div>
     </div>
 
-    <div v-if="passoAtual === 1" class="bg-white dark:bg-slate-900 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden animate-fadein">
+    <div v-if="passoAtual === 1" class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
       
-      <div v-if="!isProcessando" class="flex flex-col sm:flex-row gap-4 mb-10 justify-center">
-        <div @click="tipoImportacao = 'clientes'" 
-             class="flex-1 max-w-[250px] cursor-pointer rounded-3xl p-5 border-2 transition-all flex items-center gap-4"
-             :class="tipoImportacao === 'clientes' ? 'border-orange-500 bg-orange-50 dark:bg-orange-500/10' : 'border-slate-100 dark:border-slate-800 bg-transparent opacity-60 hover:opacity-100'">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="tipoImportacao === 'clientes' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'">
-            <i class="pi pi-users text-lg"></i>
+      <h3 class="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white mb-4">1. O que deseja importar?</h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div 
+          @click="tipoImportacao = 'clientes'"
+          :class="['p-6 rounded-[1.5rem] border-2 cursor-pointer transition-all', tipoImportacao === 'clientes' ? 'border-orange-500 bg-orange-50/30 dark:bg-orange-500/10 shadow-md ring-4 ring-orange-500/10' : 'border-slate-100 dark:border-slate-800 hover:border-orange-300 bg-white dark:bg-slate-900']"
+        >
+          <div class="flex items-center gap-4 mb-3">
+             <div :class="['w-12 h-12 rounded-full flex items-center justify-center text-xl shrink-0 transition-colors', tipoImportacao === 'clientes' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500']"><i class="pi pi-users"></i></div>
+             <div>
+               <h3 class="font-black text-slate-800 dark:text-white text-lg">Base de Clientes</h3>
+               <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Contactos e Empresas</p>
+             </div>
           </div>
-          <div>
-            <h4 class="text-[11px] font-black uppercase tracking-widest" :class="tipoImportacao === 'clientes' ? 'text-orange-600 dark:text-orange-400' : 'text-slate-500'">Clientes</h4>
-            <p class="text-[9px] font-bold text-slate-400 mt-0.5">Contactos e Contas</p>
-          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Importe ou atualize perfis, emails, empresas, cargos, segmentos e telefones de todos os seus clientes.</p>
         </div>
 
-        <div @click="tipoImportacao = 'respostas'" 
-             class="flex-1 max-w-[250px] cursor-pointer rounded-3xl p-5 border-2 transition-all flex items-center gap-4"
-             :class="tipoImportacao === 'respostas' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' : 'border-slate-100 dark:border-slate-800 bg-transparent opacity-60 hover:opacity-100'">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="tipoImportacao === 'respostas' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'">
-            <i class="pi pi-comment text-lg"></i>
+        <div 
+          @click="tipoImportacao = 'respostas'"
+          :class="['p-6 rounded-[1.5rem] border-2 cursor-pointer transition-all', tipoImportacao === 'respostas' ? 'border-sky-500 bg-sky-50/30 dark:bg-sky-500/10 shadow-md ring-4 ring-sky-500/10' : 'border-slate-100 dark:border-slate-800 hover:border-sky-300 bg-white dark:bg-slate-900']"
+        >
+          <div class="flex items-center gap-4 mb-3">
+             <div :class="['w-12 h-12 rounded-full flex items-center justify-center text-xl shrink-0 transition-colors', tipoImportacao === 'respostas' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500']"><i class="pi pi-star-fill"></i></div>
+             <div>
+               <h3 class="font-black text-slate-800 dark:text-white text-lg">Respostas NPS</h3>
+               <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Histórico de Pesquisas</p>
+             </div>
           </div>
-          <div>
-            <h4 class="text-[11px] font-black uppercase tracking-widest" :class="tipoImportacao === 'respostas' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'">Respostas</h4>
-            <p class="text-[9px] font-bold text-slate-400 mt-0.5">Histórico de NPS</p>
-          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Importe o histórico de notas (0 a 10), comentários de feedback e as datas exatas das respostas.</p>
         </div>
       </div>
 
-      <input type="file" ref="fileInput" class="hidden" @change="aoMudarFicheiro" accept=".xlsx, .csv" />
+      <hr class="border-slate-100 dark:border-slate-800 mb-8" />
 
-      <div v-if="!isProcessando" @click="selecionarFicheiro"
-           class="border-4 border-dashed rounded-[2.5rem] p-8 md:p-16 flex flex-col items-center justify-center cursor-pointer transition-all group text-center"
-           :class="tipoImportacao === 'clientes' ? 'border-slate-100 dark:border-slate-800 hover:border-orange-500/30 hover:bg-orange-50/10' : 'border-slate-100 dark:border-slate-800 hover:border-emerald-500/30 hover:bg-emerald-50/10'">
-        <div class="w-16 h-16 md:w-20 md:h-20 bg-slate-50 dark:bg-slate-800 text-slate-300 dark:text-slate-600 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-all"
-             :class="tipoImportacao === 'clientes' ? 'group-hover:text-orange-500 group-hover:bg-orange-100' : 'group-hover:text-emerald-500 group-hover:bg-emerald-100'">
-          <i class="pi pi-cloud-upload text-3xl md:text-4xl"></i>
-        </div>
-        <h3 class="text-md md:text-lg font-black text-slate-700 dark:text-white tracking-tight leading-tight">Clique ou arraste a planilha de {{ tipoImportacao }}</h3>
-        <p class="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">Formatos aceites: .xlsx ou .csv</p>
-      </div>
-
-      <div v-if="!isProcessando" class="mt-8 flex justify-center">
-        <Button icon="pi pi-download" :label="`Baixar Modelo de ${tipoImportacao === 'clientes' ? 'Clientes' : 'Respostas'}`" @click="baixarTemplate" class="!bg-slate-50 dark:!bg-slate-800 !text-slate-500 !border-none hover:!bg-slate-100 dark:hover:!bg-slate-700 !px-6 !py-3 !rounded-2xl !text-[11px] !font-black !uppercase !tracking-widest transition-all" />
-      </div>
-
-      <div v-else class="space-y-4 py-16 text-center">
-        <i class="pi pi-spin pi-spinner text-3xl mb-4" :class="tipoImportacao === 'clientes' ? 'text-orange-500' : 'text-emerald-500'"></i>
-        <h4 class="font-black text-slate-800 dark:text-white uppercase tracking-widest text-[10px]">A ler e validar dados...</h4>
-        <ProgressBar :value="progresso" :showValue="false" class="h-1.5 rounded-full max-w-xs mx-auto" />
-      </div>
-    </div>
-
-    <div v-if="passoAtual === 2" class="space-y-6 animate-fadein">
-      <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4 md:p-8 shadow-sm">
-        
-        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-6 pb-6 border-b border-slate-50 dark:border-slate-800">
-          <div>
-            <h3 class="text-sm font-black uppercase text-slate-800 dark:text-white">Pré-visualização e Mapeamento</h3>
-            <p class="text-[10px] text-slate-400 font-bold mt-1">
-              Importando para a base de: <strong :class="tipoImportacao === 'clientes' ? 'text-orange-500' : 'text-emerald-500'">{{ tipoImportacao.toUpperCase() }}</strong>
+      <div class="flex flex-col md:flex-row gap-8 items-stretch">
+        <div class="flex-1 flex flex-col justify-center">
+          <div :class="['p-6 rounded-2xl border mb-4', tipoImportacao === 'clientes' ? 'bg-orange-50/50 border-orange-100' : 'bg-sky-50/50 border-sky-100']">
+            <h4 :class="['text-[11px] font-black uppercase tracking-widest flex items-center gap-2 mb-2', tipoImportacao === 'clientes' ? 'text-orange-600' : 'text-sky-600']">
+              <i class="pi pi-file-excel"></i> Template Obrigatório
+            </h4>
+            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+              Para evitar erros nas colunas e garantir uma validação perfeita, utilize sempre a nossa estrutura base.
             </p>
-          </div>
-          <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-2xl w-full lg:w-auto">
-            <span class="text-[10px] font-black uppercase text-slate-500 flex-1 lg:flex-none">Atualizar existentes se detetar duplicidade?</span>
-            <InputSwitch v-model="configuracaoImportacao.overwrite" />
+            <Button label="Baixar Ficheiro Base (CSV)" icon="pi pi-download" class="!bg-white dark:!bg-slate-800 !text-slate-700 dark:!text-white !border !border-slate-200 dark:!border-slate-700 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-5 shadow-sm" @click="baixarTemplate" />
           </div>
         </div>
 
-        <div v-if="tipoImportacao === 'respostas'" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-5 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
-            <div class="flex flex-col gap-2">
-                <label class="text-[10px] font-black uppercase text-slate-500">
-                    <i class="pi pi-key text-orange-500 mr-1"></i> Chave de Identificação (Obrigatório)
-                </label>
-                <MultiSelect v-model="chavesCliente" :options="colunasDisponiveis" placeholder="Ex: email" display="chip" class="custom-input !py-2 !px-3 shadow-sm border-none bg-white dark:bg-slate-900 w-full" />
-                <p class="text-[9px] font-medium text-slate-400">Colunas do ficheiro usadas para encontrar o Cliente associado à resposta.</p>
-            </div>
-            <div class="flex flex-col gap-2">
-                <label class="text-[10px] font-black uppercase text-slate-500">
-                    <i class="pi pi-filter text-emerald-500 mr-1"></i> Chave de Deduplicação (Opcional)
-                </label>
-                <MultiSelect v-model="chavesResposta" :options="colunasDisponiveis" placeholder="Ex: data_resposta" display="chip" class="custom-input !py-2 !px-3 shadow-sm border-none bg-white dark:bg-slate-900 w-full" />
-                <p class="text-[9px] font-medium text-slate-400">Usado para evitar importar exatamente a mesma resposta duas vezes (Apenas atualiza).</p>
-            </div>
-        </div>
-
-        <div v-if="totalInvalidos > 0" class="mb-6 bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl flex items-center gap-4 border border-rose-100 dark:border-rose-800/50">
-          <i class="pi pi-exclamation-triangle text-rose-500 text-xl"></i>
-          <div>
-            <h4 class="text-[11px] font-black uppercase text-rose-700 dark:text-rose-400">Atenção aos Dados</h4>
-            <p class="text-[10px] text-rose-600/80 font-medium">Existem {{ totalInvalidos }} registos ignorados por falta de chaves obrigatórias.</p>
-          </div>
-        </div>
-
-        <DataTable :value="dadosPreview" responsiveLayout="stack" breakpoint="960px" class="p-datatable-sm custom-table" :rows="6" paginator rowHover>
-          <Column header="Status" style="width: 70px">
-            <template #body="s">
-              <i v-if="s.data.valido" class="pi pi-check-circle text-emerald-500"></i>
-              <i v-else class="pi pi-times-circle text-rose-500" v-tooltip.top="'Faltam dados nas chaves selecionadas'"></i>
-            </template>
-          </Column>
+        <div class="flex-[2]">
+          <input type="file" ref="fileInput" accept=".csv, .xlsx, .xls" class="hidden" @change="processarFicheiro" />
           
-          <template v-if="tipoImportacao === 'clientes'">
-            <Column field="nome" header="Nome">
-              <template #body="s"><span class="text-[11px] font-bold">{{ s.data.nome || '---' }}</span></template>
-            </Column>
-            <Column field="email" header="E-mail">
-              <template #body="s"><span class="text-[11px] text-slate-500">{{ s.data.email || '---' }}</span></template>
-            </Column>
-            <Column field="empresa" header="Empresa">
-              <template #body="s"><span class="text-[11px] font-bold text-slate-700 dark:text-slate-300">{{ s.data.empresa || '---' }}</span></template>
-            </Column>
-          </template>
-
-          <template v-else>
-            <Column v-for="key in chavesCliente" :key="'k_'+key" :field="key" :header="key + ' (ID Cliente)'">
-              <template #body="s"><span class="text-[11px] font-bold text-orange-500">{{ s.data[key] || '---' }}</span></template>
-            </Column>
+          <div @click="!isProcessando && triggerFileInput()" :class="['border-2 border-dashed rounded-[2rem] p-12 flex flex-col items-center justify-center text-center transition-all h-full min-h-[250px]', isProcessando ? 'border-orange-500 bg-orange-50/50' : 'border-slate-200 dark:border-slate-700 hover:border-orange-500 hover:bg-orange-50/30 cursor-pointer']">
             
-            <Column field="nota" header="Nota NPS">
-              <template #body="s"><span class="text-[11px] font-black text-indigo-500">{{ s.data.nota || '---' }}</span></template>
-            </Column>
+            <div v-if="isProcessando" class="w-full max-w-xs flex flex-col items-center">
+              <i class="pi pi-spin pi-spinner text-4xl text-orange-500 mb-4"></i>
+              <span class="text-sm font-bold text-slate-700 dark:text-white mb-3">A analisar ficheiro na nuvem...</span>
+              <ProgressBar :value="progresso" :showValue="false" class="h-1.5 w-full bg-orange-100 rounded-full" />
+            </div>
+
+            <div v-else class="flex flex-col items-center">
+              <div class="w-16 h-16 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-4 text-slate-400 shadow-sm border border-slate-100 dark:border-slate-700 group-hover:scale-110 transition-transform"><i class="pi pi-cloud-upload text-2xl"></i></div>
+              <h3 class="text-base font-black text-slate-800 dark:text-white mb-2">Clique para anexar o seu ficheiro</h3>
+              <p class="text-xs text-slate-500 font-medium">Suporta .CSV e .XLSX</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="passoAtual === 2" class="space-y-6">
+      
+      <div class="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+        <h3 class="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white flex items-center gap-2 mb-2">
+          <i class="pi pi-key text-orange-500"></i> Chaves de Atualização
+        </h3>
+        <p class="text-[11px] text-slate-500 mb-6 font-medium">Defina como o sistema deve identificar se um registo já existe para evitar dados duplicados.</p>
+        
+        <<div class="max-w-xl space-y-5">
+          
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+              {{ tipoImportacao === 'clientes' ? 'Identificadores de Clientes' : 'Vincular Resposta ao Cliente por:' }}
+            </label>
+            <MultiSelect v-model="chavesCliente" :options="colunasDisponiveis" placeholder="Recomendado: email" display="chip" class="custom-input w-full" />
+          </div>
+          
+          <div v-if="tipoImportacao === 'respostas'" class="flex flex-col gap-1.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+              Identificadores da Resposta (Para evitar duplicatas)
+            </label>
+            <MultiSelect v-model="chavesResposta" :options="colunasDisponiveis" placeholder="Recomendado: data_resposta" display="chip" class="custom-input w-full" />
+          </div>
+
+        </div>
+      </div>
+
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 mt-10 mb-6">
+        <div class="flex gap-4">
+          <div class="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-5 py-4 rounded-[1.25rem] flex items-center gap-4 min-w-[160px] shadow-sm">
+             <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-500 shrink-0"><i class="pi pi-check text-xl"></i></div>
+             <div>
+                <div class="text-[9px] font-black uppercase tracking-widest text-emerald-600/70 mb-0.5">Prontos</div>
+                <div class="text-2xl font-black text-emerald-600 leading-none">{{ prontosCount }}</div>
+             </div>
+          </div>
+
+          <div class="bg-rose-50 dark:bg-rose-500/10 border border-rose-100 px-5 py-4 rounded-[1.25rem] flex items-center gap-4 min-w-[160px] shadow-sm transition-all" :class="errosCount > 0 ? 'animate-pulse ring-2 ring-rose-500/20' : 'opacity-50 grayscale'">
+             <div class="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-500 shrink-0"><i class="pi pi-exclamation-triangle text-xl"></i></div>
+             <div>
+                <div class="text-[9px] font-black uppercase tracking-widest text-rose-600/70 mb-0.5">Erros Detectados</div>
+                <div class="text-2xl font-black text-rose-600 leading-none">{{ errosCount }}</div>
+             </div>
+          </div>
+        </div>
+        
+        <div v-if="errosCount > 0" class="flex items-center gap-3 bg-white dark:bg-slate-800 p-2.5 pr-4 rounded-[1.25rem] border border-slate-200 shadow-sm cursor-pointer hover:border-rose-300 transition-colors" @click="mostrarApenasInvalidos = !mostrarApenasInvalidos">
+           <InputSwitch v-model="mostrarApenasInvalidos" class="pointer-events-none" />
+           <span class="text-[10px] font-black uppercase tracking-widest transition-colors" :class="mostrarApenasInvalidos ? 'text-rose-500' : 'text-slate-500'">Ver apenas {{ errosCount }} erros</span>
+        </div>
+      </div>
+
+      <DataTable :value="dadosFiltrados" :paginator="true" :rows="10" :rowClass="rowClass" class="p-datatable-sm custom-table border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm" responsiveLayout="scroll">
+        <template #empty>
+           <div class="text-center py-16 text-emerald-500 text-[11px] uppercase tracking-widest font-black flex flex-col items-center justify-center">
+             <div class="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-4"><i class="pi pi-check-circle text-3xl"></i></div>
+             <span v-if="mostrarApenasInvalidos">Todos os registos estão perfeitos! Nenhum erro encontrado.</span>
+             <span v-else>Nenhum dado carregado.</span>
+           </div>
+        </template>
+
+        <Column v-for="col of colunasDisponiveis" :key="col" :field="col" :header="col" style="min-width: 200px;">
+           <template #body="sp">
+             <div class="truncate max-w-[200px] cursor-default" v-tooltip.top="sp.data[col]"><span class="text-xs font-medium text-slate-600 dark:text-slate-300">{{ sp.data[col] || '---' }}</span></div>
+           </template>
+        </Column>
+
+        <Column header="Validação Extrema" alignFrozen="right" :frozen="true" style="min-width: 320px;" class="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-l border-slate-100 shadow-[-10px_0_15px_rgba(0,0,0,0.02)]">
+          <template #body="slotProps">
+            <div v-if="isRegistroValido(slotProps.data)" class="flex items-center gap-2">
+              <i class="pi pi-check text-emerald-500 font-bold"></i>
+              <span class="text-[9px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">Válido para Base de {{ tipoImportacao === 'clientes' ? 'Clientes' : 'Respostas' }}</span>
+            </div>
+            <div v-else class="flex flex-col gap-1.5">
+              <div class="flex items-center gap-1.5">
+                 <div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+                 <span class="text-[9px] font-black uppercase tracking-widest text-rose-500">Bloqueado</span>
+              </div>
+              <span class="text-[10px] font-bold text-slate-500 leading-relaxed pr-2">{{ getMotivoErro(slotProps.data) }}</span>
+            </div>
           </template>
+        </Column>
+      </DataTable>
 
-          <Column v-for="col in colunasExtra" :key="col" :field="col" :header="col.replace('_', ' ')">
-            <template #body="s">
-              <span class="text-[11px] text-slate-500">{{ s.data[col] || '---' }}</span>
-            </template>
-          </Column>
-        </DataTable>
+      <div class="bg-slate-50 dark:bg-slate-800/40 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 mt-8 mb-8">
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2"><i class="pi pi-cog"></i> Execução e Segurança</h4>
+        
+        <div class="flex flex-col gap-6">
+          <div class="flex items-center justify-between group">
+            <div class="flex flex-col pr-4">
+              <span class="text-sm font-bold text-slate-800 dark:text-white">Atualizar registos já existentes</span>
+              <span class="text-[11px] text-slate-500 mt-1 leading-relaxed">Substitui as informações antigas no banco de dados pelos dados novos deste ficheiro, baseando-se nas Chaves de Atualização.</span>
+            </div>
+            <InputSwitch v-model="configuracaoImportacao.overwrite" class="shrink-0" />
+          </div>
 
-        <div class="flex flex-col sm:flex-row gap-4 mt-8 pt-6 border-t border-slate-50 dark:border-slate-800">
-          <Button label="Cancelar e Voltar" icon="pi pi-arrow-left" text @click="removerFicheiro" class="flex-1 p-4 rounded-2xl font-black text-[11px] uppercase text-slate-400" />
-          <Button label="Confirmar e Gravar Dados" icon="pi pi-database" @click="confirmarImportacaoBase" :loading="isProcessando" :disabled="chavesCliente.length === 0 && tipoImportacao === 'respostas'"
-                  class="flex-1 p-4 border-none text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl hover:-translate-y-1 transition-all"
-                  :class="tipoImportacao === 'clientes' ? 'bg-orange-500 shadow-orange-500/30' : 'bg-emerald-500 shadow-emerald-500/30'" />
+          <div v-if="errosCount > 0" class="flex items-center justify-between pt-6 border-t border-slate-200 dark:border-slate-700/50">
+            <div class="flex flex-col pr-4">
+              <span class="text-sm font-bold text-rose-600 flex items-center gap-2"><i class="pi pi-shield"></i> Forçar importação ignorando erros</span>
+              <span class="text-[11px] text-slate-500 mt-1 leading-relaxed">Descarta os <span class="font-black text-rose-500">{{ errosCount }} bloqueados</span> e envia apenas os <span class="font-black text-emerald-500">{{ prontosCount }} prontos</span>.</span>
+            </div>
+            <InputSwitch v-model="ignorarErros" class="shrink-0" />
+          </div>
         </div>
+      </div>
+
+      <div class="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-slate-800">
+        <Button label="Voltar" icon="pi pi-arrow-left" text class="!text-slate-500 !font-black !uppercase !text-[10px] tracking-widest" @click="reiniciar" />
+        <Button label="Executar Importação" icon="pi pi-cloud-upload" :loading="isProcessando" class="!bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !px-8 !py-4 !font-black !uppercase !text-[10px] tracking-widest shadow-lg shadow-orange-500/20 hover:scale-[1.02] transition-all" @click="enviarParaBackend" />
       </div>
     </div>
 
-    <div v-if="passoAtual === 3" class="animate-fadein space-y-6">
-      <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-10 shadow-sm text-center">
-        <div class="w-20 h-20 md:w-24 md:h-24 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-          <i class="pi pi-check text-4xl font-black"></i>
-        </div>
-        <h2 class="text-2xl font-black text-slate-800 dark:text-white tracking-tight italic mb-2">Importação Finalizada!</h2>
-        <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-10">Os dados foram processados no sistema.</p>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto mb-10">
-          <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 flex flex-col items-center">
-            <span class="text-3xl font-black text-emerald-500">{{ resumoFinal?.inserted || 0 }}</span>
-            <span class="text-[9px] font-black uppercase text-slate-400 mt-2">Novos Registos (Insert)</span>
+    <div v-else-if="passoAtual === 3" class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-12 text-center shadow-sm">
+      <div class="w-24 h-24 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-sm"><i class="pi pi-check-circle"></i></div>
+      <h2 class="text-2xl font-black text-slate-800 dark:text-white mb-2">Importação Concluída!</h2>
+      <p class="text-slate-500 mb-8 font-medium">Operação finalizada com sucesso na base de {{ tipoImportacao === 'clientes' ? 'Clientes' : 'Respostas' }}.</p>
+      
+      <div class="max-w-md mx-auto bg-slate-50 p-6 rounded-2xl text-left border border-slate-100 mb-8">
+        <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Relatório do Servidor</h3>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center pb-3 border-b border-slate-200">
+            <span class="text-sm font-bold text-slate-700">Linhas Processadas com Sucesso</span>
+            <span class="text-lg font-black text-emerald-500">{{ resumoFinal?.inseridos || 0 }}</span>
           </div>
-          <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 flex flex-col items-center">
-            <span class="text-3xl font-black text-blue-500">{{ resumoFinal?.updated || 0 }}</span>
-            <span class="text-[9px] font-black uppercase text-slate-400 mt-2">Atualizados (Update)</span>
-          </div>
-          <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 flex flex-col items-center">
-            <span class="text-3xl font-black text-slate-400">{{ resumoFinal?.ignored || 0 }}</span>
-            <span class="text-[9px] font-black uppercase text-slate-400 mt-2">Ignorados / Erros</span>
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-bold text-slate-700">Falhas e Descartações</span>
+            <span class="text-lg font-black text-rose-500">{{ resumoFinal?.erros || 0 }}</span>
           </div>
         </div>
+      </div>
 
-        <Button label="Realizar Nova Importação" icon="pi pi-refresh" @click="reiniciarProcesso" class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[11px] shadow-xl uppercase tracking-widest" />
-      </div>
-    </div>
-
-    <div v-if="passoAtual === 1" class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80 hover:opacity-100 transition-opacity">
-      <div class="p-6 border border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900">
-        <h4 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-          <i class="pi pi-info-circle"></i> Colunas Obrigatórias
-        </h4>
-        <ul v-if="tipoImportacao === 'clientes'" class="text-[11px] text-slate-600 dark:text-slate-300 space-y-3 font-bold">
-          <li class="flex items-center gap-3"><i class="pi pi-check-circle text-orange-500"></i> nome</li>
-          <li class="flex items-center gap-3"><i class="pi pi-check-circle text-orange-500"></i> email</li>
-          <li class="flex items-center gap-3"><i class="pi pi-check-circle text-orange-500"></i> empresa</li>
-        </ul>
-        <ul v-else class="text-[11px] text-slate-600 dark:text-slate-300 space-y-3 font-bold">
-          <li class="flex items-center gap-3"><i class="pi pi-check-circle text-emerald-500"></i> Uma Chave de Identificação do Cliente <span class="text-[9px] text-slate-400 font-medium">(Ex: email, cliente_id)</span></li>
-          <li class="flex items-center gap-3"><i class="pi pi-check-circle text-emerald-500"></i> nota <span class="text-[9px] text-slate-400 font-medium">(0 a 10)</span></li>
-        </ul>
-      </div>
-      <div class="p-6 border border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900">
-        <h4 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-          <i class="pi pi-star"></i> Campos Extras & Poderes
-        </h4>
-        <p v-if="tipoImportacao === 'clientes'" class="text-[11px] text-slate-500 font-medium leading-relaxed">
-          Pode mapear colunas como: <span class="font-bold text-slate-700 dark:text-white">telefone, cargo, segmento, valor_contrato</span> e a flag <span class="font-bold text-slate-700 dark:text-white">ativo (true/false)</span>.
-        </p>
-        <p v-else class="text-[11px] text-slate-500 font-medium leading-relaxed">
-          Você será capaz de selecionar QUAIS colunas devem atuar como Chave de Match do Cliente, e se desejar, chaves para impedir importação duplicada (Ex: data_resposta). Pode injetar também o <span class="font-bold text-slate-700 dark:text-white">motivo</span> e a <span class="font-bold text-slate-700 dark:text-white">categoria</span>.
-        </p>
-      </div>
+      <Button label="Iniciar Nova Importação" icon="pi pi-refresh" class="!bg-slate-800 hover:!bg-slate-700 !text-white !border-none !rounded-xl !px-8 !py-4 !font-black !uppercase !text-[10px] tracking-widest" @click="reiniciar" />
     </div>
 
   </div>
@@ -419,14 +446,12 @@ const reiniciarProcesso = () => {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 :deep(.p-progressbar-value) { @apply bg-orange-500 transition-all duration-300; }
-
-:deep(.custom-input) { 
-    @apply bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-slate-800 dark:text-white; 
-}
-
+:deep(.custom-input) { @apply bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-slate-800 dark:text-white; }
 :deep(.custom-table), :deep(.custom-table .p-datatable-wrapper) { @apply bg-white dark:bg-slate-900; }
-:deep(.custom-table .p-datatable-thead > tr > th) { @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4; }
-:deep(.custom-table .p-datatable-tbody > tr) { @apply bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors duration-200; }
-:deep(.custom-table .p-datatable-tbody > tr > td) { @apply !bg-transparent border-b border-slate-50 dark:border-slate-800/70 py-3; }
-:deep(.custom-table.p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):hover) { @apply bg-slate-50/50 dark:bg-slate-800/40 !important; }
+:deep(.custom-table .p-datatable-thead > tr > th) { @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 px-5; }
+:deep(.custom-table .p-datatable-tbody > tr) { @apply border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors; }
+:deep(.custom-table .p-datatable-tbody > tr > td) { @apply py-4 px-5; }
+
+:deep(.p-datatable-wrapper)::-webkit-scrollbar { display: none; }
+:deep(.p-datatable-wrapper) { -ms-overflow-style: none; scrollbar-width: none; }
 </style>

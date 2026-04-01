@@ -4,6 +4,7 @@
 // ==========================================
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { temPermissao } from './utils/permissoes';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Sidebar from 'primevue/sidebar';
@@ -193,6 +194,32 @@ watch(
           </div>
         </router-link>
 
+        <div v-if="temPermissao('admin')" class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800/80">
+          
+          <span class="block px-4 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3">
+            Ações Críticas
+          </span>
+
+          <router-link 
+            to="/admin/limpeza" 
+            class="group flex items-center gap-3 px-4 py-3 rounded-[1.25rem] transition-all duration-300 relative overflow-hidden bg-rose-50/80 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 hover:border-rose-200 dark:hover:border-rose-500/30 shadow-sm"
+          >
+            <div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
+              <div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+            </div>
+            
+            <div class="w-9 h-9 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm shrink-0 group-hover:scale-110 transition-transform duration-300">
+              <i class="pi pi-exclamation-triangle text-rose-600 dark:text-rose-400 text-sm"></i>
+            </div>
+            
+            <div class="flex flex-col pr-6">
+              <span class="text-xs font-black text-rose-700 dark:text-rose-400">Danger Zone</span>
+              <span class="text-[10px] font-bold text-rose-500/80 dark:text-rose-400/80 mt-0.5 leading-tight">Limpeza de Dados</span>
+            </div>
+          </router-link>
+          
+        </div>
+
         <div class="mt-auto border-t border-slate-100 dark:border-slate-800 pt-6 pb-8">
           <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
             <div class="flex items-center gap-3">
@@ -291,6 +318,39 @@ watch(
             </span>
           </div>
         </router-link>
+
+        <div v-if="temPermissao('admin')" class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800/80">
+          
+          <span v-show="sidebarExpandida" class="block px-4 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3 animate-fadein">
+            Ações Críticas
+          </span>
+
+          <router-link 
+            to="/admin/limpeza" 
+            :class="[
+              'group flex items-center rounded-[1.25rem] transition-all duration-300 relative overflow-hidden bg-rose-50/80 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 hover:border-rose-200 dark:hover:border-rose-500/30 shadow-sm',
+              // 👇 Se estiver aberto (true), usa padding. Se fechado (false), tira padding e centraliza.
+              sidebarExpandida ? 'px-4 py-3 gap-3' : 'px-0 py-3 justify-center w-12 h-12 mx-auto'
+            ]"
+          >
+            <div v-if="sidebarExpandida" class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center animate-fadein">
+              <div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+            </div>
+            
+            <div :class="[
+              'shrink-0 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300',
+              sidebarExpandida ? 'w-9 h-9' : 'w-10 h-10'
+            ]">
+              <i class="pi pi-exclamation-triangle text-rose-600 dark:text-rose-400 text-sm"></i>
+            </div>
+            
+            <div v-show="sidebarExpandida" class="flex flex-col pr-6 animate-fadein">
+              <span class="text-xs font-black text-rose-700 dark:text-rose-400">Danger Zone</span>
+              <span class="text-[10px] font-bold text-rose-500/80 dark:text-rose-400/80 mt-0.5 leading-tight">Limpeza de Dados</span>
+            </div>
+          </router-link>
+          
+        </div>
       </nav>
 
       <div class="mt-auto border-t border-slate-100 dark:border-slate-800 p-3 space-y-2">

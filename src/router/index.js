@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import AdminLimpezaView from '../views/AdminLimpezaView.vue';
 
 const routes = [
   // ==========================================
@@ -22,6 +23,7 @@ const routes = [
     component: () => import('../views/RedefinirSenhaView.vue'),
     meta: { requiresAuth: false }
   },
+  
 
   // ==========================================
   // 🔒 ROTAS PRIVADAS (Core da Aplicação)
@@ -78,6 +80,13 @@ const routes = [
     component: () => import('../views/ImportacaoView.vue'),
     meta: { requiresAuth: true, roles: ['Admin', 'Manager'] } // 🚫 SEM VIEWERS
   },
+  {
+  path: '/admin/limpeza',
+  name: 'limpeza-dados',
+  component: AdminLimpezaView,
+  meta: { requiresAuth: true } 
+  },
+
 
   // ==========================================
   // ❌ ROTA FALLBACK (Página não encontrada)

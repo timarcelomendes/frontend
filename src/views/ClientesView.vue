@@ -80,16 +80,28 @@ const carregarTudo = async () => {
     const [resCli, resEmp, resSeg, resPerf, resCargos, resGestores, resCompanhias] = await Promise.all([
       api.get('/clientes'), api.get('/cadastros/empresas'), api.get('/cadastros/segmentos'),
       api.get('/cadastros/perfis'), api.get('/cadastros/cargos'), api.get('/cadastros/gestores'),
-      api.get('/cadastros/companhias') // 👈 PUXANDO COMPANHIAS
+      api.get('/cadastros/companhias')
     ]);
     
     clientes.value = resCli.data; empresas.value = resEmp.data;
     segmentos.value = resSeg.data; perfis.value = resPerf.data;
     cargos.value = resCargos.data; gestores.value = resGestores.data;
     companhias.value = resCompanhias.data;
-  } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar dados.' }); } 
-  finally { loading.value = false; }
-};
+  } catch (error) {
+    console.error(error);
+    
+    const mensagemErro = error.response?.data?.detail || 'Falha ao carregar os dados.';
+    
+    toast.add({ 
+        severity: 'error', 
+        summary: 'Erro de Comunicação', 
+        detail: mensagemErro, 
+        life: 6000 
+    });
+  } finally {
+    loading.value = false;
+  } 
+}; 
 
 const abrirNovo = () => { cliente.value = { cliente_id: null, nome: '', email: '', telefone: '', empresa: '', perfil_decisor: null, cargo: null }; editando.value = false; dialogVisivel.value = true; };
 const editarCliente = (dados) => { cliente.value = { ...dados }; editando.value = true; dialogVisivel.value = true; };
@@ -112,7 +124,17 @@ const salvarCliente = async () => {
     carregarTudo();
     toast.add({ severity: 'success', summary: 'Atualizado', detail: 'Pessoa salva com sucesso.', life: 3000 });
   } catch (error) { 
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar os dados.', life: 3000 }); 
+    console.error(error);
+    
+    // 🟢 Extrai a mensagem de erro amigável vinda do Python (FastAPI)
+    const mensagemErro = error.response?.data?.detail || 'Falha ao guardar os dados.';
+    
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Ação Bloqueada', 
+      detail: mensagemErro, 
+      life: 6000 // Tempo maior para o utilizador conseguir ler a mensagem
+    }); 
   } finally { 
     saving.value = false; 
   }
@@ -300,6 +322,7 @@ const getGestorPorEmpresa = (nomeEmpresa) => {
 };
 
 onMounted(carregarTudo);
+
 </script>
 
 <template>
