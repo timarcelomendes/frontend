@@ -241,7 +241,12 @@ const salvarCliente = async () => {
 // ==========================================
 // 🚀 5. DISPAROS E FORMATAÇÃO (NPS API)
 // ==========================================
+
 const dispararIndividual = async (row_data) => {
+  if (row_data.ativo === 0 || row_data.ativo === false) {
+    return toast.add({ severity: 'warn', summary: 'Envio Bloqueado', detail: 'Não é possível enviar pesquisas para pessoas inativas.', life: 4000 });
+  }
+
   const id = row_data.cliente_id;
   if (!id) return;
 
@@ -272,21 +277,23 @@ const dispararIndividual = async (row_data) => {
 };
 
 const dispararLote = async () => {
-  if (clientesSelecionados.value.length === 0) {
-    return toast.add({ severity: 'warn', summary: 'Ninguém selecionado', detail: 'Selecione pelo menos uma pessoa para disparar o lote.', life: 3000 });
+  const selecionadosAtivos = clientesSelecionados.value.filter(c => c.ativo !== 0 && c.ativo !== false);
+
+  if (selecionadosAtivos.length === 0) {
+    return toast.add({ severity: 'warn', summary: 'Ninguém elegível', detail: 'Selecione pelo menos uma pessoa ATIVA para disparar o lote.', life: 4000 });
   }
   
-  const total = clientesSelecionados.value.length;
+  const total = selecionadosAtivos.length;
   enviandoEmail.value = true;
   
   try {
-    const idsParaEnvio = clientesSelecionados.value.map(c => c.cliente_id);
+    const idsParaEnvio = selecionadosAtivos.map(c => c.cliente_id);
     await api.post('/clientes/forcar-envio-lote', { cliente_ids: idsParaEnvio });
     
     toast.add({ 
       severity: 'info', 
       summary: 'Trabalho em curso! 🛠️', 
-      detail: `Estamos a processar o envio para ${total} contatos. Pode continuar a navegar, o sistema cuidará do resto.`, 
+      detail: `Estamos a processar o envio para ${total} contatos ativos. Pode continuar a navegar.`, 
       life: 8000 
     });
     
@@ -571,42 +578,37 @@ onMounted(() => {
         </Column>
 
         <Column field="status_envio" header="Estado" sortable>
-                <template #body="{ data }">
-                  <div class="flex flex-col items-start gap-1">
-                    
-                    <Tag v-if="data.status_envio === 'Respondido'" value="Respondido" severity="success" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm" />
-                    
-                    <Tag v-else-if="data.status_envio === 'Pendente'" value="Na Fila" class="!bg-slate-100 dark:!bg-slate-800 !text-slate-500 !text-[10px] !font-black uppercase tracking-widest !px-3" />
-                    
-                    <Tag v-else-if="data.status_envio === 'Enviado'" value="Enviado" severity="info" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm" />
-                    
-                    <Tag v-else-if="data.status_envio === 'Erro'" value="Falha" severity="danger" v-tooltip.top="data.erro_msg || 'Erro desconhecido'" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm cursor-help" />
-                    
-                    <Tag v-else value="Não Iniciado" class="!bg-slate-50 dark:!bg-slate-800/30 !text-slate-400 !text-[10px] !font-black uppercase tracking-widest !px-3 border border-slate-200 dark:border-slate-700/50" />
+          <template #body="{ data }">
+            <div class="flex flex-col items-start gap-1">
+              
+              <Tag v-if="data.ativo === 0 || data.ativo === false" value="Pessoa Inativa" class="!bg-slate-200 dark:!bg-slate-800 !text-slate-400 !text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm line-through" />
+              
+              <template v-else>
+                <Tag v-if="data.status_envio === 'Respondido'" value="Respondido" severity="success" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm" />
+                <Tag v-else-if="data.status_envio === 'Pendente'" value="Na Fila" class="!bg-slate-100 dark:!bg-slate-800 !text-slate-500 !text-[10px] !font-black uppercase tracking-widest !px-3" />
+                <Tag v-else-if="data.status_envio === 'Enviado'" value="Enviado" severity="info" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm" />
+                <Tag v-else-if="data.status_envio === 'Erro'" value="Falha" severity="danger" v-tooltip.top="data.erro_msg || 'Erro desconhecido'" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm cursor-help" />
+                <Tag v-else value="Não Iniciado" class="!bg-slate-50 dark:!bg-slate-800/30 !text-slate-400 !text-[10px] !font-black uppercase tracking-widest !px-3 border border-slate-200 dark:border-slate-700/50" />
 
-                    <div v-if="data.status_envio === 'Enviado'" class="flex items-center gap-1.5 ml-1" v-tooltip.top="`Enviado em: ${data.data_envio_inicial ? new Date(data.data_envio_inicial).toLocaleDateString() : '---'}`">
-                      
-                      <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-                        {{ (data.lembretes_enviados || 0) === 0 ? 'Aguardando' : `${data.lembretes_enviados}º Lembrete` }}
-                      </span>
-                      
-                      <div class="flex gap-0.5">
-                        <div :class="['w-1.5 h-1.5 rounded-full transition-colors', (data.lembretes_enviados || 0) >= 1 ? 'bg-orange-500' : 'bg-slate-200 dark:bg-slate-700']"></div>
-                        <div :class="['w-1.5 h-1.5 rounded-full transition-colors', (data.lembretes_enviados || 0) >= 2 ? 'bg-orange-500' : 'bg-slate-200 dark:bg-slate-700']"></div>
-                        <div :class="['w-1.5 h-1.5 rounded-full transition-colors', (data.lembretes_enviados || 0) >= 3 ? 'bg-rose-500' : 'bg-slate-200 dark:bg-slate-700']"></div>
-                      </div>
-                      
-                    </div>
-
-                    <div v-if="data.status_envio === 'Respondido'" class="flex items-center ml-1">
-                       <span class="text-[8px] font-black text-emerald-500/70 dark:text-emerald-400/50 uppercase tracking-widest">
-                        Ciclo Fechado
-                      </span>
-                    </div>
-
+                <div v-if="data.status_envio === 'Enviado'" class="flex items-center gap-1.5 ml-1" v-tooltip.top="`Enviado em: ${data.data_envio_inicial ? new Date(data.data_envio_inicial).toLocaleDateString() : '---'}`">
+                  <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                    {{ (data.lembretes_enviados || 0) === 0 ? 'Aguardando' : `${data.lembretes_enviados}º Lembrete` }}
+                  </span>
+                  <div class="flex gap-0.5">
+                    <div :class="['w-1.5 h-1.5 rounded-full transition-colors', (data.lembretes_enviados || 0) >= 1 ? 'bg-orange-500' : 'bg-slate-200 dark:bg-slate-700']"></div>
+                    <div :class="['w-1.5 h-1.5 rounded-full transition-colors', (data.lembretes_enviados || 0) >= 2 ? 'bg-orange-500' : 'bg-slate-200 dark:bg-slate-700']"></div>
+                    <div :class="['w-1.5 h-1.5 rounded-full transition-colors', (data.lembretes_enviados || 0) >= 3 ? 'bg-rose-500' : 'bg-slate-200 dark:bg-slate-700']"></div>
                   </div>
-                </template>
-              </Column>
+                </div>
+
+                <div v-if="data.status_envio === 'Respondido'" class="flex items-center ml-1">
+                    <span class="text-[8px] font-black text-emerald-500/70 dark:text-emerald-400/50 uppercase tracking-widest">Ciclo Fechado</span>
+                </div>
+              </template>
+
+            </div>
+          </template>
+        </Column>
 
         <Column style="min-width: 200px">
           <template #header>
@@ -637,11 +639,16 @@ onMounted(() => {
               />
 
               <Button 
-                v-if="temPermissao('clientes:editar')"
-                icon="pi pi-pencil" 
-                v-tooltip.top="'Editar'" 
-                @click="editarCliente(slotProps.data)" 
-                class="w-7 h-7 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none hover:!text-slate-700 rounded-lg transition-colors !text-xs p-0 flex items-center justify-center" 
+                v-if="temPermissao('audiencia:disparar')"
+                :icon="idsEnviando.includes(slotProps.data.cliente_id) ? 'pi pi-spin pi-spinner' : 'pi pi-send'" 
+                v-tooltip.top="(!slotProps.data.ativo) ? 'Envio bloqueado (Pessoa Inativa)' : (idsEnviando.includes(slotProps.data.cliente_id) ? 'A processar...' : 'Forçar Disparo')" 
+                @click="dispararIndividual(slotProps.data)" 
+                :disabled="!slotProps.data.ativo || enviandoEmail || idsEnviando.includes(slotProps.data.cliente_id)" 
+                :class="[
+                  'w-7 h-7 rounded-lg transition-colors !text-xs p-0 flex items-center justify-center !border-none',
+                  // 👇 Se estiver inativo, fica cinzento. Se ativo, fica laranja.
+                  (!slotProps.data.ativo) ? '!bg-slate-100 dark:!bg-slate-800 !text-slate-300 dark:!text-slate-600 opacity-60' : '!bg-orange-50 !text-orange-500 hover:!bg-orange-100'
+                ]" 
               />
             </div>
           </template>

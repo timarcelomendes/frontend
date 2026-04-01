@@ -15,6 +15,7 @@ import InputNumber from 'primevue/inputnumber';
 import Tag from 'primevue/tag';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
+import InputSwitch from 'primevue/inputswitch';
 
 const toast = useToast();
 const saving = ref(false);
@@ -37,7 +38,7 @@ const nomeExclusao = ref(''); // Vai guardar o texto (ex: 'esta empresa')
 const excluindo = ref(false);
 
 const cliente = ref({
-  cliente_id: null, nome: '', email: '', telefone: '', empresa: '', perfil_decisor: null, cargo: null
+  cliente_id: null, nome: '', email: '', telefone: '', empresa: '', perfil_decisor: null, cargo: null, ativo: true
 });
 
 const dialogEmpresa = ref(false);
@@ -104,7 +105,14 @@ const carregarTudo = async () => {
 }; 
 
 const abrirNovo = () => { cliente.value = { cliente_id: null, nome: '', email: '', telefone: '', empresa: '', perfil_decisor: null, cargo: null }; editando.value = false; dialogVisivel.value = true; };
-const editarCliente = (dados) => { cliente.value = { ...dados }; editando.value = true; dialogVisivel.value = true; };
+const editarCliente = (dados) => {
+  cliente.value = { ...dados }; 
+  
+  cliente.value.ativo = dados.ativo === 1 || dados.ativo === true; 
+  
+  editando.value = true;
+  dialogVisivel.value = true;
+};
 
 const salvarCliente = async () => {
   if (!cliente.value.nome || !cliente.value.email || !cliente.value.cargo) {
@@ -321,6 +329,38 @@ const getGestorPorEmpresa = (nomeEmpresa) => {
   return 'Não definido';
 };
 
+// ==========================================
+// 🛑 FUNÇÕES DE ATIVAR / INATIVAR
+// ==========================================
+const alternarStatusCliente = async (dadosCliente) => {
+  try {
+    await api.put(`/clientes/${dadosCliente.cliente_id}/status`, { 
+      ativo: dadosCliente.ativo 
+    });
+    
+    const statusTexto = dadosCliente.ativo ? 'ativada' : 'inativada';
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: `Pessoa ${statusTexto} com sucesso!`, life: 3000 });
+  } catch (error) {
+    // Se der erro no servidor, revertemos o botão no ecrã automaticamente
+    dadosCliente.ativo = !dadosCliente.ativo;
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao alterar o status da pessoa.' });
+  }
+};
+
+const alternarStatusEmpresa = async (dadosEmpresa) => {
+  try {
+    await api.put(`/empresas/${dadosEmpresa.id}/status`, { 
+      ativo: dadosEmpresa.ativo 
+    });
+    
+    const statusTexto = dadosEmpresa.ativo ? 'ativada' : 'inativada';
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: `Empresa ${statusTexto} com sucesso!`, life: 3000 });
+  } catch (error) {
+    dadosEmpresa.ativo = !dadosEmpresa.ativo;
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao alterar o status da empresa.' });
+  }
+};
+
 onMounted(carregarTudo);
 
 </script>
@@ -407,6 +447,18 @@ onMounted(carregarTudo);
                   </template>
                 </Column>
 
+                <Column field="ativo" header="Status" style="width: 120px">
+                  <template #body="{ data }">
+                    <div class="flex flex-col items-center gap-1">
+                      <InputSwitch v-model="data.ativo" @change="alternarStatusCliente(data)" />
+                      
+                      <span class="text-[9px] font-black uppercase tracking-widest" :class="data.ativo ? 'text-emerald-500' : 'text-slate-400'">
+                        {{ data.ativo ? 'Ativo' : 'Inativo' }}
+                      </span>
+                    </div>
+                  </template>
+                </Column>
+
               </DataTable>
             </div>
           </TabPanel>
@@ -456,6 +508,19 @@ onMounted(carregarTudo);
                     </div>
                   </template>
                 </Column>
+
+                <Column field="ativo" header="Status" style="width: 120px">
+                  <template #body="{ data }">
+                    <div class="flex flex-col items-center gap-1">
+                      <InputSwitch v-model="data.ativo" @change="alternarStatusEmpresa(data)" />
+                      
+                      <span class="text-[9px] font-black uppercase tracking-widest" :class="data.ativo ? 'text-emerald-500' : 'text-slate-400'">
+                        {{ data.ativo ? 'Ativa' : 'Inativa' }}
+                      </span>
+                    </div>
+                  </template>
+                </Column>
+
               </DataTable>
             </div>
           </TabPanel>
@@ -556,6 +621,18 @@ onMounted(carregarTudo);
           <div class="flex flex-col gap-1.5 md:col-span-2"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Conta (Empresa)</label><Dropdown v-model="cliente.empresa" :options="empresas" optionLabel="nome" optionValue="nome" editable filter class="custom-dropdown w-full" /></div>
           <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Perfil</label><Dropdown v-model="cliente.perfil_decisor" :options="perfis" optionLabel="nome" optionValue="nome" editable class="custom-dropdown w-full" /></div>
           <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Cargo *</label><Dropdown v-model="cliente.cargo" :options="cargos" optionLabel="nome" optionValue="nome" editable filter class="custom-dropdown w-full" /></div>
+          
+          <div class="flex flex-col gap-2 pt-2 md:col-span-2">
+            <div class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col gap-2">
+              <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Status do Envio</label>
+              <div class="flex items-center gap-3">
+                <InputSwitch v-model="cliente.ativo" />
+                <span class="text-xs font-bold" :class="cliente.ativo ? 'text-emerald-500' : 'text-slate-500'">
+                  {{ cliente.ativo ? '🟢 Pessoa Ativa (Recebe pesquisas)' : '⏸️ Pessoa Inativa (Pausada)' }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
         <template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900 flex gap-3 w-full"><Button label="Cancelar" text class="flex-1 font-bold text-[11px] text-slate-400" @click="dialogVisivel = false" /><Button :label="editando ? 'Guardar' : 'Adicionar'" :loading="saving" class="flex-1 !bg-indigo-500 !text-white !rounded-xl font-bold text-[11px] shadow-lg border-none py-3" @click="salvarCliente" /></div></template>
       </Dialog>
@@ -603,6 +680,19 @@ onMounted(carregarTudo);
             <label class="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 ml-1 flex items-center gap-1"><i class="pi pi-euro"></i> Valor Anual do Contrato (ARR)</label>
             <InputNumber v-model="empresaForm.valor_contrato" mode="currency" currency="EUR" locale="pt-PT" class="w-full" inputClass="custom-input w-full !text-lg !font-black !text-emerald-600 dark:!text-emerald-400 !bg-emerald-50 dark:!bg-emerald-900/10" />
           </div>
+
+          <div class="flex flex-col gap-2 pt-2">
+            <div class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col gap-2">
+              <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Status da Conta</label>
+              <div class="flex items-center gap-3">
+                <InputSwitch v-model="empresaForm.ativo" />
+                <span class="text-xs font-bold" :class="empresaForm.ativo ? 'text-emerald-500' : 'text-slate-500'">
+                  {{ empresaForm.ativo ? '🟢 Conta Ativa' : '⏸️ Conta Inativa' }}
+                </span>
+              </div>
+            </div>
+          </div>
+          
         </div>
         <template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900"><Button :label="editandoEmpresa ? 'Atualizar Conta' : 'Criar Conta'" @click="salvarEmpresa" :loading="saving" class="w-full !bg-orange-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl" /></div></template>
       </Dialog>

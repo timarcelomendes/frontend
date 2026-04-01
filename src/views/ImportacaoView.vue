@@ -32,24 +32,32 @@ const resumoFinal = ref(null);
 // ==========================================
 // 📥 DOWNLOAD DO TEMPLATE DINÂMICO
 // ==========================================
+
 const baixarTemplate = () => {
   let cabecalhos, exemplo, nomeArquivo;
 
   if (tipoImportacao.value === 'clientes') {
-    cabecalhos = ['nome', 'email', 'empresa', 'perfil_decisor', 'segmento', 'telefone', 'cargo', 'valor_contrato', 'ativo'];
-    exemplo = ['João Silva', 'joao@empresa.com', 'Empresa X', 'Decisor', 'Varejo', '11999999999', 'Diretor', '15000', 'true'];
+    cabecalhos = ['nome', 'email', 'empresa', 'perfil_decisor', 'segmento', 'telefone', 'cargo', 'valor_contrato', 'ativo', 'ultimo_envio'];
+    
+    exemplo = ['João Silva', 'joao@empresa.com', 'Empresa X', 'Decisor', 'Tecnologia', '1199999999', 'CEO', '0', 'True', '2023-12-01'];
+    
     nomeArquivo = 'template_clientes.csv';
   } else {
     cabecalhos = ['email', 'empresa', 'data_resposta', 'nota', 'comentario'];
-    exemplo = ['joao@empresa.com', 'Empresa X', '2023-10-27', '9', 'Ótimo serviço!'];
+    exemplo = ['joao@empresa.com', 'Empresa X', '2023-12-01', '10', 'Excelente serviço!'];
     nomeArquivo = 'template_respostas.csv';
   }
 
-  const csvContent = "data:text/csv;charset=utf-8," + cabecalhos.join(",") + "\n" + exemplo.join(",");
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", nomeArquivo);
+  const csvContent = [
+    cabecalhos.join(','),
+    exemplo.join(',')
+  ].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', nomeArquivo);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
