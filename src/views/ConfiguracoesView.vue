@@ -164,6 +164,13 @@ const encerrarTodasAsSessoes = async () => {
   }
 };
 
+const obterUrlServidor = () => {
+  if (imagensUpload.value && imagensUpload.value.length > 0) {
+    return imagensUpload.value[0].url.split('/uploads')[0];
+  }
+  return (api.defaults.baseURL || window.location.origin).replace(/\/api$/, '');
+};
+
 // --- UTILITÁRIO: GERAR AVATAR ---
 const getIniciais = (nome) => {
   if (!nome) return 'US';
@@ -530,6 +537,22 @@ const carregarRegras = async () => {
       lembrete_dias_3: parseInt(res.data.lembrete_dias_3) || 15,
       recorrencia_dias: parseInt(res.data.recorrencia_dias) || 90
     };
+    
+    const urlReal = obterUrlServidor();
+    
+    const camposHtml = [
+      'email_template_html', 'email_template_lembrete_1', 'email_template_lembrete_2', 
+      'email_template_lembrete_3', 'email_agradecimento_promotor', 
+      'email_agradecimento_neutro', 'email_agradecimento_detrator'
+    ];
+    
+    camposHtml.forEach(campo => {
+      if (regrasConfig.value[campo]) {
+        // Pega no {backend_url} guardado na BD e converte na URL do ambiente onde a pessoa está agora!
+        regrasConfig.value[campo] = regrasConfig.value[campo].replaceAll('{backend_url}', urlReal);
+      }
+    });
+
   } catch (error) { 
     console.error(error); 
   } finally { 
@@ -593,7 +616,7 @@ const removerImagem = async (nomeArquivo) => {
 };
 
 // ==========================================
-// 🪄 SUBSTITUIÇÃO INTELIGENTE DE IMAGENS (TURBO)
+// 🪄 SUBSTITUIÇÃO INTELIGENTE DE IMAGENS (TURBO + VARIÁVEL DE AMBIENTE)
 // ==========================================
 const aplicarImagensInteligente = (tipoTemplate) => {
   let html = '';
@@ -610,20 +633,17 @@ const aplicarImagensInteligente = (tipoTemplate) => {
     return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole primeiro o código HTML do template.' });
   }
 
+  const urlReal = obterUrlServidor(); // 👈 Pega a URL do ambiente atual automaticamente
   let substituicoes = 0;
 
   imagensUpload.value.forEach(img => {
-    // 1. Prepara o nome do ficheiro (ex: "logo.png" vira "logo\.png")
     const nomeEscapado = img.nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
-    // 2. REGEX MÁGICA: Apanha qualquer coisa/pasta antes do nome, e qualquer parâmetro inútil depois (?)
-    // Exemplo do que ela encontra: "images/logo.png", "https://old.com/logo.png?v=1", "assets/img/logo.png"
     const regex = new RegExp(`([^"'\\s\\(]*\\/)?${nomeEscapado}(?:\\?[^"'\\s\\)]*)?`, 'gi');
     
     const matches = html.match(regex);
     if (matches) {
-      // 3. Substitui todo o caminho estragado pela URL limpa do seu servidor
-      html = html.replace(regex, img.url);
+      // 💡 Injeta a URL REAL para que o seu Preview no ecrã funcione perfeitamente!
+      html = html.replace(regex, `${urlReal}/uploads/${img.nome}`);
       substituicoes += matches.length;
     }
   });
@@ -637,70 +657,157 @@ const aplicarImagensInteligente = (tipoTemplate) => {
     else if (tipoTemplate === 'agradecimento_neutro') regrasConfig.value.email_agradecimento_neutro = html;
     else if (tipoTemplate === 'agradecimento_detrator') regrasConfig.value.email_agradecimento_detrator = html;
     
-    toast.add({ severity: 'success', summary: 'Magia Aplicada 🪄', detail: `${substituicoes} link(s) local(is) substituído(s) pelas URLs públicas!`, life: 4000 });
+    toast.add({ severity: 'success', summary: 'Magia Aplicada 🪄', detail: `${substituicoes} link(s) convertido(s) para o ambiente atual!`, life: 4000 });
   } else {
     toast.add({ severity: 'info', summary: 'Sem alterações', detail: 'Nenhuma imagem local correspondente encontrada no HTML.', life: 3000 });
   }
 };
 
+// ==========================================
+// 💾 AÇÕES DE GRAVAÇÃO (COM DESIDRATAÇÃO DE URL)
+// ==========================================
 const salvarRegras = async () => {
   savingRegras.value = true;
   try {
-    const payload = { ...regrasConfig.value, fillout_campos: regrasConfig.value.fillout_campos.join(',') };
+    const urlReal = obterUrlServidor();
+    
+    // 1. Cria uma cópia profunda para não afetar o que o utilizador vê no ecrã
+    const payload = JSON.parse(JSON.stringify(regrasConfig.value));
+    
+    // 2. Formata campos especiais
+    if (Array.isArray(payload.fillout_campos)) {
+      payload.fillout_campos = payload.fillout_campos.join(',');
+    }
+
+    // 3. Protege os templates: substitui a URL física pela variável dinâmica {backend_url}
+    const camposHtml = [
+      'email_template_html', 
+      'email_template_lembrete_1', 
+      'email_template_lembrete_2', 
+      'email_template_lembrete_3', 
+      'email_agradecimento_promotor', 
+      'email_agradecimento_neutro', 
+      'email_agradecimento_detrator'
+    ];
+    
+    camposHtml.forEach(campo => {
+      if (payload[campo]) {
+        // Remove a URL específica do ambiente (ex: localhost ou azure) e coloca a tag genérica
+        payload[campo] = payload[campo].replaceAll(urlReal, '{backend_url}');
+      }
+    });
+
+    // 4. Envia o payload "limpo" para o banco de dados
     await api.post('/config/regras', payload);
+    
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Regras de negócio atualizadas!', life: 3000 });
   } catch (error) {
+    console.error("Erro ao salvar regras:", error);
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar configurações.', life: 5000 });
-  } finally { savingRegras.value = false; }
+  } finally { 
+    savingRegras.value = false; 
+  }
 };
 
 // ==========================================
-// 🧪 MÓDULOS DE TESTE DE EMAIL (CONVITE, AGRADECIMENTO, LEMBRETE)
+// 🧪 MÓDULOS DE TESTE DE EMAIL (COM HIDRATAÇÃO PARA PREVIEW)
 // ==========================================
+
+// Função auxiliar para garantir que o HTML enviado para teste tenha a URL funcional do momento
+const prepararHtmlParaTeste = (htmlOriginal) => {
+  if (!htmlOriginal) return '';
+  const urlReal = obterUrlServidor();
+  // Se o HTML tiver {backend_url}, troca pela URL real para a imagem aparecer no e-mail de teste
+  return htmlOriginal.replaceAll('{backend_url}', urlReal);
+};
+
 const loadingTesteConvite = ref(false);
 const emailTesteConvite = ref('');
 const modeloBaseConvite = `<!DOCTYPE html><html><body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;"><div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto; text-align: center;"><h2 style="color: #333;">Olá, {nome}!</h2><p style="color: #555; font-size: 16px;">Como avalia a sua parceria com a <strong>{empresa}</strong>?</p><a href="{survey_url}" style="display: inline-block; padding: 14px 28px; background-color: #F97316; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 25px;">Responder Pesquisa</a></div></body></html>`;
+
 const testarTemplateConvite = async () => {
   if (!emailTesteConvite.value) return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail.' });
   if (!regrasConfig.value.email_template_html) return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole o HTML.' });
+  
   loadingTesteConvite.value = true;
   try {
-    await api.post('/config/testar-template', { email_destino: emailTesteConvite.value, html_content: regrasConfig.value.email_template_html, categoria: 'convite' });
+    // Hidrata o HTML antes de enviar para o teste
+    const htmlParaEnvio = prepararHtmlParaTeste(regrasConfig.value.email_template_html);
+    
+    await api.post('/config/testar-template', { 
+      email_destino: emailTesteConvite.value, 
+      html_content: htmlParaEnvio, 
+      categoria: 'convite' 
+    });
     toast.add({ severity: 'success', summary: 'Enviado! 🚀', detail: 'Preview do convite enviado com sucesso.', life: 5000 });
-  } catch (error) { toast.add({ severity: 'error', summary: 'Falha no Teste', detail: 'Não foi possível enviar o preview.' }); } finally { loadingTesteConvite.value = false; }
+  } catch (error) { 
+    toast.add({ severity: 'error', summary: 'Falha no Teste', detail: 'Não foi possível enviar o preview.' }); 
+  } finally { 
+    loadingTesteConvite.value = false; 
+  }
 };
 
 const loadingTesteAgradecimento = ref(false);
 const emailTesteAgradecimento = ref('');
 const modeloBaseAgradecimento = `<!DOCTYPE html><html><body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;"><div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto;"><h2 style="color: #333;">Obrigado, {nome}!</h2><p>A sua avaliação da parceria com a <strong>{empresa}</strong> é muito importante.</p><p>A sua nota final foi: <strong style="font-size: 18px; color: #F97316;">{nota}/10</strong></p><div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #F97316; margin: 20px 0;"><p style="margin: 0; font-style: italic; color: #555;">"{motivo}"</p></div><p>A nossa equipa já está a analisar o seu feedback.</p></div></body></html>`;
+
 const testarTemplateAgradecimento = async () => {
   if (!emailTesteAgradecimento.value) return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail.' });
-  let htmlAlvo = abaEmailAgradecimento.value === 'promotor' ? regrasConfig.value.email_agradecimento_promotor : abaEmailAgradecimento.value === 'neutro' ? regrasConfig.value.email_agradecimento_neutro : regrasConfig.value.email_agradecimento_detrator;
-  if (!htmlAlvo) return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole o HTML.' });
+  
+  let htmlOriginal = abaEmailAgradecimento.value === 'promotor' 
+    ? regrasConfig.value.email_agradecimento_promotor 
+    : abaEmailAgradecimento.value === 'neutro' 
+      ? regrasConfig.value.email_agradecimento_neutro 
+      : regrasConfig.value.email_agradecimento_detrator;
+
+  if (!htmlOriginal) return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole o HTML.' });
+  
   loadingTesteAgradecimento.value = true;
   try {
-    await api.post('/config/testar-template', { email_destino: emailTesteAgradecimento.value, html_content: htmlAlvo, categoria: abaEmailAgradecimento.value });
+    const htmlParaEnvio = prepararHtmlParaTeste(htmlOriginal);
+    
+    await api.post('/config/testar-template', { 
+      email_destino: emailTesteAgradecimento.value, 
+      html_content: htmlParaEnvio, 
+      categoria: abaEmailAgradecimento.value 
+    });
     toast.add({ severity: 'success', summary: 'Enviado! 🚀', detail: 'Preview enviado com sucesso.' });
-  } catch (error) { toast.add({ severity: 'error', summary: 'Falha no Teste', detail: 'Erro.' }); } finally { loadingTesteAgradecimento.value = false; }
+  } catch (error) { 
+    toast.add({ severity: 'error', summary: 'Falha no Teste', detail: 'Erro ao enviar preview.' }); 
+  } finally { 
+    loadingTesteAgradecimento.value = false; 
+  }
 };
 
 const loadingTesteLembrete = ref(false);
 const emailTesteLembrete = ref('');
 const modeloBaseLembrete = `<!DOCTYPE html><html><body style="background-color: #f4f4f4; padding: 40px; font-family: sans-serif;"><div style="background-color: #ffffff; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto; text-align: center;"><h2 style="color: #333;">Olá novamente, {nome}!</h2><p style="color: #555; font-size: 16px;">Ainda não recebemos o seu feedback sobre a <strong>{empresa}</strong>. Leva menos de 1 minuto!</p><a href="{survey_url}" style="display: inline-block; padding: 14px 28px; background-color: #F97316; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 25px;">Responder Agora</a></div></body></html>`;
+
 const testarTemplateLembrete = async () => {
   if (!emailTesteLembrete.value) return toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Introduza um e-mail.' });
   
-  let htmlAlvo = '';
-  if (abaEmailLembrete.value === '1') htmlAlvo = regrasConfig.value.email_template_lembrete_1;
-  else if (abaEmailLembrete.value === '2') htmlAlvo = regrasConfig.value.email_template_lembrete_2;
-  else if (abaEmailLembrete.value === '3') htmlAlvo = regrasConfig.value.email_template_lembrete_3;
+  let htmlOriginal = '';
+  if (abaEmailLembrete.value === '1') htmlOriginal = regrasConfig.value.email_template_lembrete_1;
+  else if (abaEmailLembrete.value === '2') htmlOriginal = regrasConfig.value.email_template_lembrete_2;
+  else if (abaEmailLembrete.value === '3') htmlOriginal = regrasConfig.value.email_template_lembrete_3;
 
-  if (!htmlAlvo) return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole o HTML.' });
+  if (!htmlOriginal) return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole o HTML.' });
+  
   loadingTesteLembrete.value = true;
   try {
-    await api.post('/config/testar-template', { email_destino: emailTesteLembrete.value, html_content: htmlAlvo, categoria: 'convite' });
+    const htmlParaEnvio = prepararHtmlParaTeste(htmlOriginal);
+    
+    await api.post('/config/testar-template', { 
+      email_destino: emailTesteLembrete.value, 
+      html_content: htmlParaEnvio, 
+      categoria: 'lembrete' 
+    });
     toast.add({ severity: 'success', summary: 'Enviado!', detail: 'Preview do lembrete enviado.' });
-  } catch (error) { toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha no teste.' }); } finally { loadingTesteLembrete.value = false; }
+  } catch (error) { 
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha no teste.' }); 
+  } finally { 
+    loadingTesteLembrete.value = false; 
+  }
 };
 
 // ==========================================
