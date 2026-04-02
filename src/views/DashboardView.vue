@@ -11,6 +11,7 @@ import Slider from 'primevue/slider';
 import Calendar from 'primevue/calendar';
 import Tooltip from 'primevue/tooltip';
 import Dropdown from 'primevue/dropdown';
+import InputSwitch from 'primevue/inputswitch'; // 👈 Adicionado para garantir o funcionamento do Toggle
 
 const router = useRouter();
 const vTooltip = Tooltip;
@@ -55,22 +56,31 @@ const smartInsights = ref({
   nivel_alerta: "Baixo"
 });
 
-// Filtra os críticos (NPS <= 0)
+// 💡 Define os ativos como padrão para os cálculos do Backend
+const apenasAtivos = ref(true);
+
+// 🛡️ Filtra os críticos (NPS <= 0)
 const alertasCriticos = computed(() => {
   if (!ranking.value || ranking.value.length === 0) return [];
-  
   return ranking.value.filter(item => item.nps <= 0 && item.ativo !== 0 && item.ativo !== false);
 });
 
+// 🛡️ Alertas Prioritários (Radar). APENAS clientes com ações em aberto.
 const alertasPrioritarios = computed(() => {
   if (!ranking.value || ranking.value.length === 0) return [];
 
   return [...ranking.value]
-    .filter(item => item.ativo !== 0 && item.ativo !== false) 
+    .filter(item => {
+      // 1. Tem de estar ativo
+      const isAtivo = item.ativo !== 0 && item.ativo !== false;
+      
+      // 2. 💡 CORREÇÃO RIGOROSA: Tem de ter um status (não é null) E não pode estar 'Concluído'
+      const temAcaoEmAndamento = item.acao_status && item.acao_status !== 'Concluído';
+
+      return isAtivo && temAcaoEmAndamento;
+    }) 
     .sort((a, b) => {
-      if (a.nps !== b.nps) {
-        return a.nps - b.nps;
-      }
+      if (a.nps !== b.nps) return a.nps - b.nps;
       return new Date(a.data_ultima_resposta) - new Date(b.data_ultima_resposta);
     })
     .slice(0, 5);
@@ -78,7 +88,6 @@ const alertasPrioritarios = computed(() => {
 
 const abrirDetalhesCliente = (item) => {
   if (!item.nome) return;
-
   router.push({ 
     path: '/acoes', 
     query: { empresa: item.nome } 
@@ -90,14 +99,13 @@ const topRisco = computed(() => {
   return [...ranking.value].sort((a, b) => a.nps - b.nps)[0];
 });
 
-
+// --- SIMULADOR DE CONVERSÃO ---
 const porcentagemConversao = ref(0);
 
 const simulador = computed(() => {
   if (!kpis.value.total_respostas) return { npsGanho: 0, npsNovo: kpis.value.score, receitaSalva: 0 };
 
   const detratoresConvertidos = Math.round(kpis.value.detratores * (porcentagemConversao.value / 100));
-
   const novosPromotores = kpis.value.promotores + detratoresConvertidos;
   const novosDetratores = kpis.value.detratores - detratoresConvertidos;
 
@@ -120,7 +128,7 @@ const chartDataPie = ref(null);
 const chartOptionsPie = ref(null);
 
 // ==========================================
-// 🤖 MAGIC AI: SÍNTESE EXECUTIVA (AGORA INLINE)
+// 🤖 MAGIC AI: SÍNTESE EXECUTIVA
 // ==========================================
 const loadingAI = ref(false);
 const resultadoAI = ref(null);
@@ -182,7 +190,6 @@ const gerarInsightIA = async (forcarNova = false) => {
 // ==========================================
 const carregarCompanhias = async () => {
   try {
-    // 💡 BLINDAGEM: Usamos a rota central de cadastros para garantir consistência em todo o sistema
     const res = await api.get('/cadastros/companhias');
     if (res.data) {
       const nomes = res.data.map(c => c.nome).sort();
@@ -194,20 +201,12 @@ const carregarCompanhias = async () => {
 };
 
 // ==========================================
-// 📅 VIGILANTE DE FILTROS (Datas e Companhia)
+// 📅 VIGILANTE DE FILTROS (Unificado)
 // ==========================================
-watch(companhiaSelecionada, () => {
-  carregarDashboard();
-  gerarInsightIA(false); // Carrega IA do Cache ou gera nova para esta companhia
-});
-
-watch(datasFiltro, (novasDatas) => {
-  if (novasDatas && novasDatas[0] && novasDatas[1]) {
+watch([datasFiltro, companhiaSelecionada, apenasAtivos], ([novasDatas]) => {
+  // Dispara apenas se as datas estiverem completas ou se o utilizador apagou o calendário
+  if (!novasDatas || (novasDatas[0] && novasDatas[1])) {
     carregarDashboard();
-    gerarInsightIA(false); 
-  } 
-  else if (!novasDatas || novasDatas.length === 0) {
-    carregarDashboard(); 
     gerarInsightIA(false); 
   }
 });
@@ -215,12 +214,15 @@ watch(datasFiltro, (novasDatas) => {
 const obterParametrosFiltro = () => {
   const params = new URLSearchParams();
 
-  // Filtro de Companhia
+  // 1. Filtro de Companhia
   if (companhiaSelecionada.value && companhiaSelecionada.value !== 'Todas as Companhias') {
     params.append('companhia', companhiaSelecionada.value);
   }
 
-  // Filtro de Data
+  // 2. 💡 NOVO: Filtro de Contas Ativas (enviado ao Backend)
+  params.append('apenas_ativos', apenasAtivos.value ? 'true' : 'false');
+
+  // 3. Filtro de Data
   if (datasFiltro.value && datasFiltro.value[0] && datasFiltro.value[1]) {
     const formatarData = (data) => {
       const d = new Date(data);
@@ -239,11 +241,6 @@ const obterParametrosFiltro = () => {
 const formatarData = (dataString) => {
   if (!dataString) return 'Sem data';
   const data = new Date(dataString);
-  
-  // Opção A: Formato simples (15/03/2026)
-  // return data.toLocaleDateString('pt-PT');
-
-  // Opção B: Formato "Há X dias" (Mais comum em dashboards de alerta)
   const hoje = new Date();
   const diffTempo = Math.abs(hoje - data);
   const diffDias = Math.floor(diffTempo / (1000 * 60 * 60 * 24));
@@ -254,7 +251,7 @@ const formatarData = (dataString) => {
 };
 
 // ==========================================
-// 📊 CARREGAMENTO DE DADOS
+// 📊 CARREGAMENTO DE DADOS PRINCIPAL
 // ==========================================
 const carregarDashboard = async () => {
   loading.value = true;
@@ -307,7 +304,6 @@ const montarGraficos = (trendData) => {
         const chart = context.chart;
         const { ctx, chartArea } = chart;
         if (!chartArea) return null;
-        
         const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
         gradient.addColorStop(0, 'rgba(249, 115, 22, 0.3)'); 
         gradient.addColorStop(1, 'rgba(249, 115, 22, 0.0)'); 
@@ -322,35 +318,20 @@ const montarGraficos = (trendData) => {
   };
   
   chartOptionsLine.value = {
-    responsive: true,
-    maintainAspectRatio: false,
+    responsive: true, maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#0f172a',
-        titleFont: { size: 11, weight: 'bold' },
-        bodyFont: { size: 14, weight: 'bold' },
-        padding: 12,
-        displayColors: false,
-        callbacks: {
-          label: (context) => `NPS: ${context.parsed.y} pts`
-        }
+        backgroundColor: '#0f172a', titleFont: { size: 11, weight: 'bold' },
+        bodyFont: { size: 14, weight: 'bold' }, padding: 12, displayColors: false,
+        callbacks: { label: (context) => `NPS: ${context.parsed.y} pts` }
       }
     },
     scales: {
-      x: { 
-        grid: { display: false, drawBorder: false },
-        ticks: { font: { size: 10, weight: 'bold' }, color: '#94a3b8' } 
-      },
-      y: { 
-        grid: { color: 'rgba(148, 163, 184, 0.1)', borderDash: [5, 5], drawBorder: false },
-        ticks: { font: { size: 10, weight: 'bold' }, color: '#94a3b8', stepSize: 20 } 
-      }
+      x: { grid: { display: false, drawBorder: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#94a3b8' } },
+      y: { grid: { color: 'rgba(148, 163, 184, 0.1)', borderDash: [5, 5], drawBorder: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#94a3b8', stepSize: 20 } }
     },
-    interaction: {
-      intersect: false,
-      mode: 'index',
-    },
+    interaction: { intersect: false, mode: 'index' },
   };
 
   chartDataPie.value = {
@@ -358,9 +339,7 @@ const montarGraficos = (trendData) => {
     datasets: [{
       data: [kpis.value.promotores, kpis.value.neutros, kpis.value.detratores],
       backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
-      borderWidth: 0,
-      cutout: '82%',
-      borderRadius: 10
+      borderWidth: 0, cutout: '82%', borderRadius: 10
     }]
   };
   
@@ -377,10 +356,8 @@ const maxFrequencia = computed(() => {
 });
 
 const calcularEstiloBolha = (quantidade) => {
-  const minSize = 0.7;
-  const maxSize = 1.6;
+  const minSize = 0.7; const maxSize = 1.6;
   const tamanho = minSize + ((quantidade / maxFrequencia.value) * (maxSize - minSize));
-  
   return {
     fontSize: `${tamanho}rem`,
     opacity: 0.5 + ((quantidade / maxFrequencia.value) * 0.5),
@@ -416,7 +393,7 @@ const exportarDados = async () => {
 };
 
 onMounted(() => {
-  carregarCompanhias(); // 👈 AGORA CARREGA AS COMPANHIAS AO ABRIR O DASHBOARD
+  carregarCompanhias(); 
   carregarDashboard();
   gerarInsightIA(false); 
 });
@@ -437,15 +414,20 @@ onMounted(() => {
               <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
             <p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-              Olá, {{ nomeUsuario }} • Como estão os nossos clientes hoje?
+              Olá, {{ nomeUsuario }} • tudo prontinho!
             </p>
           </div>
         </div>
         
         <div class="flex flex-wrap md:flex-nowrap gap-3">
           
-          <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 h-10 shadow-sm transition-all focus-within:ring-2 focus-within:ring-orange-500/20">
-            <i class="pi pi-briefcase text-slate-400 text-xs mr-2"></i>
+          <div class="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 h-12 shadow-sm transition-all hover:border-indigo-500/50">
+            <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-0.5">Ativas</span>
+            <InputSwitch v-model="apenasAtivos" class="custom-switch-small" />
+          </div>
+
+          <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 h-12 shadow-sm transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 hover:border-indigo-500/50 group">
+            <i class="pi pi-briefcase text-indigo-500 text-sm mr-2 group-focus-within:scale-110 transition-transform"></i>
             <Dropdown 
               v-model="companhiaSelecionada" 
               :options="listaCompanhias" 
@@ -453,14 +435,14 @@ onMounted(() => {
               class="custom-dropdown-minimal border-none shadow-none w-48 xl:w-56 bg-transparent" 
             />
             <i v-if="companhiaSelecionada && companhiaSelecionada !== 'Todas as Companhias'" 
-               class="pi pi-times-circle text-slate-300 hover:text-rose-500 cursor-pointer ml-2 transition-colors" 
-               @click="companhiaSelecionada = 'Todas as Companhias'" 
-               title="Limpar Filtro">
+              class="pi pi-times text-slate-300 hover:text-rose-500 cursor-pointer ml-2 transition-colors text-xs" 
+              @click="companhiaSelecionada = 'Todas as Companhias'" 
+              v-tooltip.top="'Limpar Filtro'">
             </i>
           </div>
 
-          <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 h-10 shadow-sm transition-all focus-within:ring-2 focus-within:ring-orange-500/20">
-            <i class="pi pi-calendar text-slate-400 text-xs mr-2"></i>
+          <div class="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 h-12 shadow-sm transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 hover:border-indigo-500/50 group">
+            <i class="pi pi-calendar text-indigo-500 text-sm mr-2 group-focus-within:scale-110 transition-transform"></i>
             <Calendar 
               v-model="datasFiltro" 
               selectionMode="range" 
@@ -469,16 +451,30 @@ onMounted(() => {
               dateFormat="dd/mm/yy" 
               class="custom-calendar-minimal border-none shadow-none w-48 xl:w-56 bg-transparent" 
               @hide="carregarDashboard" 
+              :showIcon="false"
             />
             <i v-if="datasFiltro && datasFiltro[1]" 
-               class="pi pi-times-circle text-slate-300 hover:text-rose-500 cursor-pointer ml-2 transition-colors" 
-               @click="datasFiltro = null; carregarDashboard()" 
-               title="Limpar Filtro">
+              class="pi pi-times text-slate-300 hover:text-rose-500 cursor-pointer ml-2 transition-colors text-xs" 
+              @click="datasFiltro = null; carregarDashboard()" 
+              v-tooltip.top="'Limpar Filtro'">
             </i>
           </div>
 
-          <Button icon="pi pi-refresh" @click="carregarDashboard" :loading="loading" class="w-10 h-10 !bg-white dark:!bg-slate-900 !text-slate-600 dark:!text-slate-300 !border-slate-200 dark:!border-slate-700 !rounded-xl hover:!bg-slate-50 transition-colors shadow-sm shrink-0" />
-          <Button label="Exportar" icon="pi pi-cloud-download" @click="exportarDados" :loading="exportando" class="!bg-gradient-to-r !from-slate-900 !to-slate-800 dark:!from-orange-500 dark:!to-orange-600 !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105 transition-transform duration-300 hidden md:flex shrink-0" />
+          <Button 
+            icon="pi pi-refresh" 
+            @click="carregarDashboard" 
+            :loading="loading" 
+            class="w-12 h-12 !bg-white dark:!bg-slate-900 !text-slate-600 dark:!text-slate-300 !border !border-slate-200 dark:!border-slate-700 !rounded-2xl hover:!border-indigo-500/50 hover:!text-indigo-500 transition-all shadow-sm shrink-0" 
+          />
+          
+          <Button 
+            label="Exportar" 
+            icon="pi pi-cloud-download" 
+            @click="exportarDados" 
+            :loading="exportando" 
+            class="h-12 !bg-gradient-to-r !from-slate-900 !to-slate-800 dark:!from-orange-500 dark:!to-orange-600 !border-none !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105 transition-transform duration-300 hidden md:flex shrink-0" 
+          />
+          
         </div>
       </div>
 

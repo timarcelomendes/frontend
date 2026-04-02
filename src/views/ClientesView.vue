@@ -697,13 +697,13 @@ onMounted(carregarTudo);
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Segmento de Mercado</label>
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Segmento</label>
             <Dropdown v-model="empresaForm.segmento" :options="segmentos" optionLabel="nome" optionValue="nome" editable filter placeholder="Selecione ou digite" class="custom-dropdown w-full" />
           </div>
           
           <div class="flex flex-col gap-1.5 pt-2">
             <label class="text-[10px] font-black uppercase text-sky-500 ml-1">
-              <i class="pi pi-star-fill text-[8px]"></i> Pessoa de Contacto (Gestor)
+              <i class="pi pi-star-fill text-[8px]"></i> Pessoa de Contato (Gestor)
             </label>
             <Dropdown 
               v-model="empresaForm.gestor" 

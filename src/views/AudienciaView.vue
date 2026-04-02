@@ -39,6 +39,56 @@ const idsEnviando = ref([]);
 const clientesSelecionados = ref([]);
 
 // ==========================================
+// ⚙️ CONFIGURAÇÕES DA RÉGUA DE DISPARO
+// ==========================================
+const dialogRegras = ref(false);
+const savingConfig = ref(false);
+const regrasNPS = ref({ lembrete_dias: 3, recorrencia_dias: 90 });
+
+// Formulário temporário para o Modal
+const regrasForm = ref({ recorrencia_dias: 90, lembrete_dias: 3 });
+
+const abrirConfiguracoes = () => {
+  regrasForm.value = { ...regrasNPS.value };
+  dialogRegras.value = true;
+};
+
+const carregarRegrasNPS = async () => {
+  try {
+    const res = await api.get('/config/regras');
+    if (res.data) {
+      if (res.data.lembrete_dias) regrasNPS.value.lembrete_dias = parseInt(res.data.lembrete_dias);
+      if (res.data.recorrencia_dias) regrasNPS.value.recorrencia_dias = parseInt(res.data.recorrencia_dias); 
+    }
+  } catch (error) {
+    console.error("Erro ao ler regras de lembrete:", error);
+  }
+};
+
+const atualizarRegras = async () => {
+  savingConfig.value = true;
+  try {
+    const payload = {
+      recorrencia_dias: regrasForm.value.recorrencia_dias,
+      lembrete_dias: regrasForm.value.lembrete_dias
+    };
+    
+    await api.post('/config/regras', payload);
+    
+    toast.add({ severity: 'success', summary: 'Configurações Salvas', detail: 'As regras de envio foram atualizadas.' });
+    
+    // Atualiza o estado visual sem precisar de recarregar a página
+    regrasNPS.value = { ...regrasForm.value };
+    dialogRegras.value = false;
+    
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao salvar configurações.' });
+  } finally {
+    savingConfig.value = false;
+  }
+};
+
+// ==========================================
 // 🔍 2. FILTROS E PESQUISA
 // ==========================================
 const pesquisa = ref('');
@@ -81,38 +131,31 @@ const limparFiltros = () => {
 
 const clientesFiltrados = computed(() => {
   return clientes.value.filter(c => {
-    
-    // 👇 0. Filtro de Inativos (NOVO)
     let matchesAtivo = true;
-    if (typeof mostrarInativos !== 'undefined' && !mostrarInativos.value) {
-      // Se o botão estiver desligado (false), só mostra quem é ATIVO
+    if (!mostrarInativos.value) {
       matchesAtivo = c.ativo !== 0 && c.ativo !== false;
     }
 
-    // 1. Filtro de Status
     let matchesStatus = true;
-    if (typeof filtroStatus !== 'undefined' && filtroStatus.value) {
+    if (filtroStatus.value && filtroStatus.value !== 'Todos') {
       const st = (c.status_envio || 'Pendente').trim().toLowerCase();
       matchesStatus = st === filtroStatus.value.toLowerCase();
     }
 
-    // 2. Filtro de Gestor
     let matchesGestor = true;
-    if (typeof filtroGestor !== 'undefined' && filtroGestor.value && filtroGestor.value !== 'Todos') {
+    if (filtroGestor.value && filtroGestor.value !== 'Todos') {
       matchesGestor = c.gestor === filtroGestor.value;
     }
 
-    // 3. Filtro de Companhia
     let matchesCompanhia = true;
-    if (typeof filtroCompanhia !== 'undefined' && filtroCompanhia.value && filtroCompanhia.value !== 'Todas') {
+    if (filtroCompanhia.value && filtroCompanhia.value !== 'Todas') {
       const empresaObj = empresas.value.find(e => e.nome === c.empresa);
       const companhiaDoCliente = empresaObj ? empresaObj.companhia : null;
       matchesCompanhia = companhiaDoCliente === filtroCompanhia.value;
     }
 
-    // 4. Filtro de Datas (Calendário)
     let matchesDate = true;
-    if (typeof filtroDataInicio !== 'undefined' && (filtroDataInicio.value || filtroDataFim.value)) {
+    if (filtroDataInicio.value || filtroDataFim.value) {
       const dataAlvoStr = c[filtroTipoData.value];
       
       if (!dataAlvoStr || dataAlvoStr === 'None' || dataAlvoStr === 'null') {
@@ -120,33 +163,34 @@ const clientesFiltrados = computed(() => {
       } else {
         const dataCliente = new Date(dataAlvoStr.slice(0, 10) + 'T00:00:00');
         
-        if (filtroDataInicio.value) {
-          const dtInicio = new Date(filtroDataInicio.value);
-          dtInicio.setHours(0, 0, 0, 0);
-          if (dataCliente < dtInicio) matchesDate = false;
-        }
-        
-        if (filtroDataFim.value) {
-          const dtFim = new Date(filtroDataFim.value);
-          dtFim.setHours(23, 59, 59, 999);
-          if (dataCliente > dtFim) matchesDate = false;
+        if (isNaN(dataCliente.getTime())) {
+          matchesDate = false;
+        } else {
+          if (filtroDataInicio.value) {
+            const dtInicio = new Date(filtroDataInicio.value);
+            dtInicio.setHours(0, 0, 0, 0);
+            if (dataCliente < dtInicio) matchesDate = false;
+          }
+          
+          if (filtroDataFim.value) {
+            const dtFim = new Date(filtroDataFim.value);
+            dtFim.setHours(23, 59, 59, 999);
+            if (dataCliente > dtFim) matchesDate = false;
+          }
         }
       }
     }
 
-    // 5. Filtro de Lembrete Amanhã (Independente)
     let matchesAmanha = true;
-    if (typeof mostrarApenasAmanha !== 'undefined' && mostrarApenasAmanha.value) {
+    if (mostrarApenasAmanha.value) {
       if ((c.status_envio || '').toLowerCase() === 'enviado' && c.ultimo_envio) {
         const statusLemb = calcularStatusLembrete(c.ultimo_envio);
-        // Só mantém se o cálculo retornar exatamente "Amanhã"
         matchesAmanha = statusLemb && statusLemb.texto.includes('Amanhã');
       } else {
-        matchesAmanha = false; // Se não foi enviado, não tem lembrete para amanhã
+        matchesAmanha = false; 
       }
     }
     
-    // 👇 Retorna o cliente apenas se ele passar em todos os filtros ativos (incluindo o Ativo/Inativo)
     return matchesAtivo && matchesStatus && matchesDate && matchesGestor && matchesCompanhia && matchesAmanha;
   });
 });
@@ -205,16 +249,6 @@ const carregarClientes = async () => {
   loading.value = false;
 };
 
-onMounted(() => {
-  carregarClientes();
-  pollingInterval = setInterval(sincronizarStatusRealTime, 3000); 
-});
-
-onUnmounted(() => {
-  if (pollingInterval) clearInterval(pollingInterval);
-});
-
-// FUNÇÕES DE CRUD
 const abrirNovo = () => { 
     cliente.value = { cliente_id: null, nome: '', email: '', telefone: '', empresa: null, perfil_decisor: null, cargo: null, gestor: null, segmento: null }; 
     editando.value = false; 
@@ -263,23 +297,10 @@ const dispararIndividual = async (row_data) => {
   
   try {
     const response = await api.post(`/clientes/${id}/forcar-envio`);
-    
-    toast.add({ 
-      severity: 'success', 
-      summary: 'Tudo pronto! 🚀', 
-      detail: `O convite para ${row_data.nome} já foi enviado para a fila de processamento.`, 
-      life: 5000 
-    });
-
+    toast.add({ severity: 'success', summary: 'Tudo pronto! 🚀', detail: `O convite para ${row_data.nome} já foi enviado para a fila de processamento.`, life: 5000 });
     setTimeout(sincronizarStatusRealTime, 2000); 
-    
   } catch (error) { 
-    toast.add({ 
-      severity: 'error', 
-      summary: 'Ops! Algo aconteceu', 
-      detail: 'Não conseguimos acionar o disparo nativo agora.', 
-      life: 5000 
-    }); 
+    toast.add({ severity: 'error', summary: 'Ops! Algo aconteceu', detail: 'Não conseguimos acionar o disparo nativo agora.', life: 5000 }); 
   } finally { 
     idsEnviando.value = idsEnviando.value.filter(i => i !== id); 
   }
@@ -299,12 +320,7 @@ const dispararLote = async () => {
     const idsParaEnvio = selecionadosAtivos.map(c => c.cliente_id);
     await api.post('/clientes/forcar-envio-lote', { cliente_ids: idsParaEnvio });
     
-    toast.add({ 
-      severity: 'info', 
-      summary: 'Trabalho em curso! 🛠️', 
-      detail: `Estamos a processar o envio para ${total} contatos ativos. Pode continuar a navegar.`, 
-      life: 8000 
-    });
+    toast.add({ severity: 'info', summary: 'Trabalho em curso! 🛠️', detail: `Estamos a processar o envio para ${total} contatos ativos. Pode continuar a navegar.`, life: 8000 });
     
     clientesSelecionados.value = [];
     setTimeout(sincronizarStatusRealTime, 3000);
@@ -325,38 +341,19 @@ const formatarData = (dataStr) => {
   } catch (e) { return 'Pendente'; }
 };
 
-const obterCorStatus = (status) => {
-  if (!status) return 'warning'; 
-  const st = status.toLowerCase();
-  if (st === 'respondido') return 'success';
-  if (st === 'enviado') return 'info';
-  if (st === 'erro') return 'danger';
-  return 'warning';
-};
-
 const gerarIniciais = (nome) => {
   if (!nome) return 'U';
   const partes = nome.trim().split(' ');
   return partes.length > 1 ? (partes[0][0] + partes[partes.length - 1][0]).toUpperCase() : partes[0][0].toUpperCase();
 };
 
-// ==========================================
-// ⚡ AÇÕES PENDENTES (Sincronizado com Kanban)
-// ==========================================
 const acoesAtivas = ref([]);
 
-const verificarAcoes = (empresa) => {
-  if (!empresa) return false;
-  // Verifica se a empresa do cliente tem alguma ação pendente ou em andamento no Kanban
-  return acoesAtivas.value.some(a => a.empresa_nome === empresa);
-};
-
-// Polling Inteligente que OBRIGA a reatividade do Vue e lê o Kanban
 const sincronizarStatusRealTime = async () => {
   try {
     const [response, resAcoes] = await Promise.all([
       api.get('/clientes', { params: { _t: new Date().getTime() }, headers: { 'Cache-Control': 'no-cache' } }),
-      api.get('/acoes') // 👈 Vai buscar o Kanban em tempo real
+      api.get('/acoes')
     ]);
     
     const idsSelecionados = clientesSelecionados.value.map(c => c.cliente_id);
@@ -366,7 +363,6 @@ const sincronizarStatusRealTime = async () => {
       clientesSelecionados.value = clientes.value.filter(c => idsSelecionados.includes(c.cliente_id));
     }
     
-    // Filtra apenas as ações que não estão concluídas
     if (resAcoes.data) {
       acoesAtivas.value = resAcoes.data.filter(a => a.status !== 'Concluído');
     }
@@ -375,33 +371,14 @@ const sincronizarStatusRealTime = async () => {
   }
 };
 
-// ==========================================
-// ⏱️ MOTOR DE CÁLCULO DE FOLLOW-UP
-// ==========================================
-const regrasNPS = ref({ lembrete_dias: 3, recorrencia_dias: 90 });
-
-// 1. Vai buscar a regra dos dias ao banco de dados
-const carregarRegrasNPS = async () => {
-  try {
-    const res = await api.get('/config/regras');
-    if (res.data) {
-      if (res.data.lembrete_dias) regrasNPS.value.lembrete_dias = parseInt(res.data.lembrete_dias);
-      // 👇 2. Ler do backend a recorrência
-      if (res.data.recorrencia_dias) regrasNPS.value.recorrencia_dias = parseInt(res.data.recorrencia_dias); 
-    }
-  } catch (error) {
-    console.error("Erro ao ler regras de lembrete:", error);
-  }
-};
-
-// 2. Calcula visualmente quantos dias faltam
 const calcularStatusLembrete = (data_disparo) => {
   if (!data_disparo) return null;
 
   const dataEnvio = new Date(data_disparo);
+  if (isNaN(dataEnvio.getTime())) return null;
+
   const hoje = new Date();
   
-  // Calcula a diferença em dias (ignorando as horas para ser exato)
   dataEnvio.setHours(0, 0, 0, 0);
   hoje.setHours(0, 0, 0, 0);
   
@@ -415,7 +392,7 @@ const calcularStatusLembrete = (data_disparo) => {
   } else if (diasRestantes === 0) {
     return { texto: 'Lembrete Hoje', cor: 'text-orange-500', icone: 'pi-send' };
   } else {
-    return { texto: 'Na fila de disparo', cor: 'text-rose-500', icone: 'pi-exclamation-circle' }; // Já devia ter ido, o CRON vai apanhá-lo na próxima ronda
+    return { texto: 'Na fila de disparo', cor: 'text-rose-500', icone: 'pi-exclamation-circle' }; 
   }
 };
 
@@ -423,6 +400,10 @@ onMounted(() => {
   carregarClientes();
   carregarRegrasNPS();
   pollingInterval = setInterval(sincronizarStatusRealTime, 3000); 
+});
+
+onUnmounted(() => {
+  if (pollingInterval) clearInterval(pollingInterval);
 });
 
 </script>
@@ -441,9 +422,16 @@ onMounted(() => {
         </div>
       </div>
       
-      <div class="flex flex-wrap gap-3">
-        <Button v-if="temPermissao('audiencia:disparar')" :label="clientesSelecionados.length > 0 ? `Disparar para ${clientesSelecionados.length}` : 'Disparo em Lote'" icon="pi pi-send" @click="dispararLote" :loading="enviandoEmail" class="bg-slate-900 dark:bg-white dark:text-slate-900 border-none rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-xl hover:-translate-y-0.5 transition-transform" />
-        <Button v-if="temPermissao('clientes:criar')" label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="bg-orange-500 border-none rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-orange-500/30 hover:-translate-y-0.5 transition-transform" />
+      <div class="flex flex-wrap gap-3 items-center">
+        <Button 
+          v-if="temPermissao('audiencia:disparar')" 
+          icon="pi pi-cog" 
+          @click="abrirConfiguracoes" 
+          class="!bg-white dark:!bg-slate-800 !text-slate-500 !border-slate-200 dark:!border-slate-700 !rounded-xl w-10 h-10 shadow-sm hover:!text-indigo-500 hover:!border-indigo-500 transition-all flex items-center justify-center shrink-0" 
+          v-tooltip.top="'Configurar Régua de Disparo'" 
+        />
+        <Button v-if="temPermissao('audiencia:disparar')" :label="clientesSelecionados.length > 0 ? `Disparar para ${clientesSelecionados.length}` : 'Disparo em Lote'" icon="pi pi-send" @click="dispararLote" :loading="enviandoEmail" class="bg-slate-900 dark:bg-white dark:text-slate-900 border-none rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-xl hover:-translate-y-0.5 transition-transform shrink-0" />
+        <Button v-if="temPermissao('clientes:criar')" label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="bg-orange-500 border-none rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-orange-500/30 hover:-translate-y-0.5 transition-transform shrink-0" />
       </div>
     </div>
 
@@ -647,26 +635,16 @@ onMounted(() => {
 
         <Column header="Ações" alignFrozen="right" style="width: 130px">
           <template #body="slotProps">
-            <div class="flex gap-1.5 justify-end items-center"> 
+            <div class="flex justify-end items-center"> 
               <Button 
                 v-if="temPermissao('audiencia:disparar')"
                 :icon="idsEnviando.includes(slotProps.data.cliente_id) ? 'pi pi-spin pi-spinner' : 'pi pi-send'" 
-                v-tooltip.top="idsEnviando.includes(slotProps.data.cliente_id) ? 'A processar...' : 'Forçar Disparo'" 
+                v-tooltip.top="(!slotProps.data.ativo && slotProps.data.ativo !== null) ? 'Envio bloqueado (Pessoa Inativa)' : (idsEnviando.includes(slotProps.data.cliente_id) ? 'A processar...' : 'Forçar Disparo')" 
                 @click="dispararIndividual(slotProps.data)" 
-                :disabled="enviandoEmail || idsEnviando.includes(slotProps.data.cliente_id)" 
-                class="w-7 h-7 !bg-orange-50 !text-orange-500 !border-none hover:!bg-orange-100 rounded-lg transition-colors !text-xs p-0 flex items-center justify-center" 
-              />
-
-              <Button 
-                v-if="temPermissao('audiencia:disparar')"
-                :icon="idsEnviando.includes(slotProps.data.cliente_id) ? 'pi pi-spin pi-spinner' : 'pi pi-send'" 
-                v-tooltip.top="(!slotProps.data.ativo) ? 'Envio bloqueado (Pessoa Inativa)' : (idsEnviando.includes(slotProps.data.cliente_id) ? 'A processar...' : 'Forçar Disparo')" 
-                @click="dispararIndividual(slotProps.data)" 
-                :disabled="!slotProps.data.ativo || enviandoEmail || idsEnviando.includes(slotProps.data.cliente_id)" 
+                :disabled="(!slotProps.data.ativo && slotProps.data.ativo !== null) || enviandoEmail || idsEnviando.includes(slotProps.data.cliente_id)" 
                 :class="[
                   'w-7 h-7 rounded-lg transition-colors !text-xs p-0 flex items-center justify-center !border-none',
-                  // 👇 Se estiver inativo, fica cinzento. Se ativo, fica laranja.
-                  (!slotProps.data.ativo) ? '!bg-slate-100 dark:!bg-slate-800 !text-slate-300 dark:!text-slate-600 opacity-60' : '!bg-orange-50 !text-orange-500 hover:!bg-orange-100'
+                  (!slotProps.data.ativo && slotProps.data.ativo !== null) ? '!bg-slate-100 dark:!bg-slate-800 !text-slate-300 dark:!text-slate-600 opacity-60 cursor-not-allowed' : '!bg-orange-50 !text-orange-500 hover:!bg-orange-100'
                 ]" 
               />
             </div>
@@ -732,6 +710,36 @@ onMounted(() => {
         </div>
       </template>
     </Dialog>
+
+    <Dialog v-model:visible="dialogRegras" :style="{width: '450px'}" header="Regras de Disparo Automático" :modal="true" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
+      <div class="p-6 md:p-8 space-y-5 bg-slate-50/50 dark:bg-slate-900">
+        
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Ciclo de Recorrência (Dias)</label>
+          <div class="relative">
+             <i class="pi pi-sync absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+             <InputText v-model.number="regrasForm.recorrencia_dias" type="number" class="custom-input w-full pl-10" />
+          </div>
+          <small class="text-[10px] font-medium text-slate-400 mt-1">Tempo de carência até o mesmo cliente poder receber uma nova pesquisa.</small>
+        </div>
+        
+        <div class="flex flex-col gap-1.5 mt-2">
+          <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Lembrete após (Dias)</label>
+          <div class="relative">
+             <i class="pi pi-clock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+             <InputText v-model.number="regrasForm.lembrete_dias" type="number" class="custom-input w-full pl-10" />
+          </div>
+          <small class="text-[10px] font-medium text-slate-400 mt-1">Dias de espera após o envio original para disparar o lembrete a quem não respondeu.</small>
+        </div>
+
+      </div>
+      <template #footer>
+        <div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900 flex gap-3 w-full border-t border-slate-100 dark:border-slate-800">
+          <Button label="Cancelar" text class="flex-1 font-bold text-[11px] text-slate-400" @click="dialogRegras = false" />
+          <Button label="Guardar Regras" :loading="savingConfig" class="flex-1 !bg-orange-500 hover:!bg-orange-600 !text-white !rounded-xl font-bold text-[11px] shadow-lg shadow-orange-500/20 border-none py-3" @click="atualizarRegras" />
+        </div>
+      </template>
+    </Dialog>
     
   </div>
 </template>
@@ -755,6 +763,10 @@ onMounted(() => {
     padding: 0 !important;
     color: inherit !important;
     @apply text-[10px] font-black uppercase text-slate-800 dark:text-white w-full outline-none ring-0;
+}
+
+:deep(.custom-input) {
+    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-slate-800 dark:text-white h-[42px] rounded-xl px-4;
 }
 
 :deep(.custom-input-minimal::placeholder),
@@ -786,6 +798,7 @@ onMounted(() => {
 }
 :deep(.p-dropdown-panel .p-dropdown-item.p-highlight) {
     @apply bg-sky-500/10 text-sky-600 dark:text-sky-400 !important;
+}
 
 /* Esconde a barra de scroll horizontal mas mantém a funcionalidade */
 .hide-scrollbar::-webkit-scrollbar {
@@ -794,7 +807,6 @@ onMounted(() => {
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
 }
 
 /* ==========================================

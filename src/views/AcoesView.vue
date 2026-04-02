@@ -290,9 +290,9 @@ const salvarAcao = async () => {
     };
 
     if (acaoAtual.value.id) {
-      await api.put(`/api/acoes/${acaoAtual.value.id}`, payload);
+      await api.put(`/acoes/${acaoAtual.value.id}`, payload); 
     } else {
-      await api.post('/api/acoes', payload);
+      await api.post('/acoes', payload);
     }
     
     dialogAcao.value = false;

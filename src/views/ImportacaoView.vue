@@ -40,6 +40,7 @@ onMounted(async () => {
     companhiasDisponiveis.value = response.data || [];
   } catch (error) {
     console.error("Erro ao carregar companhias:", error);
+    toast.add({ severity: 'error', summary: 'Erro de Conexão', detail: 'Não foi possível carregar as companhias.' });
   }
 });
 
@@ -54,8 +55,8 @@ const baixarTemplate = () => {
     exemplo = ['Marcelo Mendes', 'marcelo@empresa.com', 'Stefanini', 'Decisor', 'Tecnologia', '+351 912...', 'Product Manager', '50000', 'True', '2026-01-01'];
     nomeArquivo = 'template_clientes_nps.csv';
   } else {
-    cabecalhos = ['email', 'empresa', 'data_resposta', 'nota', 'comentario'];
-    exemplo = ['marcelo@empresa.com', 'Stefanini', '2026-03-15', '10', 'Excelente serviço!'];
+    cabecalhos = ['email', 'empresa', 'data_resposta', 'nota', 'comentario', 'perfil_decisor', 'segmento'];
+    exemplo = ['marcelo@empresa.com', 'Stefanini', '2026-03-15', '10', 'Excelente serviço!', 'Decisor', 'Tecnologia'];
     nomeArquivo = 'template_respostas_nps.csv';
   }
 
@@ -64,7 +65,8 @@ const baixarTemplate = () => {
     exemplo.join(',')
   ].join('\n');
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // \uFEFF é o BOM UTF-8. Garante que o Excel em PT-BR/PT-PT lê os acentos perfeitamente!
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
@@ -93,23 +95,23 @@ const getMotivoErro = (row) => {
     if (row.nota === null || row.nota === undefined || String(row.nota).trim() === '') return "Nota NPS ausente";
     
     const notaNum = Number(row.nota);
-    if (isNaN(notaNum) || notaNum < 0 || notaNum > 10) return "A nota deve ser entre 0 e 10";
+    if (isNaN(notaNum) || notaNum < 0 || notaNum > 10) return "A nota deve ser um número entre 0 e 10";
     
     if (!row.data_resposta || String(row.data_resposta).trim() === '') return "Data de resposta ausente";
   }
 
   const chavesSelecionadas = tipoImportacao.value === 'clientes' 
-    ? chavesCliente.value 
-    : [...chavesCliente.value, ...chavesResposta.value];
+    ? chavesCliente.value || []
+    : [...(chavesCliente.value || []), ...(chavesResposta.value || [])];
 
-  if (chavesSelecionadas && chavesSelecionadas.length > 0) {
+  if (chavesSelecionadas.length > 0) {
     const chavesFaltando = chavesSelecionadas.filter(chave => {
       const valor = row[chave];
       return valor === null || valor === undefined || String(valor).trim() === '';
     });
     
     if (chavesFaltando.length > 0) {
-      return `Falta a chave: ${chavesFaltando.join(', ')}`;
+      return `Falta preencher: ${chavesFaltando.join(', ')}`;
     }
   }
 
@@ -161,8 +163,10 @@ const processarFicheiro = async (event) => {
 
   } catch (error) {
     console.error("Erro na pré-visualização:", error);
-    toast.add({ severity: 'error', summary: 'Erro de Leitura', detail: 'Não foi possível ler o ficheiro. Verifique o formato.' });
+    toast.add({ severity: 'error', summary: 'Erro de Leitura', detail: 'Não foi possível ler o ficheiro. Verifique se o formato está correto (XLSX ou CSV).' });
     isProcessando.value = false;
+  } finally {
+    event.target.value = ''; 
   }
 };
 
@@ -171,7 +175,7 @@ const processarFicheiro = async (event) => {
 // ==========================================
 const enviarParaBackend = async () => {
   if (errosCount.value > 0 && !ignorarErros.value) {
-    toast.add({ severity: 'warn', summary: 'Ação Necessária', detail: `Existem ${errosCount.value} registos inválidos. Corrija-os ou ative a opção de ignorá-los.`, life: 5000 });
+    toast.add({ severity: 'warn', summary: 'Ação Necessária', detail: `Existem ${errosCount.value} registos com erro. Corrija-os no ficheiro ou ative a opção para os ignorar.`, life: 5000 });
     return;
   }
 
@@ -180,7 +184,7 @@ const enviarParaBackend = async () => {
     : dadosPreview.value;
 
   if (dadosFinais.length === 0) {
-    toast.add({ severity: 'error', summary: 'Operação Abortada', detail: 'Não há registos válidos para importar.' });
+    toast.add({ severity: 'error', summary: 'Operação Abortada', detail: 'Não existem registos válidos para importar.' });
     return;
   }
 
@@ -193,6 +197,8 @@ const enviarParaBackend = async () => {
       dados: dadosFinais,
       chaves_cliente: chavesCliente.value, 
       chaves_resposta: tipoImportacao.value === 'respostas' ? chavesResposta.value : [],
+      
+      companhia_id: companhiaSelecionada.value,
       configuracao: {
         overwrite: configuracaoImportacao.value.overwrite,
         companhia_id: companhiaSelecionada.value 
@@ -210,11 +216,11 @@ const enviarParaBackend = async () => {
     };
     
     setTimeout(() => { passoAtual.value = 3; isProcessando.value = false; }, 600);
-    toast.add({ severity: 'success', summary: 'Importação Concluída', detail: 'Dados gravados com sucesso!' });
+    toast.add({ severity: 'success', summary: 'Importação Concluída', detail: 'Os dados foram gravados na plataforma com sucesso!' });
 
   } catch (error) {
     console.error("Erro na importação:", error);
-    toast.add({ severity: 'error', summary: 'Erro do Servidor', detail: error.response?.data?.detail || 'Ocorreu um erro crítico ao processar no banco de dados.' });
+    toast.add({ severity: 'error', summary: 'Falha no Servidor', detail: error.response?.data?.detail || 'Ocorreu um erro crítico ao guardar as informações na base de dados.' });
     isProcessando.value = false;
   }
 };
@@ -496,8 +502,12 @@ const reiniciar = () => {
 :deep(.p-progressbar-value) { @apply bg-orange-500 transition-all duration-300; }
 :deep(.custom-input) { @apply bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-slate-800 dark:text-white; }
 :deep(.custom-table), :deep(.custom-table .p-datatable-wrapper) { @apply bg-white dark:bg-slate-900; }
-:deep(.custom-table .p-datatable-thead > tr > th) { @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 px-4; }
-:deep(.custom-table .p-datatable-tbody > tr) { @apply transition-colors border-b border-slate-50 dark:border-slate-800/50; }
-:deep(.custom-table .p-datatable-tbody > tr:hover) { @apply bg-slate-50 dark:bg-slate-800/30; }
+:deep(.custom-table .p-datatable-thead > tr > th) { @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-5 px-4; }
+:deep(.custom-table .p-datatable-tbody > tr) { @apply border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors; }
 :deep(.custom-table .p-datatable-tbody > tr > td) { @apply py-4 px-4; }
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-slate-200 dark:bg-slate-700 rounded-full; }
 </style>
