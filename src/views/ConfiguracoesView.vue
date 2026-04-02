@@ -470,8 +470,22 @@ const carregarElegiveisNPS = async () => {
   loadingElegiveis.value = true;
   try {
     const res = await api.get('/config/nps/elegiveis');
-    totalElegiveisNPS.value = res.data.total;
-  } catch (error) { console.error(error); } finally { loadingElegiveis.value = false; }
+    
+    const totalRecebido = res.data && res.data.total !== undefined ? res.data.total : 0;
+    
+    if (typeof totalRecebido === 'number' && totalRecebido < 1000000) {
+      totalElegiveisNPS.value = totalRecebido;
+    } else {
+      const convertido = parseInt(totalRecebido);
+      totalElegiveisNPS.value = (!isNaN(convertido) && convertido < 1000000) ? convertido : 0;
+    }
+
+  } catch (error) { 
+    console.error("Falha ao carregar fila NPS:", error); 
+    totalElegiveisNPS.value = 0;
+  } finally { 
+    loadingElegiveis.value = false; 
+  }
 };
 
 const forcarDisparoNPS = async () => {
@@ -1508,18 +1522,33 @@ onMounted(() => {
             <div class="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
             
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center relative z-10 gap-6">
-              <div>
-                <h3 class="text-xl font-black italic tracking-tight mb-1 flex items-center gap-3">
-                  <i class="pi pi-bolt text-orange-500"></i> Motor de Disparo <span class="text-orange-500">.</span>
-                </h3>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Controlo da fila de espera e execução manual</p>
+              
+              <div class="flex flex-col gap-4">
+                <div>
+                  <h3 class="text-xl font-black italic tracking-tight mb-1 flex items-center gap-3">
+                    <i class="pi pi-bolt text-orange-500"></i> Motor de Disparo <span class="text-orange-500">.</span>
+                  </h3>
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Controlo da fila de espera e execução manual</p>
+                </div>
+                
+                <div class="flex items-center gap-3 bg-white/5 border border-white/10 py-2.5 px-4 rounded-xl w-fit backdrop-blur-sm">
+                  <InputSwitch v-model="regrasConfig.envios_ativos" @change="salvarRegras" class="scale-90" />
+                  <div class="flex flex-col">
+                    <span class="text-[10px] font-black uppercase tracking-widest text-white">Robô Automático</span>
+                    <span class="text-[8.5px] font-bold mt-0.5" :class="regrasConfig.envios_ativos ? 'text-emerald-400' : 'text-rose-400'">
+                      {{ regrasConfig.envios_ativos ? 'LIGADO (Disparos em Background)' : 'DESLIGADO (Apenas Disparos Manuais)' }}
+                    </span>
+                  </div>
+                </div>
               </div>
               
               <div class="flex flex-wrap items-center gap-4 bg-white/5 border border-white/10 p-3 md:p-4 rounded-2xl backdrop-blur-sm">
                 <div class="flex flex-col px-4">
                   <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Na Fila de Espera</span>
                   <div class="flex items-baseline gap-1.5 mt-0.5">
-                    <span class="text-3xl font-black text-white leading-none">{{ totalElegiveisNPS ?? 0 }}</span>
+                    <span class="text-3xl font-black text-white leading-none">
+                      {{ typeof totalElegiveisNPS === 'number' && totalElegiveisNPS < 1000000 ? totalElegiveisNPS : 0 }}
+                    </span>
                     <span class="text-[10px] font-bold text-slate-500">clientes</span>
                   </div>
                 </div>
