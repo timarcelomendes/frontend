@@ -237,10 +237,21 @@ const abrirNovaAcao = () => {
 };
 
 const abrirEdicao = (acao) => {
+  // 👇 Calcula automaticamente o contexto baseado na nota da resposta
+  let contextoCalculado = 'manual';
+  
+  if (acao.resposta_nota !== null && acao.resposta_nota !== undefined) {
+    const nota = Number(acao.resposta_nota);
+    if (nota >= 9) contextoCalculado = 'promotor';
+    else if (nota >= 7) contextoCalculado = 'neutro';
+    else contextoCalculado = 'detrator';
+  }
+
   acaoAtual.value = { 
     ...acao,
     gestor_id: acao.gestor_id ? Number(acao.gestor_id) : null,
-    empresa_id: acao.empresa_id ? Number(acao.empresa_id) : null
+    empresa_id: acao.empresa_id ? Number(acao.empresa_id) : null,
+    contexto: contextoCalculado // 👈 Preenche visualmente o dropdown "Tipo de SLA"
   };
   dialogAcao.value = true;
 };

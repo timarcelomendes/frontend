@@ -28,6 +28,11 @@ const verificandoConexao = ref(false);
 const carregandoDados = ref(false);
 const carregandoUtilizadores = ref(false);
 
+// --- ESTADO: GESTOR DE IMAGENS (E-MAIL) ---
+const enviandoImagem = ref(false);
+const imagensUpload = ref([]);
+const fileInputImagem = ref(null);
+
 // --- ESTADO: CONFIGURAÇÕES DE EMAIL ---
 const config = ref({
   tenant_id: '',
@@ -532,6 +537,112 @@ const carregarRegras = async () => {
   }
 };
 
+// ==========================================
+// 🖼️ GESTÃO DE IMAGENS PARA E-MAILS
+// ==========================================
+const carregarImagensHospedadas = async () => {
+  try {
+    const res = await api.get('/config/imagens');
+    imagensUpload.value = res.data || [];
+  } catch (error) {
+    console.warn("Nenhuma imagem hospedada encontrada.");
+  }
+};
+
+const triggerUploadImagem = () => {
+  if (fileInputImagem.value) fileInputImagem.value.click();
+};
+
+const processarUploadImagem = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  enviandoImagem.value = true;
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await api.post('/upload-imagem', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    imagensUpload.value.unshift(res.data);
+    toast.add({ severity: 'success', summary: 'Imagem Hospedada', detail: 'O ficheiro já tem uma URL pública.' });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao processar imagem.' });
+  } finally {
+    enviandoImagem.value = false;
+    event.target.value = '';
+  }
+};
+
+const copiarUrl = (url) => {
+  navigator.clipboard.writeText(url);
+  toast.add({ severity: 'info', summary: 'URL Copiada', detail: 'Cole no atributo src="" do seu HTML.', life: 3000 });
+};
+
+const removerImagem = async (nomeArquivo) => {
+  if(confirm("Tem a certeza que deseja apagar esta imagem? Os e-mails deixarão de a exibir.")){
+    try {
+      await api.delete(`/config/imagens/${nomeArquivo}`);
+      imagensUpload.value = imagensUpload.value.filter(img => img.nome !== nomeArquivo);
+      toast.add({ severity: 'success', summary: 'Apagada', detail: 'A imagem foi removida do servidor.' });
+    } catch(e) {
+      toast.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível apagar a imagem.' });
+    }
+  }
+};
+
+// ==========================================
+// 🪄 SUBSTITUIÇÃO INTELIGENTE DE IMAGENS (TURBO)
+// ==========================================
+const aplicarImagensInteligente = (tipoTemplate) => {
+  let html = '';
+  
+  if (tipoTemplate === 'convite') html = regrasConfig.value.email_template_html;
+  else if (tipoTemplate === 'lembrete1') html = regrasConfig.value.email_template_lembrete_1; 
+  else if (tipoTemplate === 'lembrete2') html = regrasConfig.value.email_template_lembrete_2; 
+  else if (tipoTemplate === 'lembrete3') html = regrasConfig.value.email_template_lembrete_3; 
+  else if (tipoTemplate === 'agradecimento_promotor') html = regrasConfig.value.email_agradecimento_promotor; 
+  else if (tipoTemplate === 'agradecimento_neutro') html = regrasConfig.value.email_agradecimento_neutro; 
+  else if (tipoTemplate === 'agradecimento_detrator') html = regrasConfig.value.email_agradecimento_detrator; 
+
+  if (!html || html.trim() === '') {
+    return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole primeiro o código HTML do template.' });
+  }
+
+  let substituicoes = 0;
+
+  imagensUpload.value.forEach(img => {
+    // 1. Prepara o nome do ficheiro (ex: "logo.png" vira "logo\.png")
+    const nomeEscapado = img.nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    // 2. REGEX MÁGICA: Apanha qualquer coisa/pasta antes do nome, e qualquer parâmetro inútil depois (?)
+    // Exemplo do que ela encontra: "images/logo.png", "https://old.com/logo.png?v=1", "assets/img/logo.png"
+    const regex = new RegExp(`([^"'\\s\\(]*\\/)?${nomeEscapado}(?:\\?[^"'\\s\\)]*)?`, 'gi');
+    
+    const matches = html.match(regex);
+    if (matches) {
+      // 3. Substitui todo o caminho estragado pela URL limpa do seu servidor
+      html = html.replace(regex, img.url);
+      substituicoes += matches.length;
+    }
+  });
+
+  if (substituicoes > 0) {
+    if (tipoTemplate === 'convite') regrasConfig.value.email_template_html = html;
+    else if (tipoTemplate === 'lembrete1') regrasConfig.value.email_template_lembrete_1 = html;
+    else if (tipoTemplate === 'lembrete2') regrasConfig.value.email_template_lembrete_2 = html;
+    else if (tipoTemplate === 'lembrete3') regrasConfig.value.email_template_lembrete_3 = html;
+    else if (tipoTemplate === 'agradecimento_promotor') regrasConfig.value.email_agradecimento_promotor = html;
+    else if (tipoTemplate === 'agradecimento_neutro') regrasConfig.value.email_agradecimento_neutro = html;
+    else if (tipoTemplate === 'agradecimento_detrator') regrasConfig.value.email_agradecimento_detrator = html;
+    
+    toast.add({ severity: 'success', summary: 'Magia Aplicada 🪄', detail: `${substituicoes} link(s) local(is) substituído(s) pelas URLs públicas!`, life: 4000 });
+  } else {
+    toast.add({ severity: 'info', summary: 'Sem alterações', detail: 'Nenhuma imagem local correspondente encontrada no HTML.', life: 3000 });
+  }
+};
+
 const salvarRegras = async () => {
   savingRegras.value = true;
   try {
@@ -692,6 +803,7 @@ onMounted(() => {
   carregarRegras();
   carregarIntegracoes();
   carregarPermissoes();
+  carregarImagensHospedadas();
 });
 
 </script>
@@ -1277,7 +1389,7 @@ onMounted(() => {
         </div>
       </TabPanel>
 
-      <TabPanel>
+<TabPanel>
         <template #header>
           <div class="flex items-center gap-2 px-2">
             <i class="pi pi-cog text-slate-400"></i> <span class="font-bold">Regras & Operação</span>
@@ -1460,9 +1572,6 @@ onMounted(() => {
                     <label class="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-2">3º Lembrete</label>
                     <InputNumber v-model="regrasConfig.lembrete_dias_3" suffix=" dias após envio" class="w-full" inputClass="w-full text-center font-bold text-[11px] !py-2.5 !bg-white dark:!bg-slate-900 !border-slate-200 dark:!border-slate-700 !rounded-xl shadow-sm focus:!ring-2 focus:!ring-purple-500/20 text-purple-600 dark:text-purple-400" />
                   </div>
-
-                  
-
                 </div>
                 
                 <div v-if="regrasConfig.lembrete_qtd_maxima > 0" class="flex items-center gap-3 text-[10px] font-bold text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-500/10 p-4 rounded-xl border border-amber-100 dark:border-amber-500/20">
@@ -1502,6 +1611,46 @@ onMounted(() => {
               </div>
             </div>
 
+            <div class="md:col-span-2 bg-slate-50 dark:bg-slate-800/40 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 mb-8 mt-8">
+              <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+                <i class="pi pi-images text-orange-500"></i> Gestor de Imagens para E-mails
+              </h4>
+              
+              <div class="flex flex-col gap-4">
+                <p class="text-[11px] text-slate-500 font-medium">Faça o upload das imagens do seu template (ex: banner, logo) para gerar um link público. Clique em "Copiar" e cole o link no atributo <code class="text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-1 rounded">src="..."</code> do seu HTML.</p>
+                
+                <div class="flex items-center gap-4 mt-2">
+                  <input type="file" ref="fileInputImagem" accept="image/*" class="hidden" @change="processarUploadImagem" />
+                  <Button label="Hospedar Nova Imagem" icon="pi pi-upload" :loading="enviandoImagem" @click="triggerUploadImagem" class="!bg-slate-900 dark:!bg-slate-100 !text-white dark:!text-slate-900 !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-5 shadow-md" />
+                </div>
+
+                <div v-if="imagensUpload.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">
+                  <div v-for="img in imagensUpload" :key="img.url" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-[1.5rem] flex flex-col shadow-sm overflow-hidden group hover:shadow-md transition-shadow">
+                    
+                    <div class="h-44 w-full relative bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIj48L3JlY3Q+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNlNWU3ZWIiPjwvcmVjdD4KPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iI2U1ZTdlYiI+PC9yZWN0Pgo8L3N2Zz4=')] dark:bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjMWUyOTNiIj48L3JlY3Q+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiMwZjE3MmEiPjwvcmVjdD4KPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iIzBmMTcyYSI+PC9yZWN0Pgo8L3N2Zz4=')] flex items-center justify-center p-4">
+                      <img :src="img.url" class="max-w-full max-h-full object-contain drop-shadow-md" :alt="img.nome" />
+                      
+                      <div class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
+                        <Button icon="pi pi-copy" label="Copiar URL" class="!bg-white hover:!bg-slate-100 !text-slate-900 !border-none !text-[10px] !font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-transform hover:scale-105 shadow-xl" @click="copiarUrl(img.url)" />
+                        <Button icon="pi pi-trash" class="!bg-rose-500 hover:!bg-rose-600 !text-white !border-none !w-9 !h-9 !p-0 rounded-xl flex items-center justify-center transition-transform hover:scale-105 shadow-xl" v-tooltip.top="'Apagar Imagem'" @click="removerImagem(img.nome)" />
+                      </div>
+                    </div>
+
+                    <div class="p-5 flex flex-col border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                      <span class="text-[11px] font-black text-slate-800 dark:text-slate-200 break-words leading-tight mb-2">
+                        {{ img.nome }}
+                      </span>
+                      <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
+                        <i class="pi pi-link text-[10px] text-sky-500 shrink-0"></i>
+                        <span class="text-[9px] font-medium text-slate-500 dark:text-slate-400 truncate w-full" :title="img.url">{{ img.url }}</span>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="md:col-span-2 bg-white dark:bg-slate-900 p-2 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
               <div class="bg-slate-950 rounded-[1.5rem] overflow-hidden border border-slate-800 shadow-2xl">
                 
@@ -1525,6 +1674,8 @@ onMounted(() => {
                   <Tag value="{nome}" class="!bg-sky-900/40 !text-sky-300 !text-[9px] !font-mono border border-sky-800/50" />
                   <Tag value="{empresa}" class="!bg-sky-900/40 !text-sky-300 !text-[9px] !font-mono border border-sky-800/50" />
                   <Tag value="{survey_url}" class="!bg-rose-900/40 !text-rose-300 !text-[9px] !font-mono border border-rose-800/50" v-tooltip.top="'Obrigatório (Link do Botão)'" />
+                  
+                  <Button label="Auto-Corrigir Imagens" icon="pi pi-magic" @click="aplicarImagensInteligente('convite')" class="ml-auto !bg-sky-500/10 hover:!bg-sky-500/30 !text-sky-300 !border-none !text-[9px] !font-black !uppercase tracking-widest !py-1 !px-3 rounded-lg shadow-sm transition-colors shrink-0" v-tooltip.top="'Injeta as URLs das imagens hospedadas.'" />
                 </div>
 
                 <Textarea v-model="regrasConfig.email_template_html" rows="12" :placeholder="modeloBaseConvite" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-sky-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
@@ -1566,6 +1717,8 @@ onMounted(() => {
                   <Tag value="{nome}" class="!bg-purple-900/40 !text-purple-300 !text-[9px] !font-mono border border-purple-800/50" />
                   <Tag value="{empresa}" class="!bg-purple-900/40 !text-purple-300 !text-[9px] !font-mono border border-purple-800/50" />
                   <Tag value="{survey_url}" class="!bg-rose-900/40 !text-rose-300 !text-[9px] !font-mono border border-rose-800/50" v-tooltip.top="'Obrigatório (Link do Botão)'" />
+                  
+                  <Button label="Auto-Corrigir Imagens" icon="pi pi-magic" @click="aplicarImagensInteligente('lembrete' + abaEmailLembrete)" class="ml-auto !bg-purple-500/10 hover:!bg-purple-500/30 !text-purple-300 !border-none !text-[9px] !font-black !uppercase tracking-widest !py-1 !px-3 rounded-lg shadow-sm transition-colors shrink-0" v-tooltip.top="'Injeta as URLs das imagens hospedadas na aba atual.'" />
                 </div>
 
                 <div v-show="abaEmailLembrete === '1' && regrasConfig.lembrete_qtd_maxima >= 1" class="animate-fadein bg-slate-800/30">
@@ -1581,7 +1734,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <div class="md:col-span-2 bg-white dark:bg-slate-900 p-2 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
+            <div class="md:col-span-2 bg-white dark:bg-slate-900 p-2 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm mt-4 mb-8">
               <div class="bg-slate-950 rounded-[1.5rem] overflow-hidden border border-slate-800 shadow-2xl">
                 
                 <div class="flex flex-col md:flex-row justify-between items-center bg-slate-900 px-6 py-4 border-b border-slate-800 gap-4">
@@ -1617,8 +1770,8 @@ onMounted(() => {
                   <Tag value="{empresa}" class="!bg-emerald-900/30 !text-emerald-400 !text-[9px] !font-mono border border-emerald-800/50" />
                   <Tag value="{nota}" class="!bg-emerald-900/30 !text-emerald-400 !text-[9px] !font-mono border border-emerald-800/50" />
                   <Tag value="{motivo}" class="!bg-orange-900/30 !text-orange-400 !text-[9px] !font-mono border border-orange-800/50" />
-                  <Tag value="{expectativas}" class="!bg-slate-700/50 !text-slate-400 !text-[9px] !font-mono border border-slate-600/50" />
-                  <Tag value="{o_que_faltava}" class="!bg-slate-700/50 !text-slate-400 !text-[9px] !font-mono border border-slate-600/50" />
+                  
+                  <Button label="Auto-Corrigir Imagens" icon="pi pi-magic" @click="aplicarImagensInteligente('agradecimento_' + abaEmailAgradecimento)" class="ml-auto !bg-emerald-500/10 hover:!bg-emerald-500/30 !text-emerald-300 !border-none !text-[9px] !font-black !uppercase tracking-widest !py-1 !px-3 rounded-lg shadow-sm transition-colors shrink-0" v-tooltip.top="'Injeta as URLs das imagens hospedadas na aba atual.'" />
                 </div>
 
                 <div v-show="abaEmailAgradecimento === 'promotor'" class="animate-fadein bg-slate-800/30">

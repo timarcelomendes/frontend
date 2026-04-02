@@ -330,6 +330,27 @@ const carregarClientesParaDropdown = async () => {
   }
 };
 
+// ==========================================
+// 🗑️ EXCLUSÃO DEFINITIVA (APENAS ADMIN)
+// ==========================================
+// Adapte a chave 'usuario_tipo' conforme o que guardou no seu localStorage no momento do login
+const isAdmin = computed(() => {
+  const tipo = localStorage.getItem('usuario_tipo') || localStorage.getItem('tipo');
+  return tipo === 'Admin';
+});
+
+const excluirRespostaDefinitiva = async (dados) => {
+  if (confirm(`ATENÇÃO: Deseja EXCLUIR DEFINITIVAMENTE o feedback da empresa ${dados.empresa}? \n\nEsta ação apagará a nota e QUALQUER PLANO DE AÇÃO que esteja no Kanban vinculado a ela. Esta ação não pode ser desfeita.`)) {
+    try {
+      await api.delete(`/respostas/${dados.resposta_id}`);
+      toast.add({ severity: 'success', summary: 'Excluído', detail: 'Feedback e ações apagados permanentemente.', life: 4000 });
+      carregarRespostas(); 
+    } catch (error) {
+      toast.add({ severity: 'error', summary: 'Acesso Negado', detail: error.response?.data?.detail || 'Apenas Administradores podem realizar esta ação.', life: 4000 });
+    }
+  }
+};
+
 onMounted(async () => {
   await carregarCombos(); 
   carregarRespostas();
@@ -560,16 +581,23 @@ onMounted(async () => {
           </template>
         </Column>
 
-        <Column header="Auditoria" alignFrozen="right" style="width: 140px">
+        <Column header="Auditoria" alignFrozen="right" style="width: 170px">
           <template #body="s">
-            <div class="flex gap-2 justify-end">
+            <div class="flex gap-2 justify-end items-center">
+              
               <Button icon="pi pi-sliders-h" label="Analisar" @click="abrirEdicao(s.data)" class="!bg-slate-50 dark:!bg-slate-800 !text-slate-600 dark:!text-slate-300 !border-none !text-[9px] !font-black !px-3 hover:!bg-slate-200 dark:hover:!bg-slate-700 transition-colors uppercase tracking-widest" />
               
               <Button :icon="s.data.excluido ? 'pi pi-undo' : 'pi pi-folder'" 
                       v-tooltip.top="s.data.excluido ? 'Desarquivar (Restaurar)' : 'Arquivar'" 
                       @click="alternarEstadoArquivo(s.data)" 
-                      class="w-8 h-8 !p-0 flex items-center justify-center !text-slate-400 !bg-transparent !border-none hover:!bg-slate-100 dark:hover:!bg-slate-800 transition-colors rounded-lg"
+                      class="w-8 h-8 !p-0 flex items-center justify-center !text-slate-400 !bg-transparent !border-none hover:!bg-slate-100 dark:hover:!bg-slate-800 transition-colors rounded-lg shrink-0"
                       :class="{'!text-rose-400 hover:!text-rose-600': !s.data.excluido, '!text-emerald-500 hover:!text-emerald-600': s.data.excluido}" />
+
+              <Button v-if="isAdmin" 
+                      icon="pi pi-trash" 
+                      v-tooltip.top="'Excluir Permanentemente'" 
+                      @click="excluirRespostaDefinitiva(s.data)" 
+                      class="w-8 h-8 !p-0 flex items-center justify-center !text-rose-300 !bg-transparent !border-none hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10 transition-colors rounded-lg shrink-0" />
             </div>
           </template>
         </Column>
