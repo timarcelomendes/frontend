@@ -1,8 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
-
+import Dropdown from 'primevue/dropdown';
 import Button from 'primevue/button';
 import ProgressBar from 'primevue/progressbar';
 import DataTable from 'primevue/datatable';
@@ -28,24 +28,35 @@ const chavesResposta = ref([]);
 const configuracaoImportacao = ref({ overwrite: true });
 const ignorarErros = ref(false);
 const resumoFinal = ref(null);
+const companhiasDisponiveis = ref([]);
+const companhiaSelecionada = ref(null);
+
+// ==========================================
+// 📥 CARREGAR DADOS INICIAIS
+// ==========================================
+onMounted(async () => {
+  try {
+    const response = await api.get('/cadastros/companhias');
+    companhiasDisponiveis.value = response.data || [];
+  } catch (error) {
+    console.error("Erro ao carregar companhias:", error);
+  }
+});
 
 // ==========================================
 // 📥 DOWNLOAD DO TEMPLATE DINÂMICO
 // ==========================================
-
 const baixarTemplate = () => {
   let cabecalhos, exemplo, nomeArquivo;
 
   if (tipoImportacao.value === 'clientes') {
     cabecalhos = ['nome', 'email', 'empresa', 'perfil_decisor', 'segmento', 'telefone', 'cargo', 'valor_contrato', 'ativo', 'ultimo_envio'];
-    
-    exemplo = ['João Silva', 'joao@empresa.com', 'Empresa X', 'Decisor', 'Tecnologia', '1199999999', 'CEO', '0', 'True', '2023-12-01'];
-    
-    nomeArquivo = 'template_clientes.csv';
+    exemplo = ['Marcelo Mendes', 'marcelo@empresa.com', 'Stefanini', 'Decisor', 'Tecnologia', '+351 912...', 'Product Manager', '50000', 'True', '2026-01-01'];
+    nomeArquivo = 'template_clientes_nps.csv';
   } else {
     cabecalhos = ['email', 'empresa', 'data_resposta', 'nota', 'comentario'];
-    exemplo = ['joao@empresa.com', 'Empresa X', '2023-12-01', '10', 'Excelente serviço!'];
-    nomeArquivo = 'template_respostas.csv';
+    exemplo = ['marcelo@empresa.com', 'Stefanini', '2026-03-15', '10', 'Excelente serviço!'];
+    nomeArquivo = 'template_respostas_nps.csv';
   }
 
   const csvContent = [
@@ -67,18 +78,14 @@ const baixarTemplate = () => {
 // 🛡️ VALIDAÇÃO DINÂMICA ROBUSTA
 // ==========================================
 const getMotivoErro = (row) => {
-  // 1. Erros já vindos do Backend (se aplicável)
   if (row.detalhe) return row.detalhe;
   if (row.tipo_pendencia) return 'Pendência: ' + row.tipo_pendencia;
 
-  // 2. Validação Específica para CLIENTES
   if (tipoImportacao.value === 'clientes') {
     if (!row.email || String(row.email).trim() === '') return "Email ausente (Obrigatório)";
     if (!row.nome || String(row.nome).trim() === '') return "Nome ausente (Obrigatório)";
     if (!row.empresa || String(row.empresa).trim() === '') return "Empresa não vinculada";
   } 
-  
-  // 3. Validação Específica para RESPOSTAS (NPS)
   else if (tipoImportacao.value === 'respostas') {
     if (!row.email || String(row.email).trim() === '') return "Email ausente (Obrigatório)";
     if (!row.empresa || String(row.empresa).trim() === '') return "Empresa não vinculada";
@@ -91,7 +98,6 @@ const getMotivoErro = (row) => {
     if (!row.data_resposta || String(row.data_resposta).trim() === '') return "Data de resposta ausente";
   }
 
-  // 4. Validação Dinâmica de Chaves escolhidas pelo utilizador
   const chavesSelecionadas = tipoImportacao.value === 'clientes' 
     ? chavesCliente.value 
     : [...chavesCliente.value, ...chavesResposta.value];
@@ -112,9 +118,7 @@ const getMotivoErro = (row) => {
 
 const isRegistroValido = (row) => getMotivoErro(row) === null;
 
-// Filtros e Scorecards
 const mostrarApenasInvalidos = ref(false);
-
 const registrosComErro = computed(() => dadosPreview.value.filter(row => !isRegistroValido(row)));
 const errosCount = computed(() => registrosComErro.value.length);
 const prontosCount = computed(() => dadosPreview.value.length - errosCount.value);
@@ -124,9 +128,7 @@ const dadosFiltrados = computed(() => {
   return dadosPreview.value;
 });
 
-const rowClass = (data) => {
-  return isRegistroValido(data) ? '' : '!bg-rose-50/50 dark:!bg-rose-500/5';
-};
+const rowClass = (data) => isRegistroValido(data) ? '' : '!bg-rose-50/50 dark:!bg-rose-500/5';
 
 // ==========================================
 // 🔄 PROCESSAMENTO DO FICHEIRO
@@ -191,7 +193,10 @@ const enviarParaBackend = async () => {
       dados: dadosFinais,
       chaves_cliente: chavesCliente.value, 
       chaves_resposta: tipoImportacao.value === 'respostas' ? chavesResposta.value : [],
-      configuracao: configuracaoImportacao.value
+      configuracao: {
+        overwrite: configuracaoImportacao.value.overwrite,
+        companhia_id: companhiaSelecionada.value 
+      }
     };
 
     progresso.value = 60;
@@ -224,6 +229,7 @@ const reiniciar = () => {
   resumoFinal.value = null;
   ignorarErros.value = false;
   mostrarApenasInvalidos.value = false;
+  companhiaSelecionada.value = null; 
   if (fileInput.value) fileInput.value.value = '';
 };
 </script>
@@ -318,7 +324,7 @@ const reiniciar = () => {
         </h3>
         <p class="text-[11px] text-slate-500 mb-6 font-medium">Defina como o sistema deve identificar se um registo já existe para evitar dados duplicados.</p>
         
-        <<div class="max-w-xl space-y-5">
+        <div class="max-w-xl space-y-5">
           
           <div class="flex flex-col gap-1.5">
             <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
@@ -373,7 +379,9 @@ const reiniciar = () => {
 
         <Column v-for="col of colunasDisponiveis" :key="col" :field="col" :header="col" style="min-width: 200px;">
            <template #body="sp">
-             <div class="truncate max-w-[200px] cursor-default" v-tooltip.top="sp.data[col]"><span class="text-xs font-medium text-slate-600 dark:text-slate-300">{{ sp.data[col] || '---' }}</span></div>
+             <div class="truncate max-w-[200px] cursor-default" v-tooltip.top="sp.data[col]">
+               <span class="text-xs font-medium text-slate-600 dark:text-slate-300">{{ sp.data[col] || '---' }}</span>
+             </div>
            </template>
         </Column>
 
@@ -398,6 +406,22 @@ const reiniciar = () => {
         <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2"><i class="pi pi-cog"></i> Execução e Segurança</h4>
         
         <div class="flex flex-col gap-6">
+          
+          <div class="flex flex-col gap-2 pb-6 border-b border-slate-200 dark:border-slate-700/50">
+            <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Vincular à Companhia (Opcional)</label>
+            <Dropdown 
+              v-model="companhiaSelecionada" 
+              :options="companhiasDisponiveis" 
+              optionLabel="nome" 
+              optionValue="id" 
+              placeholder="Selecione uma Companhia" 
+              filter
+              showClear
+              class="custom-input w-full md:max-w-md !p-1" 
+            />
+            <span class="text-[10px] font-medium text-slate-400 ml-1">Todas as empresas deste ficheiro serão associadas a esta Companhia.</span>
+          </div>
+
           <div class="flex items-center justify-between group">
             <div class="flex flex-col pr-4">
               <span class="text-sm font-bold text-slate-800 dark:text-white">Atualizar registos já existentes</span>
@@ -413,6 +437,7 @@ const reiniciar = () => {
             </div>
             <InputSwitch v-model="ignorarErros" class="shrink-0" />
           </div>
+
         </div>
       </div>
 
@@ -427,17 +452,32 @@ const reiniciar = () => {
       <h2 class="text-2xl font-black text-slate-800 dark:text-white mb-2">Importação Concluída!</h2>
       <p class="text-slate-500 mb-8 font-medium">Operação finalizada com sucesso na base de {{ tipoImportacao === 'clientes' ? 'Clientes' : 'Respostas' }}.</p>
       
-      <div class="max-w-md mx-auto bg-slate-50 p-6 rounded-2xl text-left border border-slate-100 mb-8">
+      <div class="max-w-md mx-auto bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl text-left border border-slate-100 dark:border-slate-700 mb-8">
         <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Relatório do Servidor</h3>
         <div class="space-y-3">
-          <div class="flex justify-between items-center pb-3 border-b border-slate-200">
-            <span class="text-sm font-bold text-slate-700">Linhas Processadas com Sucesso</span>
+          
+          <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-700">
+            <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Linhas Processadas com Sucesso</span>
             <span class="text-lg font-black text-emerald-500">{{ resumoFinal?.inseridos || 0 }}</span>
           </div>
-          <div class="flex justify-between items-center">
-            <span class="text-sm font-bold text-slate-700">Falhas e Descartações</span>
+          
+          <div class="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-700">
+            <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Falhas e Descartações</span>
             <span class="text-lg font-black text-rose-500">{{ resumoFinal?.erros || 0 }}</span>
           </div>
+
+          <div v-if="resumoFinal.detalhes && resumoFinal.detalhes.length > 0" class="pt-4">
+            <h3 class="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-3">Detalhes dos Registos Não Importados</h3>
+            <div class="bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50 rounded-xl p-3 max-h-48 overflow-y-auto custom-scrollbar shadow-inner">
+              <ul class="flex flex-col gap-2">
+                <li v-for="(erro, index) in resumoFinal.detalhes" :key="index" class="text-[10px] font-medium text-slate-600 dark:text-slate-400 flex items-start gap-2">
+                  <i class="pi pi-times-circle text-rose-500 mt-[3px]"></i>
+                  <span><strong class="text-slate-800 dark:text-slate-200">{{ erro.email }}:</strong> {{ erro.motivo }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -456,10 +496,8 @@ const reiniciar = () => {
 :deep(.p-progressbar-value) { @apply bg-orange-500 transition-all duration-300; }
 :deep(.custom-input) { @apply bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all font-medium text-slate-800 dark:text-white; }
 :deep(.custom-table), :deep(.custom-table .p-datatable-wrapper) { @apply bg-white dark:bg-slate-900; }
-:deep(.custom-table .p-datatable-thead > tr > th) { @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-4 px-5; }
-:deep(.custom-table .p-datatable-tbody > tr) { @apply border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors; }
-:deep(.custom-table .p-datatable-tbody > tr > td) { @apply py-4 px-5; }
-
-:deep(.p-datatable-wrapper)::-webkit-scrollbar { display: none; }
-:deep(.p-datatable-wrapper) { -ms-overflow-style: none; scrollbar-width: none; }
+:deep(.custom-table .p-datatable-thead > tr > th) { @apply bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 py-6 px-4; }
+:deep(.custom-table .p-datatable-tbody > tr) { @apply transition-colors border-b border-slate-50 dark:border-slate-800/50; }
+:deep(.custom-table .p-datatable-tbody > tr:hover) { @apply bg-slate-50 dark:bg-slate-800/30; }
+:deep(.custom-table .p-datatable-tbody > tr > td) { @apply py-4 px-4; }
 </style>

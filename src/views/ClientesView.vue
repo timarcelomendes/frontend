@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
 import { FilterMatchMode } from 'primevue/api';
@@ -74,6 +74,28 @@ const filtrosTabela = ref({
 const atualizarFiltro = () => {
   filtrosTabela.value.global.value = pesquisa.value;
 };
+
+// 👇 FILTRO DE INATIVOS (Oculta por padrão)
+const mostrarInativos = ref(false);
+
+const clientesFiltrados = computed(() => {
+  if (mostrarInativos.value) return clientes.value;
+  return clientes.value.filter(c => {
+    if (c.ativo === undefined || c.ativo === null) return true;
+    const st = String(c.ativo).toLowerCase();
+    return st !== '0' && st !== 'false';
+  });
+});
+
+const empresasFiltradas = computed(() => {
+  if (mostrarInativos.value) return empresas.value;
+
+  return empresas.value.filter(e => {
+    if (e.ativo === undefined || e.ativo === null) return true;
+    
+    return e.ativo === true || e.ativo === 1 || e.ativo === "1";
+  });
+});
 
 const carregarTudo = async () => {
   loading.value = true;
@@ -183,7 +205,8 @@ const editarFichaEmpresa = (dados) => {
     segmento: dados.segmento, 
     valor_contrato: dados.arr_total || 0, 
     gestor: gestores.value.find(g => g.nome === dados.gestor) || null,
-    companhia: companhias.value.find(c => c.id === dados.companhia_id) || null // 👈 POPULANDO COMPANHIA NA EDIÇÃO
+    companhia: companhias.value.find(c => c.id === dados.companhia_id) || null,
+    ativo: dados.ativo !== 0 && dados.ativo !== false && dados.ativo !== '0' && dados.ativo !== 'false'
   }; 
   editandoEmpresa.value = true; 
   dialogEmpresa.value = true; 
@@ -191,19 +214,22 @@ const editarFichaEmpresa = (dados) => {
 
 const salvarEmpresa = async () => {
   saving.value = true;
+  
   const payload = {
     nome: empresaForm.value.nome,
     segmento: empresaForm.value.segmento,
     valor_contrato: empresaForm.value.valor_contrato,
     gestor: empresaForm.value.gestor ? empresaForm.value.gestor.nome : null,
     gestor_id: empresaForm.value.gestor ? empresaForm.value.gestor.id : null,
-    companhia_id: empresaForm.value.companhia ? empresaForm.value.companhia.id : null // 👈 ENVIANDO COMPANHIA PARA O BACKEND
+    companhia_id: empresaForm.value.companhia ? empresaForm.value.companhia.id : null,
+    ativo: empresaForm.value.ativo 
   };
 
   try {
     const url = editandoEmpresa.value ? `/cadastros/empresas/${empresaForm.value.id}` : '/cadastros/empresas';
     const metodo = editandoEmpresa.value ? 'put' : 'post';
     await api[metodo](url, payload);
+    
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Conta salva com sucesso!' });
     dialogEmpresa.value = false;
     carregarTudo(); 
@@ -374,8 +400,14 @@ onMounted(carregarTudo);
           <h1 class="text-4xl font-black tracking-tighter italic text-slate-900 dark:text-white">Contas <span class="text-orange-500">.</span></h1>
           <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">Gestão de Contas e Receita</p>
         </div>
-        
-        <div class="flex items-center gap-3 w-full md:w-auto">
+
+        <div class="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
+          
+          <div class="flex items-center gap-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm w-full md:w-auto">
+            <InputSwitch v-model="mostrarInativos" />
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 whitespace-nowrap">Mostrar Inativos</span>
+          </div>
+
           <div class="relative w-full md:w-64">
             <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
             <InputText 
@@ -398,7 +430,7 @@ onMounted(carregarTudo);
             <div class="pt-4">
               <div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
               
-              <DataTable :value="clientes" v-model:filters="filtrosTabela" :globalFilterFields="['nome', 'email', 'empresa', 'cargo', 'perfil_decisor']" :paginator="true" :rows="10" dataKey="cliente_id" :loading="loading" class="p-datatable-sm custom-table" rowHover>
+              <DataTable :value="clientesFiltrados" v-model:filters="filtrosTabela" :globalFilterFields="['nome', 'email', 'empresa', 'cargo', 'perfil_decisor']" :paginator="true" :rows="10" dataKey="cliente_id" :loading="loading" class="p-datatable-sm custom-table" rowHover>
                 
                 <Column header="Pessoa" sortable field="nome" style="min-width: 250px">
                   <template #body="{ data }">
@@ -467,7 +499,15 @@ onMounted(carregarTudo);
             <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-building text-orange-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Empresas</span></div></template>
             <div class="pt-4">
               <div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Nova Empresa" icon="pi pi-plus" @click="abrirNovaEmpresa" class="!bg-orange-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
-              <DataTable :value="empresas" v-model:filters="filtrosTabela" :globalFilterFields="['nome', 'companhia', 'gestor', 'segmento']" :paginator="true" :rows="10" class="p-datatable-sm custom-table">
+              <DataTable 
+                  :key="mostrarInativos"
+                  :value="empresasFiltradas" 
+                  v-model:filters="filtrosTabela" 
+                  :globalFilterFields="['nome', 'companhia', 'gestor', 'segmento']" 
+                  :paginator="true" 
+                  :rows="10" 
+                  class="p-datatable-sm custom-table"
+                >
                 <Column field="nome" header="Nome" sortable>
                   <template #body="{ data }">
                     <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-3">

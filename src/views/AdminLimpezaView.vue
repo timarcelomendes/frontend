@@ -62,13 +62,13 @@ const executarLimpeza = async () => {
           <i class="pi pi-exclamation-triangle animate-pulse"></i> Danger Zone (Zona de Perigo)
         </h3>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 rounded-[1.5rem] flex flex-col justify-between shadow-sm">
             <div>
-              <h4 class="text-lg font-black text-slate-800 dark:text-white mb-2">Limpar Histórico de Respostas</h4>
+              <h4 class="text-lg font-black text-slate-800 dark:text-white mb-2">Limpar Histórico</h4>
               <p class="text-[11px] text-slate-500 leading-relaxed mb-6 font-medium">
-                Apaga <span class="text-rose-500 font-bold">todas as notas e comentários de NPS</span>. Os clientes e as configurações das empresas permanecerão intactos no sistema.
+                Apaga <span class="text-rose-500 font-bold">todas as notas e comentários</span> de NPS. Os clientes e as contas permanecerão intactos.
               </p>
             </div>
             <Button 
@@ -79,18 +79,35 @@ const executarLimpeza = async () => {
             />
           </div>
 
-          <div class="bg-rose-500 dark:bg-rose-600 border border-rose-600 dark:border-rose-500 p-6 rounded-[1.5rem] flex flex-col justify-between shadow-lg shadow-rose-500/20">
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 rounded-[1.5rem] flex flex-col justify-between shadow-sm">
             <div>
-              <h4 class="text-lg font-black text-white mb-2 flex items-center gap-2">Wipe Total (Clientes)</h4>
-              <p class="text-[11px] text-rose-100 leading-relaxed mb-6 font-medium">
-                Apaga <span class="font-bold underline">absolutamente tudo</span>: Clientes e Respostas NPS. Use isto apenas se quiser reiniciar o CRM do zero através de uma nova importação.
+              <h4 class="text-lg font-black text-slate-800 dark:text-white mb-2">Limpar Clientes</h4>
+              <p class="text-[11px] text-slate-500 leading-relaxed mb-6 font-medium">
+                Apaga <span class="text-orange-500 font-bold">todos os clientes e as suas respostas</span>. As empresas cadastradas permanecerão no sistema.
               </p>
             </div>
             <Button 
-              label="Apagar Clientes e Respostas" 
+              label="Apagar Clientes" 
+              icon="pi pi-users" 
+              class="!bg-white dark:!bg-slate-800 !text-orange-500 !border-2 !border-orange-200 dark:!border-orange-500/30 hover:!bg-orange-50 dark:hover:!bg-orange-500/10 !w-full !rounded-xl !font-black !uppercase !tracking-widest !text-[10px]" 
+              @click="abrirConfirmacao('clientes')" 
+            />
+          </div>
+
+          <div class="bg-rose-500 dark:bg-rose-600 border border-rose-600 dark:border-rose-500 p-6 rounded-[1.5rem] flex flex-col justify-between shadow-lg shadow-rose-500/20">
+            <div>
+              <h4 class="text-lg font-black text-white mb-2 flex items-center gap-2">
+                <i class="pi pi-building"></i> Wipe Total
+              </h4>
+              <p class="text-[11px] text-rose-100 leading-relaxed mb-6 font-medium">
+                Apaga <span class="font-bold underline">absolutamente tudo</span>: Contas, Clientes e Respostas. Use isto para reiniciar o CRM do zero.
+              </p>
+            </div>
+            <Button 
+              label="Apagar Toda a Base" 
               icon="pi pi-warning" 
               class="!bg-white !text-rose-600 !border-none hover:scale-[1.02] transition-transform !w-full !rounded-xl !font-black !uppercase !tracking-widest !text-[10px] shadow-sm" 
-              @click="abrirConfirmacao('clientes')" 
+              @click="abrirConfirmacao('empresas')" 
             />
           </div>
 

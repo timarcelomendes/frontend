@@ -116,8 +116,7 @@ const carregarRespostas = async () => {
       empresa: filtros.value.empresa === 'Todas' ? '' : filtros.value.empresa,
       categoria: filtros.value.categoria,
       perfil: filtros.value.perfil,
-      incluir_excluidas: filtros.value.incluir_excluidas,
-      topn: 300
+      incluir_excluidas: filtros.value.incluir_excluidas
     };
     
     const response = await api.get('/respostas', { params });

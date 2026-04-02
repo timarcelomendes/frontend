@@ -13,6 +13,7 @@ import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import Tag from 'primevue/tag';
 import Calendar from 'primevue/calendar';
+import InputSwitch from 'primevue/inputswitch';
 
 const toast = useToast();
 
@@ -31,6 +32,7 @@ const companhias = ref([{ label: 'Todas', value: null }]);
 const filtroGestor = ref(null);
 const filtroCompanhia = ref(null); 
 const mostrarApenasAmanha = ref(false);
+const mostrarInativos = ref(false);
 
 const enviandoEmail = ref(false);
 const idsEnviando = ref([]); 
@@ -80,6 +82,13 @@ const limparFiltros = () => {
 const clientesFiltrados = computed(() => {
   return clientes.value.filter(c => {
     
+    // 👇 0. Filtro de Inativos (NOVO)
+    let matchesAtivo = true;
+    if (typeof mostrarInativos !== 'undefined' && !mostrarInativos.value) {
+      // Se o botão estiver desligado (false), só mostra quem é ATIVO
+      matchesAtivo = c.ativo !== 0 && c.ativo !== false;
+    }
+
     // 1. Filtro de Status
     let matchesStatus = true;
     if (typeof filtroStatus !== 'undefined' && filtroStatus.value) {
@@ -125,7 +134,7 @@ const clientesFiltrados = computed(() => {
       }
     }
 
-    // 5. NOVA LÓGICA: Filtro de Lembrete Amanhã (Independente)
+    // 5. Filtro de Lembrete Amanhã (Independente)
     let matchesAmanha = true;
     if (typeof mostrarApenasAmanha !== 'undefined' && mostrarApenasAmanha.value) {
       if ((c.status_envio || '').toLowerCase() === 'enviado' && c.ultimo_envio) {
@@ -137,8 +146,8 @@ const clientesFiltrados = computed(() => {
       }
     }
     
-    // Retorna o cliente apenas se ele passar em todos os filtros ativos
-    return matchesStatus && matchesDate && matchesGestor && matchesCompanhia && matchesAmanha;
+    // 👇 Retorna o cliente apenas se ele passar em todos os filtros ativos (incluindo o Ativo/Inativo)
+    return matchesAtivo && matchesStatus && matchesDate && matchesGestor && matchesCompanhia && matchesAmanha;
   });
 });
 
@@ -496,7 +505,7 @@ onMounted(() => {
         <Calendar v-model="filtroDataFim" dateFormat="dd/mm/yy" placeholder="Fim" class="w-full custom-calendar-minimal" inputClass="custom-input-minimal !w-full" />
       </div>
 
-            <div class="shrink-0">
+      <div class="shrink-0">
         <Button 
           @click="mostrarApenasAmanha = !mostrarApenasAmanha"
           :class="[
@@ -513,6 +522,16 @@ onMounted(() => {
             <span v-if="mostrarApenasAmanha" class="bg-white/20 px-1.5 rounded-md ml-1">{{ clientesFiltrados.length }}</span>
           </div>
         </Button>
+      </div>
+
+      <div class="flex items-center gap-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <InputSwitch v-model="mostrarApenasAmanha" />
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">Próximos 7 Dias</span>
+          </div>
+
+          <div class="flex items-center gap-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <InputSwitch v-model="mostrarInativos" />
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">Mostrar Inativos</span>
       </div>
 
       <div class="shrink-0 ml-auto pr-2">

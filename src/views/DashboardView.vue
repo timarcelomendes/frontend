@@ -59,24 +59,21 @@ const smartInsights = ref({
 const alertasCriticos = computed(() => {
   if (!ranking.value || ranking.value.length === 0) return [];
   
-  return ranking.value.filter(item => item.nps <= 0);
+  return ranking.value.filter(item => item.nps <= 0 && item.ativo !== 0 && item.ativo !== false);
 });
 
-// Ordena: 1º Menores Notas, 2º Mais Antigos
 const alertasPrioritarios = computed(() => {
   if (!ranking.value || ranking.value.length === 0) return [];
 
-  // Pega em todo o ranking, ordena (Pior Nota -> Mais Antigo) e corta em 5
   return [...ranking.value]
+    .filter(item => item.ativo !== 0 && item.ativo !== false) 
     .sort((a, b) => {
-      // 1º Critério: Menor NPS primeiro (-50 vem antes de 10)
       if (a.nps !== b.nps) {
         return a.nps - b.nps;
       }
-      // 2º Critério: Se a nota for igual, o mais antigo vem primeiro
       return new Date(a.data_ultima_resposta) - new Date(b.data_ultima_resposta);
     })
-    .slice(0, 5); // Força a exibir os 5 piores globais
+    .slice(0, 5);
 });
 
 const abrirDetalhesCliente = (item) => {
