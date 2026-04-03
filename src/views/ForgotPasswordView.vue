@@ -1,6 +1,5 @@
 <template>
   <div class="grid grid-cols-1 md:grid-cols-2 min-h-screen bg-white dark:bg-slate-900 font-sans overflow-hidden">
-    <Toast />
     
     <div class="flex flex-col justify-center items-center px-6 py-12 md:px-20 bg-slate-50/50 dark:bg-slate-950/20 relative">
       <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 to-rose-500 md:hidden"></div>
@@ -80,7 +79,6 @@ import api from '../services/api';
 
 import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
-import Toast from 'primevue/toast';
 
 const router = useRouter();
 const toast = useToast();
