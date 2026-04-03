@@ -13,33 +13,33 @@ import Timeline from 'primevue/timeline';
 import Tag from 'primevue/tag';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
-import Calendar from 'primevue/calendar'; // 👈 Adicionado
+import Calendar from 'primevue/calendar';
+
+// Plugin de Rótulos
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 const toast = useToast();
+const pluginsGlobais = [ChartDataLabels];
 
 // ==========================================
 // 🎛️ ESTADOS GERAIS E FILTRO DE DATA
 // ==========================================
 const abaAtiva = ref(0);
 const loadingDados = ref(true);
-const loadingIA = ref(false);
-
 const datasFiltro = ref(null);
 
 const filtros = ref({
   segmento: 'Todos',
   arr: 'Todos',
   safra: 'Todos',
-  data_inicio: null, // YYYY-MM-DD
-  data_fim: null    // YYYY-MM-DD
+  data_inicio: null,
+  data_fim: null
 });
 
-// Opções dos Selects
 const opcoesSegmento = ref(['Todos']);
 const opcoesARR = ref(['Todos', '> € 100k', '€ 50k - € 100k', '< € 50k']);
 const opcoesSafra = ref(['Todos', '0-3 Meses (Onboarding)', '3-12 Meses', '+1 Ano']);
 
-// Helper para formatar data do PrimeVue para o SQL (YYYY-MM-DD)
 const formatarParaAPI = (data) => {
   if (!data) return null;
   const d = new Date(data);
@@ -47,30 +47,70 @@ const formatarParaAPI = (data) => {
 };
 
 // ==========================================
-// 📊 ABA 1: ESTRATÉGICO (GRÁFICOS)
+// 📊 CONFIGURAÇÕES DE GRÁFICOS (OPTIONS)
+// ==========================================
+
+// Configuração comum para exibir rótulos
+const labelPluginConfig = {
+  anchor: 'end',
+  align: 'top',
+  formatter: (value) => value,
+  font: { weight: '900', size: 11, family: 'Inter' },
+  color: '#64748b'
+};
+
+const chartOptionsSegmento = ref({
+    plugins: {
+        legend: { display: false },
+        datalabels: labelPluginConfig
+    },
+    scales: {
+        y: { beginAtZero: true, grid: { display: false }, ticks: { display: false } },
+        x: { grid: { display: false }, ticks: { font: { weight: '700', size: 10 }, color: '#94a3b8' } }
+    }
+});
+
+const optionsScatter = ref({ 
+  responsive: true, 
+  maintainAspectRatio: false,
+  plugins: { datalabels: { display: false } } // Oculto no scatter para não poluir
+});
+
+const optionsStackedBar = ref({ 
+  responsive: true, 
+  maintainAspectRatio: false, 
+  plugins: { 
+    datalabels: { ...labelPluginConfig, align: 'center', color: '#fff' } 
+  },
+  scales: { x: { stacked: true }, y: { stacked: true } } 
+});
+
+// ==========================================
+// 📊 CARREGAMENTO DE DADOS
 // ==========================================
 const dataScatter = ref(null);
-const optionsScatter = ref(null);
 const dataStackedBar = ref(null);
-const optionsStackedBar = ref(null);
+const chartDataSegmento = ref({});
 
 const fetchGraficos = async () => {
   loadingDados.value = true;
   try {
     const config = { params: filtros.value };
-    const [resScatter, resSafra] = await Promise.all([
+    const [resScatter, resSafra, resSegmento] = await Promise.all([
       api.get('/reports/bi-scatter', config),
-      api.get('/reports/bi-safra', config)
+      api.get('/reports/bi-safra', config),
+      api.get('/reports/bi-segmento', config)
     ]);
 
+    // 1. Scatter Chart
     dataScatter.value = {
       datasets: [
         { label: 'Tópicos Críticos', data: resScatter.data.filter(d => d.y <= 6), backgroundColor: 'rgba(244, 63, 94, 0.8)' },
         { label: 'Melhoria', data: resScatter.data.filter(d => d.y > 6), backgroundColor: 'rgba(245, 158, 11, 0.8)' }
       ]
     };
-    optionsScatter.value = { responsive: true, maintainAspectRatio: false };
 
+    // 2. Stacked Bar (Safra)
     dataStackedBar.value = {
       labels: resSafra.data.labels,
       datasets: [
@@ -79,118 +119,74 @@ const fetchGraficos = async () => {
         { label: 'Detratores', backgroundColor: '#f43f5e', data: resSafra.data.detratores }
       ]
     };
-    optionsStackedBar.value = { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } };
+
+    // 3. Segmento
+    if (resSegmento.data) {
+      chartDataSegmento.value = {
+        labels: resSegmento.data.map(s => s.segmento),
+        datasets: [{
+          label: 'NPS Score',
+          backgroundColor: resSegmento.data.map(s => s.nps >= 0 ? '#F97316' : '#EF4444'),
+          borderRadius: 6,
+          data: resSegmento.data.map(s => s.nps)
+        }]
+      };
+    }
   } catch (error) {
-    console.error("Erro ao carregar gráficos:", error);
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao carregar dados de BI.' });
   } finally {
     loadingDados.value = false;
   }
 };
 
 // ==========================================
-// ⚙️ ABA 2: OPERACIONAL (KPIs & INATIVOS)
+// ⚙️ OUTRAS ABAS (OPERACIONAL, JORNADA, GESTORES)
 // ==========================================
 const dadosOperacionais = ref({ taxa_resposta: 0, sla_medio_dias: 0 });
 const clientesInativos = ref([]);
-const limiteRecorrencia = ref(90);
 const loadingInativos = ref(false);
 
 const carregarOperacional = async () => {
-  try {
-    const res = await api.get('/reports/operacional', { params: filtros.value });
-    dadosOperacionais.value = res.data;
-  } catch (e) {
-    console.error("Erro operacional:", e);
-  }
+  api.get('/reports/operacional', { params: filtros.value }).then(res => dadosOperacionais.value = res.data);
 };
 
 const carregarInativos = async () => {
   loadingInativos.value = true;
-  try {
-    const res = await api.get('/reports/operacional/inativos', { params: filtros.value });
-    clientesInativos.value = res.data.lista;
-    limiteRecorrencia.value = res.data.recorrencia_dias;
-  } finally {
-    loadingInativos.value = false;
-  }
+  api.get('/reports/operacional/inativos', { params: filtros.value })
+     .then(res => clientesInativos.value = res.data.lista)
+     .finally(() => loadingInativos.value = false);
 };
 
-const formatarData = (dataStr) => {
-  if (!dataStr) return '---';
-  return new Date(dataStr).toLocaleDateString('pt-PT');
-};
-
-// ==========================================
-// 📜 ABA 3: JORNADA (TIMELINE)
-// ==========================================
 const empresaSelecionadaJornada = ref(null);
 const historicoJornada = ref([]);
 const loadingJornada = ref(false);
 const listaEmpresas = ref([]);
-
 const npsEmpresaJornada = ref(null);
 const totalRespostasJornada = ref(0);
 
 const buscarJornada = async () => {
   if (!empresaSelecionadaJornada.value) return;
   loadingJornada.value = true;
-  
   try {
-    const params = { 
-      empresa: empresaSelecionadaJornada.value,
-      data_inicio: filtros.value.data_inicio,
-      data_fim: filtros.value.data_fim
-    };
+    const params = { empresa: empresaSelecionadaJornada.value, ...filtros.value };
     const res = await api.get('/reports/jornada', { params });
-    
-    // 💡 Verificamos os dois formatos (Python snake_case vs JS camelCase)
     historicoJornada.value = res.data.historico || [];
-    npsEmpresaJornada.value = res.data.nps_atual ?? res.data.npsAtual;
-    
-    // Aqui garantimos que lemos 'total_respostas' que vem do seu Python
-    totalRespostasJornada.value = res.data.total_respostas ?? res.data.totalRespostas ?? 0;
-
-    if (historicoJornada.value.length === 0) {
-        toast.add({ severity: 'info', summary: 'Aviso', detail: 'Nenhum dado encontrado para este período.' });
-    }
-  } catch (e) {
-    console.error("Erro ao carregar jornada:", e);
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha na comunicação com o servidor.' });
-  } finally {
-    loadingJornada.value = false;
-  }
+    npsEmpresaJornada.value = res.data.nps_atual;
+    totalRespostasJornada.value = res.data.total_respostas || 0;
+  } finally { loadingJornada.value = false; }
 };
 
-const getCorNota = (nota) => {
-  if (nota >= 9) return 'success';
-  if (nota >= 7) return 'warning';
-  return 'danger';
-};
-
-// ==========================================
-// 👔 ABA 4: GESTORES
-// ==========================================
 const gestorSelecionado = ref(null);
 const listaGestores = ref([]);
 const dadosGestor = ref(null);
 const loadingGestor = ref(false);
 const chartGestor = ref(null);
 
-const optionsChartGestor = ref({
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: { y: { min: 0, max: 10 }, x: { grid: { display: false } } }
-});
-
 const carregarPerformanceGestor = async () => {
   if (!gestorSelecionado.value) return;
   loadingGestor.value = true;
   try {
-    const res = await api.get('/reports/gestor', { params: { 
-      gestor_id: gestorSelecionado.value,
-      data_inicio: filtros.value.data_inicio,
-      data_fim: filtros.value.data_fim
-    }});
+    const res = await api.get('/reports/gestor', { params: { gestor_id: gestorSelecionado.value, ...filtros.value }});
     dadosGestor.value = res.data;
     chartGestor.value = {
       labels: res.data.ranking_empresas.map(e => e.nome),
@@ -199,16 +195,9 @@ const carregarPerformanceGestor = async () => {
   } finally { loadingGestor.value = false; }
 };
 
-const carregarListaGestores = async () => {
-  const res = await api.get('/reports/lista-gestores');
-  listaGestores.value = res.data;
-};
-
 // ==========================================
-// 📅 WATCHERS (A MÁGICA DA SINCRONIZAÇÃO)
+// 📅 WATCHERS E INICIALIZAÇÃO
 // ==========================================
-
-// 1. Quando o usuário seleciona o período no Calendário
 watch(datasFiltro, (val) => {
   if (val && val[0] && val[1]) {
     filtros.value.data_inicio = formatarParaAPI(val[0]);
@@ -219,7 +208,6 @@ watch(datasFiltro, (val) => {
   }
 });
 
-// 2. Quando QUALQUER filtro muda (Data, Segmento, ARR, Safra)
 watch(filtros, () => {
   fetchGraficos();
   carregarOperacional();
@@ -229,27 +217,21 @@ watch(filtros, () => {
 }, { deep: true });
 
 const labelPeriodo = computed(() => {
-  if (!datasFiltro.value || !datasFiltro.value[0] || !datasFiltro.value[1]) {
-    return "Todo o Histórico";
-  }
-  const inicio = datasFiltro.value[0].toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
-  const fim = datasFiltro.value[1].toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
-  return `${inicio} até ${fim}`;
+  if (!datasFiltro.value || !datasFiltro.value[0] || !datasFiltro.value[1]) return "Todo o Histórico";
+  return `${datasFiltro.value[0].toLocaleDateString('pt-PT')} até ${datasFiltro.value[1].toLocaleDateString('pt-PT')}`;
 });
 
-// ==========================================
-// 🏁 INICIALIZAÇÃO
-// ==========================================
+const getCorNota = (nota) => nota >= 9 ? 'success' : (nota >= 7 ? 'warning' : 'danger');
+const formatarData = (d) => d ? new Date(d).toLocaleDateString('pt-PT') : '---';
+
 onMounted(() => {
   fetchGraficos();
   carregarOperacional();
-  carregarListaGestores();
   carregarInativos();
-
+  api.get('/reports/lista-gestores').then(res => listaGestores.value = res.data);
   api.get('/cadastros/empresas').then(res => listaEmpresas.value = res.data.map(e => e.nome));
   api.get('/cadastros/segmentos').then(res => opcoesSegmento.value = ['Todos', ...res.data.map(s => s.nome)]);
 });
-
 </script>
 
 <template>
@@ -281,17 +263,18 @@ onMounted(() => {
               v-model="datasFiltro" 
               selectionMode="range" 
               :manualInput="false" 
-              placeholder="Selecione o intervalo..." 
+              placeholder="Selecionar intervalo..." 
               dateFormat="dd/mm/yy" 
               class="custom-calendar-premium" 
+              @hide="carregarDashboard"
               :showIcon="false"
               hideOnRangeSelection
             />
 
             <button 
               v-if="datasFiltro" 
-              @click="datasFiltro = null"
-              class="ml-2 mr-2 w-7 h-7 flex items-center justify-center rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
+              @click="datasFiltro = null; carregarDashboard()"
+              class="ml-2 mr-2 w-7 h-7 flex items-center justify-center rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all cursor-pointer border-none"
             >
               <i class="pi pi-times text-[10px]"></i>
             </button>
@@ -304,8 +287,7 @@ onMounted(() => {
         <TabPanel>
           <template #header><i class="pi pi-chart-bar mr-2"></i> Estratégico</template>
           
-          <div class="space-y-8 mt-6">
-            <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="space-y-6 mt-6"> <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="flex flex-col gap-1.5 px-3">
                 <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Segmento</span>
                 <Dropdown v-model="filtros.segmento" :options="opcoesSegmento" class="custom-dropdown-minimal" />
@@ -320,6 +302,39 @@ onMounted(() => {
               </div>
             </div>
 
+            <div class="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col h-full hover:shadow-md transition-shadow">
+              <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-orange-500 shadow-sm shrink-0">
+                    <i class="pi pi-chart-bar text-lg"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white leading-none mb-1">NPS por Segmento</h3>
+                    <p class="text-[10px] text-slate-400 font-bold leading-tight">Desempenho da carteira por nicho</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex-1 w-full relative min-h-[250px]">
+                <div v-if="loadingDados" class="absolute inset-0 flex items-center justify-center">
+                    <i class="pi pi-spinner pi-spin text-orange-500 text-3xl opacity-50"></i>
+                </div>
+                
+                <div v-else-if="!chartDataSegmento.datasets || chartDataSegmento.datasets.length === 0" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+                    <i class="pi pi-folder-open text-2xl mb-2 opacity-50"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-widest">Sem dados para o filtro</span>
+                </div>
+                
+                <Chart 
+                  type="bar" 
+                  :data="chartDataSegmento" 
+                  :options="chartOptionsSegmento" 
+                  :plugins="pluginsGlobais" 
+                  class="h-full w-full absolute inset-0" 
+                />
+              </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div class="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[400px]">
                 <h3 class="text-xs font-black uppercase tracking-widest mb-4">Matriz de Priorização</h3>
@@ -330,6 +345,7 @@ onMounted(() => {
                 <Chart type="bar" :data="dataStackedBar" :options="optionsStackedBar" class="h-[300px]" />
               </div>
             </div>
+
           </div>
         </TabPanel>
 
@@ -542,77 +558,86 @@ onMounted(() => {
 <style scoped lang="postcss">
 @reference "tailwindcss";
 
-.animate-fadein { animation: fadeIn 0.5s ease-out; }
+/* --- ANIMAÇÕES --- */
+.animate-fadein { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-:deep(.custom-tabview-premium .p-tabview-nav) {
-  @apply bg-transparent border-none gap-2 mb-6 !important;
+/* ==========================================
+   🌟 ESTRUTURA GLOBAL E ABAS (PADRÃO AUDIÊNCIA)
+   ========================================== */
+
+/* Torna o fundo das abas transparente para herdar o bg da página */
+:deep(.p-tabview), 
+:deep(.p-tabview-nav-container), 
+:deep(.p-tabview-nav-content), 
+:deep(.p-tabview-nav),
+:deep(.p-tabview-panels) {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0 !important;
 }
 
-:deep(.custom-tabview-premium .p-tabview-nav-link) {
-  @apply bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 !rounded-2xl px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-400 transition-all !important;
+/* Estilização das abas como "Pílulas" Modernas */
+:deep(.p-tabview-nav li .p-tabview-nav-link) {
+    @apply bg-white dark:bg-slate-900 text-slate-500 !important;
+    border: none !important; 
+    border-radius: 12px !important;
+    padding: 10px 20px !important;
+    margin-right: 8px !important;
+    transition: all 0.3s ease !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
-:deep(.custom-tabview-premium .p-highlight .p-tabview-nav-link) {
-  @apply !bg-indigo-500 !text-white !border-indigo-500 shadow-lg shadow-indigo-500/20 !important;
+:deep(.p-tabview-nav li.p-highlight .p-tabview-nav-link) {
+    @apply bg-indigo-600 dark:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 !important;
 }
 
-:deep(.custom-dropdown-minimal) {
-  @apply !bg-transparent !border-none !shadow-none !p-0 !text-[11px] font-black uppercase text-slate-800 dark:text-white !important;
+/* Padronização de Cards no Dark Mode */
+.bg-white {
+    @apply dark:bg-slate-900 border-slate-100 dark:border-slate-800 !important;
 }
 
-:deep(.custom-dropdown-premium) {
-  @apply !bg-slate-50 dark:!bg-slate-800 !border-slate-200 dark:!border-slate-700 !rounded-xl !py-2 !important;
-}
-/* Garante que o conteúdo da timeline use o espaço disponível */
-:deep(.custom-timeline.p-timeline-alternate .p-timeline-event:nth-child(even) .p-timeline-event-content) {
-  text-align: left;
-  padding-left: 2rem;
-}
+/* ==========================================
+   📅 CALENDÁRIO PREMIUM (PADRÃO DASHBOARD)
+   ========================================== */
 
-:deep(.custom-timeline.p-timeline-alternate .p-timeline-event:nth-child(odd) .p-timeline-event-content) {
-  text-align: right;
-  padding-right: 2rem;
-}
-
-/* Remove a linha/conector caso queira um visual mais limpo, ou estilize-o */
-:deep(.p-timeline-event-connector) {
-  @apply bg-slate-200 dark:bg-slate-700;
-}
-
-/* Ajuste das "bolinhas" originais do PrimeVue para combinar com o seu tema */
-:deep(.p-timeline-event-marker) {
-  @apply border-2 border-indigo-500 bg-white dark:bg-slate-900 !important;
-}
-
-/* Ajuste para dispositivos móveis: volta para alinhamento à esquerda se o ecrã for pequeno */
-@media screen and (max-width: 768px) {
-  :deep(.p-timeline-alternate) {
-    flex-direction: column;
-  }
-  :deep(.p-timeline-alternate .p-timeline-event) {
-    flex-direction: row !important;
-  }
-  :deep(.p-timeline-alternate .p-timeline-event-opposite) {
-    display: none;
-  }
-}
-
-/* Customização do Calendário para parecer texto puro dentro da pílula */
 :deep(.custom-calendar-premium) {
   @apply border-none shadow-none !important;
 }
 
 :deep(.custom-calendar-premium .p-inputtext) {
-  @apply border-none bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 w-48 py-1 px-3 shadow-none focus:ring-0 !important;
+  @apply border-none bg-transparent text-[11px] font-black uppercase text-slate-700 dark:text-slate-100 w-44 py-1 px-3 shadow-none focus:ring-0 !important;
 }
 
-/* Estilo do painel flutuante do calendário */
+:deep(.custom-calendar-premium .p-inputtext::placeholder) {
+  @apply text-slate-400 dark:text-slate-500 font-bold !important;
+}
+
+/* Painel flutuante do Calendário (DatePicker) */
 :deep(.p-datepicker) {
   @apply border-none shadow-2xl rounded-2xl bg-white dark:bg-slate-900 !important;
 }
 
 :deep(.p-datepicker table td > span.p-highlight) {
   @apply bg-indigo-500 text-white !important;
+}
+
+/* ==========================================
+   📍 TIMELINE E OUTROS COMPONENTES
+   ========================================== */
+
+:deep(.custom-dropdown-minimal) {
+  @apply !bg-transparent !border-none !shadow-none !p-0 !text-[11px] font-black uppercase text-slate-800 dark:text-white !important;
+}
+
+:deep(.p-timeline-event-marker) {
+  @apply border-2 border-indigo-500 bg-white dark:bg-slate-900 !important;
+}
+
+:deep(.p-timeline-event-connector) {
+  @apply bg-slate-200 dark:bg-slate-800;
 }
 </style>

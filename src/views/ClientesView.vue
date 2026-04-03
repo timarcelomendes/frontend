@@ -230,11 +230,11 @@ const salvarEmpresa = async () => {
     const metodo = editandoEmpresa.value ? 'put' : 'post';
     await api[metodo](url, payload);
     
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Conta salva com sucesso!' });
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Conta salva com sucesso!', life: 3000 });
     dialogEmpresa.value = false;
     carregarTudo(); 
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao comunicar com o servidor.' });
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao comunicar com o servidor.', life: 4000 });
   } finally {
     saving.value = false;
   }

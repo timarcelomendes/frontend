@@ -41,7 +41,8 @@ const config = ref({
   email_remetente: '',
   base_url_frontend: window.location.origin,
   refresh_token: null,
-  envios_ativos: true
+  envios_ativos: true,
+  sso_ativo: false
 });
 
 // --- ESTADO: INTELIGÊNCIA ARTIFICIAL (MAGIC AI) ---
@@ -208,7 +209,8 @@ const salvarConfigEmail = async () => { // Pode ter outro nome no seu ficheiro
       client_secret: config.value.client_secret,
       email_remetente: config.value.email_remetente,
       base_url_frontend: config.value.base_url_frontend,
-      envios_ativos: config.value.envios_ativos 
+      envios_ativos: config.value.envios_ativos,
+      sso_ativo: config.value.sso_ativo
     });
     
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Configurações de e-mail atualizadas!', life: 3000 });
@@ -594,6 +596,21 @@ const processarUploadImagem = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
 
+  // 1. VERIFICA SE A IMAGEM JÁ EXISTE PELO NOME
+  const imagemExistenteIndex = imagensUpload.value.findIndex(img => img.nome === file.name);
+
+  // 2. SE EXISTIR, PEDE CONFIRMAÇÃO AO UTILIZADOR
+  if (imagemExistenteIndex !== -1) {
+    const querSubstituir = confirm(
+      `⚠️ Já existe uma imagem com o nome "${file.name}".\n\nDeseja substituí-la?\nAo confirmar, todos os templates que usam esta imagem passarão a exibir a nova versão.`
+    );
+    
+    if (!querSubstituir) {
+      event.target.value = ''; 
+      return; //
+    }
+  }
+
   enviandoImagem.value = true;
   const formData = new FormData();
   formData.append('file', file);
@@ -602,10 +619,19 @@ const processarUploadImagem = async (event) => {
     const res = await api.post('/upload-imagem', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-    imagensUpload.value.unshift(res.data);
-    toast.add({ severity: 'success', summary: 'Imagem Hospedada', detail: 'O ficheiro já tem uma URL pública.' });
+
+    if (imagemExistenteIndex !== -1) {
+
+      imagensUpload.value[imagemExistenteIndex].url = res.data.url + '?v=' + new Date().getTime();
+      
+      toast.add({ severity: 'success', summary: 'Imagem Atualizada', detail: 'A imagem foi substituída com sucesso no servidor.' });
+    } else {
+      imagensUpload.value.unshift(res.data);
+      toast.add({ severity: 'success', summary: 'Imagem Hospedada', detail: 'O ficheiro já tem uma URL pública.' });
+    }
+
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao processar imagem.' });
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao processar o upload da imagem.' });
   } finally {
     enviandoImagem.value = false;
     event.target.value = '';
@@ -630,47 +656,55 @@ const removerImagem = async (nomeArquivo) => {
 };
 
 // ==========================================
-// 🪄 SUBSTITUIÇÃO INTELIGENTE DE IMAGENS (TURBO + VARIÁVEL DE AMBIENTE)
+// 🪄 SUBSTITUIÇÃO INTELIGENTE DE IMAGENS (ULTRA ROBUSTA)
 // ==========================================
 const aplicarImagensInteligente = (tipoTemplate) => {
-  let html = '';
-  
-  if (tipoTemplate === 'convite') html = regrasConfig.value.email_template_html;
-  else if (tipoTemplate === 'lembrete1') html = regrasConfig.value.email_template_lembrete_1; 
-  else if (tipoTemplate === 'lembrete2') html = regrasConfig.value.email_template_lembrete_2; 
-  else if (tipoTemplate === 'lembrete3') html = regrasConfig.value.email_template_lembrete_3; 
-  else if (tipoTemplate === 'agradecimento_promotor') html = regrasConfig.value.email_agradecimento_promotor; 
-  else if (tipoTemplate === 'agradecimento_neutro') html = regrasConfig.value.email_agradecimento_neutro; 
-  else if (tipoTemplate === 'agradecimento_detrator') html = regrasConfig.value.email_agradecimento_detrator; 
+  // 1. Dicionário exato: Mapeia o argumento do botão para a variável correta no banco
+  const mapaTemplates = {
+    'convite': 'email_template_html',
+    'lembrete1': 'email_template_lembrete_1',
+    'lembrete2': 'email_template_lembrete_2',
+    'lembrete3': 'email_template_lembrete_3',
+    'agradecimento_promotor': 'email_agradecimento_promotor',
+    'agradecimento_neutro': 'email_agradecimento_neutro',
+    'agradecimento_detrator': 'email_agradecimento_detrator'
+  };
 
-  if (!html || html.trim() === '') {
-    return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole primeiro o código HTML do template.' });
+  // 2. Descobre qual é a chave que vamos editar
+  const chaveConfig = mapaTemplates[tipoTemplate];
+
+  // Proteção: Se o botão enviar um nome que não existe no mapa
+  if (!chaveConfig) {
+    console.error("ERRO: Tipo de template não mapeado:", tipoTemplate);
+    return toast.add({ severity: 'error', summary: 'Erro de Rota', detail: 'A aba atual não foi reconhecida pelo botão.' });
   }
 
-  const urlReal = obterUrlServidor(); // 👈 Pega a URL do ambiente atual automaticamente
+  // 3. Pega o HTML atual da caixa de texto correspondente
+  let html = regrasConfig.value[chaveConfig];
+
+  if (!html || html.trim() === '') {
+    return toast.add({ severity: 'warn', summary: 'Vazio', detail: 'Cole primeiro o código HTML na caixa de texto desta aba.' });
+  }
+
+  const urlReal = obterUrlServidor();
   let substituicoes = 0;
 
+  // 4. Varre e substitui as imagens
   imagensUpload.value.forEach(img => {
     const nomeEscapado = img.nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`([^"'\\s\\(]*\\/)?${nomeEscapado}(?:\\?[^"'\\s\\)]*)?`, 'gi');
     
     const matches = html.match(regex);
     if (matches) {
-      // 💡 Injeta a URL REAL para que o seu Preview no ecrã funcione perfeitamente!
+      // Injeta a URL REAL
       html = html.replace(regex, `${urlReal}/uploads/${img.nome}`);
       substituicoes += matches.length;
     }
   });
 
+  // 5. Devolve o HTML atualizado para a caixa de texto
   if (substituicoes > 0) {
-    if (tipoTemplate === 'convite') regrasConfig.value.email_template_html = html;
-    else if (tipoTemplate === 'lembrete1') regrasConfig.value.email_template_lembrete_1 = html;
-    else if (tipoTemplate === 'lembrete2') regrasConfig.value.email_template_lembrete_2 = html;
-    else if (tipoTemplate === 'lembrete3') regrasConfig.value.email_template_lembrete_3 = html;
-    else if (tipoTemplate === 'agradecimento_promotor') regrasConfig.value.email_agradecimento_promotor = html;
-    else if (tipoTemplate === 'agradecimento_neutro') regrasConfig.value.email_agradecimento_neutro = html;
-    else if (tipoTemplate === 'agradecimento_detrator') regrasConfig.value.email_agradecimento_detrator = html;
-    
+    regrasConfig.value[chaveConfig] = html; // Magia acontece aqui! Atualiza dinamicamente.
     toast.add({ severity: 'success', summary: 'Magia Aplicada 🪄', detail: `${substituicoes} link(s) convertido(s) para o ambiente atual!`, life: 4000 });
   } else {
     toast.add({ severity: 'info', summary: 'Sem alterações', detail: 'Nenhuma imagem local correspondente encontrada no HTML.', life: 3000 });
@@ -1067,6 +1101,38 @@ onMounted(() => {
                     :loading="enviandoTeste"
                     class="w-full !bg-transparent !border-2 !border-orange-500/20 !text-orange-500 !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 hover:!bg-orange-50 dark:hover:!bg-orange-500/10 hover:scale-[1.01] transition-all mt-2" 
                     />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm mt-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-6 border-b border-slate-50 dark:border-slate-800 gap-4">
+              <div>
+                <h3 class="text-sm font-black uppercase text-slate-800 dark:text-white flex items-center gap-2">
+                  <i class="pi pi-users text-indigo-500"></i> Single Sign-On (SSO)
+                </h3>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Login com Microsoft Entra ID</p>
+              </div>
+              <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-700">
+                <InputSwitch v-model="config.sso_ativo" @change="salvarConfigEmail" />
+                <span class="text-[10px] font-black uppercase tracking-widest" :class="config.sso_ativo ? 'text-indigo-500' : 'text-slate-400'">
+                  {{ config.sso_ativo ? 'SSO ATIVADO' : 'SSO DESATIVADO' }}
+                </span>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <p class="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                Como está a utilizar a mesma aplicação do Azure, as credenciais (Tenant ID e Client ID) já estão configuradas no bloco acima.
+                Para que o botão de "Login com a Microsoft" funcione no ecrã inicial, garanta que adicionou o seguinte endereço como <strong>SPA (Aplicativo de Página Única)</strong> nas URIs de Redirecionamento do Azure:
+              </p>
+
+              <div class="flex flex-col gap-2 pt-2">
+                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">URI de Redirecionamento SPA (Copie e cole no Azure)</label>
+                <div class="flex items-center gap-2">
+                  <InputText :value="config.base_url_frontend + '/login'" readonly class="custom-input !w-full !bg-slate-50 dark:!bg-slate-950 !text-[11px] !font-mono text-slate-500" />
+                  <Button icon="pi pi-copy" @click="copiarUrl(config.base_url_frontend + '/login')" class="!bg-slate-800 hover:!bg-slate-700 !text-white !border-none !rounded-xl !w-11 !h-11 shrink-0 shadow-md" v-tooltip.top="'Copiar URI'" />
                 </div>
               </div>
             </div>

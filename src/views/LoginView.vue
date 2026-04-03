@@ -121,6 +121,24 @@
               class="w-full !bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 !py-4.5 !rounded-2xl !font-black !text-[11px] uppercase tracking-[0.2em] !shadow-2xl !border-none hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
             />
             
+            <div v-if="ssoAtivo" class="relative my-6">
+              <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-slate-200 dark:border-slate-700"></div>
+              </div>
+              <div class="relative flex justify-center text-[10px] font-black tracking-widest uppercase">
+                <span class="px-4 bg-white dark:bg-slate-900 text-slate-400">OU</span>
+              </div>
+            </div>
+
+            <Button 
+              v-if="ssoAtivo"
+              type="button"
+              label="Entrar com a Microsoft" 
+              icon="pi pi-microsoft" 
+              class="w-full !bg-white dark:!bg-slate-900 !text-slate-700 dark:!text-white !border-slate-200 dark:!border-slate-700 hover:!bg-slate-50 dark:hover:!bg-slate-800 transition-colors shadow-sm"
+              @click="loginComMicrosoft" 
+              :loading="loadingMicrosoft"
+            />
             <button type="button" @click="isLoginMode = !isLoginMode" class="text-[11px] font-black text-slate-400 hover:text-orange-500 uppercase tracking-[0.1em] bg-transparent border-none cursor-pointer transition-colors text-center">
               {{ isLoginMode ? 'Não tem acesso? Criar conta' : 'Já possui conta? Fazer login' }}
             </button>
@@ -136,144 +154,6 @@
 
 .animate-fadein { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-
-:deep(.custom-input) { 
-  @apply bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 p-4 pl-12 rounded-xl outline-none focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10 transition-all font-bold text-sm text-slate-800 dark:text-white placeholder:text-slate-300; 
-}
-
-/* Ajuste específico para o ícone de olho do Password do PrimeVue */
-:deep(.p-password-reveal-icon) {
-  @apply text-slate-400 hover:text-orange-500 transition-colors;
-}
-
-:deep(.p-checkbox .p-checkbox-box) {
-  @apply border-2 border-slate-200 dark:border-slate-800 rounded-md w-5 h-5 transition-all;
-}
-
-:deep(.p-checkbox.p-checkbox-checked .p-checkbox-box) {
-  @apply bg-orange-500 border-orange-500;
-}
-</style>
-
-<script setup>
-import { ref, onMounted } from 'vue'; 
-import { useRouter } from 'vue-router';
-import { useToast } from 'primevue/usetoast';
-import api from '../services/api';
-
-import InputText from 'primevue/inputtext';
-import Password from 'primevue/password';
-import Button from 'primevue/button';
-import Checkbox from 'primevue/checkbox';
-import Toast from 'primevue/toast';
-
-const router = useRouter();
-const toast = useToast();
-
-const isLoginMode = ref(true); 
-const loading = ref(false);
-const temErro = ref(false);
-
-const credenciais = ref({ email: '', password: '' });
-const registro = ref({ nome: '', email: '', password: '' });
-const lembrarDeMim = ref(false);
-
-onMounted(() => {
-  const emailSalvo = localStorage.getItem('nps_remember_email');
-  if (emailSalvo) {
-    credenciais.value = { ...credenciais.value, email: emailSalvo };
-    lembrarDeMim.value = true;
-  }
-});
-
-const fazerLogin = async () => {
-  if (!credenciais.value.email || !credenciais.value.password) {
-    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha o e-mail e a palavra-passe.', life: 3000 });
-    return;
-  }
-
-  loading.value = true;
-  temErro.value = false;
-  
-  try {
-    const response = await api.post('/login', {
-      email: credenciais.value.email,
-      password: credenciais.value.password,
-      remember: lembrarDeMim.value
-    }); 
-
-    const token = response.data.access_token;
-
-if (token) {
-      const emailSalvo = credenciais.value.email;
-            
-      localStorage.setItem('token', token);
-      localStorage.setItem('access_token', token); // Garantir o nome correto do token
-      localStorage.setItem('usuario_id', response.data.usuario_id);
-      localStorage.setItem('usuario_nome', response.data.nome);
-      localStorage.setItem('usuario_tipo', response.data.tipo);
-      localStorage.setItem('usuario_cargo', response.data.cargo || 'Analista');
-      localStorage.setItem('usuario_permissoes', JSON.stringify(response.data.permissoes));
-
-      // Lógica inteligente do "Lembrar Acesso"
-      if (lembrarDeMim.value) {
-        localStorage.setItem('nps_remember_email', emailSalvo);
-      } else {
-        localStorage.removeItem('nps_remember_email'); // Se ele desmarcar, nós esquecemos
-      }
-
-      toast.add({ severity: 'success', summary: '✅ Conectado', detail: `Bem-vindo, ${response.data.nome.split(' ')[0]}! Sincronizando...`, life: 2500 });
-      
-      setTimeout(() => { window.location.href = '/'; }, 700); 
-    } else {
-      throw new Error("O servidor não devolveu um token de acesso.");
-    }
-
-  } catch (error) {
-    temErro.value = true;
-    const msgErro = error.response?.data?.detail || 'Não foi possível conectar ao servidor.';
-    const erroNormalizado = msgErro.toLowerCase();
-    
-    if (erroNormalizado.includes('inativa') || erroNormalizado.includes('aprovação')) {
-      toast.add({ severity: 'warn', summary: 'Acesso Pendente', detail: msgErro, life: 6000 });
-    } else {
-      toast.add({ severity: 'error', summary: 'Erro de Autenticação', detail: msgErro, life: 4000 });
-    }
-  } finally {
-    loading.value = false;
-  }
-};
-
-const fazerRegistro = async () => {
-  if (!registro.value.nome || !registro.value.email || !registro.value.password) {
-    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha todos os campos para solicitar o acesso.', life: 3000 });
-    return;
-  }
-
-  loading.value = true;
-  try {
-    const response = await api.post('/register', registro.value); 
-    toast.add({ severity: 'success', summary: 'Sucesso!', detail: response.data.mensagem, life: 5000 });
-    registro.value = { nome: '', email: '', password: '' };
-    isLoginMode.value = true; 
-  } catch (error) {
-    const msgErro = error.response?.data?.detail || 'Erro ao solicitar acesso. Tente novamente.';
-    toast.add({ severity: 'error', summary: 'Erro no Registo', detail: msgErro, life: 5000 });
-  } finally {
-    loading.value = false;
-  }
-};
-
-const handleSubmit = () => {
-  if (isLoginMode.value) { fazerLogin(); } else { fazerRegistro(); }
-};
-</script>
-
-<style scoped lang="postcss">
-@reference "tailwindcss";
-
-.animate-fadein { animation: fadeIn 0.4s ease-out; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 .p-input-icon-left {
   display: flex !important;
@@ -335,3 +215,205 @@ const handleSubmit = () => {
   box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
 }
 </style>
+
+<script setup>
+import { ref, onMounted } from 'vue'; 
+import { useRouter } from 'vue-router';
+import { useToast } from 'primevue/usetoast';
+import { PublicClientApplication } from '@azure/msal-browser';
+import api from '../services/api';
+
+import InputText from 'primevue/inputtext';
+import Password from 'primevue/password';
+import Button from 'primevue/button';
+import Checkbox from 'primevue/checkbox';
+
+const router = useRouter();
+const toast = useToast();
+
+const isLoginMode = ref(true); 
+const loading = ref(false);
+const temErro = ref(false);
+
+const credenciais = ref({ email: '', password: '' });
+const registro = ref({ nome: '', email: '', password: '' });
+const lembrarDeMim = ref(false);
+
+const ssoAtivo = ref(false);
+const loadingMicrosoft = ref(false);
+let msalInstance = null;
+
+onMounted(async () => {
+  const emailSalvo = localStorage.getItem('nps_remember_email');
+  if (emailSalvo) {
+    credenciais.value = { ...credenciais.value, email: emailSalvo };
+    lembrarDeMim.value = true;
+  }
+  
+  try {
+    console.log("🔍 [1] A buscar configurações de SSO...");
+    const res = await api.get('/auth/sso-config'); 
+    
+    if (res.data && res.data.sso_ativo && res.data.client_id) {
+        console.log("✅ [2] SSO Configurado! Inicializando MSAL...");
+        ssoAtivo.value = true; 
+        
+        const msalConfig = {
+            auth: {
+                clientId: res.data.client_id,
+                authority: `https://login.microsoftonline.com/${res.data.tenant_id}`, 
+                redirectUri: window.location.origin + '/login', 
+            },
+            cache: {
+                cacheLocation: "sessionStorage", 
+                storeAuthStateInCookie: false
+            }
+        };
+        
+        msalInstance = new PublicClientApplication(msalConfig);
+        await msalInstance.initialize();
+
+        console.log("⏳ [3] A aguardar resposta da Microsoft (caso venha de um redirecionamento)...");
+        const responseMSAL = await msalInstance.handleRedirectPromise();
+        
+        if (responseMSAL) {
+            console.log("🔐 [4] Token recebido da Microsoft! A enviar para o FastAPI...");
+            loadingMicrosoft.value = true;
+            const tokenMicrosoft = responseMSAL.accessToken;
+
+            const authRes = await api.post('/auth/microsoft', { 
+                access_token: tokenMicrosoft 
+            });
+
+            console.log("🟢 [5] Resposta do FastAPI de Autorização:", authRes.data);
+
+            if (authRes.data.access_token) {
+                localStorage.setItem('token', authRes.data.access_token);
+                localStorage.setItem('access_token', authRes.data.access_token);
+                localStorage.setItem('usuario_nome', authRes.data.nome);
+                localStorage.setItem('usuario_tipo', authRes.data.tipo);
+                localStorage.setItem('usuario_cargo', authRes.data.cargo || 'Analista');
+                
+                if (authRes.data.permissoes) {
+                    localStorage.setItem('usuario_permissoes', JSON.stringify(authRes.data.permissoes));
+                }
+
+                toast.add({ severity: 'success', summary: 'Autenticado!', detail: `Bem-vindo, ${authRes.data.nome}! A redirecionar...`, life: 3000 });
+                setTimeout(() => { window.location.href = '/'; }, 1000);
+            }
+        } else {
+            console.log("ℹ️ Nenhum redirecionamento pendente. Tela inicial carregada normal.");
+        }
+    }
+  } catch (error) {
+      console.error("🔥 [ERRO] O fluxo parou com o seguinte erro:", error);
+      
+      // Captura reforçada para garantir que a mensagem aparece na tela!
+      let msgErro = "Ocorreu um erro ao conectar com o servidor.";
+      if (error.response && error.response.data && error.response.data.detail) {
+          msgErro = error.response.data.detail;
+      } else if (error.message) {
+          msgErro = error.message;
+      }
+      
+      toast.add({ severity: 'error', summary: 'Acesso Negado', detail: msgErro, life: 8000 });
+      loadingMicrosoft.value = false;
+  }
+});
+
+const fazerLogin = async () => {
+  if (!credenciais.value.email || !credenciais.value.password) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha o e-mail e a palavra-passe.', life: 3000 });
+    return;
+  }
+
+  loading.value = true;
+  temErro.value = false;
+  
+  try {
+    const response = await api.post('/login', {
+      email: credenciais.value.email,
+      password: credenciais.value.password,
+      remember: lembrarDeMim.value
+    }); 
+
+    const token = response.data.access_token;
+
+    if (token) {
+      const emailSalvo = credenciais.value.email;
+            
+      localStorage.setItem('token', token);
+      localStorage.setItem('access_token', token); 
+      localStorage.setItem('usuario_id', response.data.usuario_id || '');
+      localStorage.setItem('usuario_nome', response.data.nome);
+      localStorage.setItem('usuario_tipo', response.data.tipo);
+      localStorage.setItem('usuario_cargo', response.data.cargo || 'Analista');
+      localStorage.setItem('usuario_permissoes', JSON.stringify(response.data.permissoes));
+
+      if (lembrarDeMim.value) {
+        localStorage.setItem('nps_remember_email', emailSalvo);
+      } else {
+        localStorage.removeItem('nps_remember_email'); 
+      }
+
+      toast.add({ severity: 'success', summary: '✅ Conectado', detail: `Bem-vindo, ${response.data.nome.split(' ')[0]}! Sincronizando...`, life: 2500 });
+      
+      setTimeout(() => { window.location.href = '/'; }, 700); 
+    } else {
+      throw new Error("O servidor não devolveu um token de acesso.");
+    }
+
+  } catch (error) {
+    temErro.value = true;
+    const msgErro = error.response?.data?.detail || 'Não foi possível conectar ao servidor.';
+    const erroNormalizado = msgErro.toLowerCase();
+    
+    if (erroNormalizado.includes('inativa') || erroNormalizado.includes('aprovação')) {
+      toast.add({ severity: 'warn', summary: 'Acesso Pendente', detail: msgErro, life: 6000 });
+    } else {
+      toast.add({ severity: 'error', summary: 'Erro de Autenticação', detail: msgErro, life: 4000 });
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
+const loginComMicrosoft = async () => {
+    if (!msalInstance) return;
+    
+    loadingMicrosoft.value = true;
+    try {
+        // Redireciona a página inteira para a Microsoft (Bypass total a problemas de popups)
+        await msalInstance.loginRedirect({
+            scopes: ["User.Read"]
+        });
+    } catch (error) {
+        console.error("Erro ao iniciar redirecionamento:", error);
+        loadingMicrosoft.value = false;
+    }
+};
+
+const fazerRegistro = async () => {
+  if (!registro.value.nome || !registro.value.email || !registro.value.password) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha todos os campos para solicitar o acesso.', life: 3000 });
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const response = await api.post('/register', registro.value); 
+    toast.add({ severity: 'success', summary: 'Sucesso!', detail: response.data.mensagem, life: 5000 });
+    registro.value = { nome: '', email: '', password: '' };
+    isLoginMode.value = true; 
+  } catch (error) {
+    const msgErro = error.response?.data?.detail || 'Erro ao solicitar acesso. Tente novamente.';
+    toast.add({ severity: 'error', summary: 'Erro no Registo', detail: msgErro, life: 5000 });
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleSubmit = () => {
+  if (isLoginMode.value) { fazerLogin(); } else { fazerRegistro(); }
+};
+</script>
