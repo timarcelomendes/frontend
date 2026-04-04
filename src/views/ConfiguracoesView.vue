@@ -947,6 +947,55 @@ const salvarPermissoes = async () => {
   }
 };
 
+const novoDominio = ref('');
+const listaDominios = ref([]);
+const salvandoDominios = ref(false);
+
+// Função para buscar do banco ao abrir a tela
+const carregarDominios = async () => {
+    try {
+        const res = await api.get('/configuracoes/dominios');
+        if (res.data.dominios) {
+            // Transforma a string "a.com, b.com" num Array limpo ['a.com', 'b.com']
+            listaDominios.value = res.data.dominios.split(',').map(d => d.trim()).filter(d => d);
+        }
+    } catch (error) {
+        console.error("Erro ao carregar domínios:", error);
+    }
+};
+
+// Adiciona à lista visual (ainda não salva no banco)
+const adicionarDominio = () => {
+    let dom = novoDominio.value.toLowerCase().trim();
+    if (dom.startsWith('@')) dom = dom.substring(1); // Remove o @ se o utilizador o digitar
+
+    if (dom && !listaDominios.value.includes(dom)) {
+        listaDominios.value.push(dom);
+        novoDominio.value = ''; // Limpa o input
+    } else if (listaDominios.value.includes(dom)) {
+         toast.add({ severity: 'warn', summary: 'Aviso', detail: 'Este domínio já está na lista.', life: 3000 });
+    }
+};
+
+// Remove da lista visual
+const removerDominio = (dom) => {
+    listaDominios.value = listaDominios.value.filter(d => d !== dom);
+};
+
+// Salva a lista final no banco de dados
+const salvarDominios = async () => {
+    salvandoDominios.value = true;
+    try {
+        const dominiosStr = listaDominios.value.join(', '); // Junta tudo com vírgula
+        await api.put('/configuracoes/dominios', { dominios: dominiosStr });
+        toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Domínios autorizados atualizados!', life: 3000 });
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao salvar domínios.', life: 3000 });
+    } finally {
+        salvandoDominios.value = false;
+    }
+};
+
 onMounted(() => {
   carregarDadosConfig();
   carregarConfiguracoesAI();
@@ -959,6 +1008,7 @@ onMounted(() => {
   carregarIntegracoes();
   carregarPermissoes();
   carregarImagensHospedadas();
+  carregarDominios();
 });
 
 </script>
@@ -1390,7 +1440,9 @@ onMounted(() => {
         <div class="space-y-8 animate-fadein py-4 ">
           
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
             <div class="lg:col-span-4 space-y-6">
+              
               <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
                 <h3 class="text-[11px] font-black uppercase text-slate-800 dark:text-white tracking-widest mb-6 flex items-center gap-2">
                   <i class="pi pi-key text-orange-500"></i> Alterar Senha
@@ -1411,9 +1463,70 @@ onMounted(() => {
                   <Button label="Atualizar Senha" @click="alterarMinhaSenha" :loading="loadingSenha" class="w-full !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 shadow-xl hover:scale-[1.02] transition-transform" />
                 </div>
               </div>
+
+              <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500 shrink-0">
+                        <i class="pi pi-globe text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white leading-none mb-1">Domínios Autorizados</h3>
+                        <p class="text-[10px] text-slate-400 font-bold leading-tight">E-mails permitidos para SSO e Registo</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mb-6">
+                    <div class="relative flex items-center group w-full max-w-md">
+                        <i class="pi pi-at absolute left-4 text-slate-400 z-10 group-focus-within:text-indigo-500 transition-colors" />
+                        <InputText 
+                            v-model="novoDominio" 
+                            @keyup.enter="adicionarDominio" 
+                            placeholder="ex: novatech.com" 
+                            class="custom-input w-full !pl-10" 
+                        />
+                    </div>
+                    <Button 
+                        icon="pi pi-plus" 
+                        @click="adicionarDominio" 
+                        class="!bg-indigo-500 !border-none !w-11 !h-11 !rounded-xl hover:scale-105 transition-transform" 
+                        v-tooltip="'Adicionar Domínio'"
+                    />
+                </div>
+
+                <div class="flex flex-wrap gap-2 mb-8 bg-slate-50 dark:bg-slate-950/50 p-4 rounded-2xl min-h-[5rem] border border-slate-100 dark:border-slate-800">
+                    <div 
+                        v-for="dom in listaDominios" :key="dom" 
+                        class="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm animate-fadein"
+                    >
+                        <span class="text-[11px] font-black text-slate-600 dark:text-slate-300">{{ dom }}</span>
+                        <button 
+                            @click="removerDominio(dom)" 
+                            class="flex items-center justify-center w-5 h-5 rounded-full hover:bg-rose-100 dark:hover:bg-rose-500/20 text-slate-300 hover:text-rose-500 transition-colors cursor-pointer border-none bg-transparent"
+                        >
+                            <i class="pi pi-times text-[9px]"></i>
+                        </button>
+                    </div>
+                    
+                    <div v-if="listaDominios.length === 0" class="flex items-center text-[11px] font-bold text-rose-500 uppercase tracking-widest w-full">
+                        <i class="pi pi-exclamation-triangle mr-2"></i> O acesso está bloqueado para todos.
+                    </div>
+                </div>
+
+                <div class="flex justify-end border-t border-slate-100 dark:border-slate-800 pt-5">
+                    <Button 
+                        label="Guardar Permissões" 
+                        icon="pi pi-shield" 
+                        :loading="salvandoDominios" 
+                        @click="salvarDominios" 
+                        class="!bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 !rounded-xl !text-[10px] !font-black uppercase tracking-widest !px-6 !py-3 hover:scale-[1.02] transition-transform !border-none w-full" 
+                    />
+                </div>
+              </div>
+
             </div>
             
             <div class="lg:col-span-8 space-y-6">
+              
               <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                   <div>
@@ -1464,7 +1577,6 @@ onMounted(() => {
 
         </div>
       </TabPanel>
-
       <TabPanel>
         <template #header>
           <div class="flex items-center gap-2 px-2">
