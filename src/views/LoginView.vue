@@ -320,7 +320,7 @@ onMounted(async () => {
                     localStorage.setItem('usuario_permissoes', JSON.stringify(authRes.data.permissoes));
                 }
 
-                toast.add({ severity: 'success', summary: 'Autenticado!', detail: `Bem-vindo, ${authRes.data.nome}! A redirecionar...`, life: 3000 });
+                //toast.add({ severity: 'success', summary: 'Autenticado!', detail: `Bem-vindo, ${authRes.data.nome}! A redirecionar...`, life: 3000 });
                 
                 setTimeout(() => { 
                     router.push('/');
@@ -382,7 +382,7 @@ const fazerLogin = async () => {
         localStorage.removeItem('nps_remember_email'); 
       }
 
-      toast.add({ severity: 'success', summary: '✅ Conectado', detail: `Bem-vindo, ${response.data.nome.split(' ')[0]}! Sincronizando...`, life: 2500 });
+      //toast.add({ severity: 'success', summary: '✅ Conectado', detail: `Bem-vindo, ${response.data.nome.split(' ')[0]}! Sincronizando...`, life: 2500 });
       
       setTimeout(() => { 
         router.push('/'); 
