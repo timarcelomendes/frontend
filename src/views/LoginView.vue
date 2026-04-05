@@ -1,5 +1,11 @@
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2 min-h-screen bg-white dark:bg-slate-950 font-sans overflow-hidden">
+  <div class="grid grid-cols-1 md:grid-cols-2 min-h-screen bg-white dark:bg-slate-950 font-sans overflow-hidden relative">
+    
+    <div v-if="processandoRetorno" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/95 dark:bg-slate-950/95 backdrop-blur-md">
+      <i class="pi pi-spin pi-spinner text-6xl text-indigo-600 mb-6"></i>
+      <h2 class="text-2xl font-bold text-slate-800 dark:text-white mb-2">A validar o seu acesso...</h2>
+      <p class="text-slate-500 font-medium animate-pulse">Estabelecendo uma conexão segura.</p>
+    </div>
     
     <div class="hidden md:flex flex-col justify-between p-16 lg:p-24 bg-slate-900 text-white relative overflow-hidden group">
       
@@ -218,7 +224,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'; 
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { PublicClientApplication } from '@azure/msal-browser';
 import api from '../services/api';
@@ -230,6 +236,8 @@ import Checkbox from 'primevue/checkbox';
 
 const router = useRouter();
 const toast = useToast();
+const route = useRoute();
+const processandoRetorno = ref(false);
 
 const isLoginMode = ref(true); 
 const loading = ref(false);
@@ -244,12 +252,26 @@ const loadingMicrosoft = ref(false);
 let msalInstance = null;
 
 onMounted(async () => {
+  // 👇 A MÁGICA: Deteta se estamos a voltar de um redirecionamento da Microsoft
+  if (window.location.hash.includes('code=') || window.location.hash.includes('state=')) {
+      processandoRetorno.value = true;
+  }
+  if (route.query.verificado === 'true') {
+      toast.add({ severity: 'success', summary: 'E-mail Confirmado!', detail: 'Titularidade comprovada. O seu acesso agora aguarda a libertação do Administrador.', life: 8000 });
+      router.replace({ query: null }); // Limpa a URL para não repetir a mensagem ao dar F5
+  } else if (route.query.erro) {
+      toast.add({ severity: 'error', summary: 'Falha na Confirmação', detail: 'O link de verificação expirou ou é inválido. Contacte o suporte.', life: 8000 });
+      router.replace({ query: null });
+  }
+
+  // 2. LÓGICA DE LEMBRAR E-MAIL
   const emailSalvo = localStorage.getItem('nps_remember_email');
   if (emailSalvo) {
     credenciais.value = { ...credenciais.value, email: emailSalvo };
     lembrarDeMim.value = true;
   }
   
+  // 3. LÓGICA DE SSO MICROSOFT (MSAL)
   try {
     console.log("🔍 [1] A buscar configurações de SSO...");
     const res = await api.get('/auth/sso-config'); 
@@ -299,7 +321,10 @@ onMounted(async () => {
                 }
 
                 toast.add({ severity: 'success', summary: 'Autenticado!', detail: `Bem-vindo, ${authRes.data.nome}! A redirecionar...`, life: 3000 });
-                setTimeout(() => { window.location.href = '/'; }, 1000);
+                
+                setTimeout(() => { 
+                    router.push('/');
+                }, 1000);
             }
         } else {
             console.log("ℹ️ Nenhum redirecionamento pendente. Tela inicial carregada normal.");
@@ -327,6 +352,7 @@ const fazerLogin = async () => {
     return;
   }
 
+  processandoRetorno.value = true;
   loading.value = true;
   temErro.value = false;
   
@@ -358,13 +384,17 @@ const fazerLogin = async () => {
 
       toast.add({ severity: 'success', summary: '✅ Conectado', detail: `Bem-vindo, ${response.data.nome.split(' ')[0]}! Sincronizando...`, life: 2500 });
       
-      setTimeout(() => { window.location.href = '/'; }, 700); 
+      setTimeout(() => { 
+        router.push('/'); 
+      }, 700); 
     } else {
       throw new Error("O servidor não devolveu um token de acesso.");
     }
 
   } catch (error) {
+    processandoRetorno.value = false;
     temErro.value = true;
+    
     const msgErro = error.response?.data?.detail || 'Não foi possível conectar ao servidor.';
     const erroNormalizado = msgErro.toLowerCase();
     

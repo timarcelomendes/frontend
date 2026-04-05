@@ -34,15 +34,15 @@ const imagensUpload = ref([]);
 const fileInputImagem = ref(null);
 
 // --- ESTADO: CONFIGURAÇÕES DE EMAIL ---
+// Procure a definição do ref(config) e deixe assim:
 const config = ref({
   tenant_id: '',
   client_id: '',
   client_secret: '',
   email_remetente: '',
   base_url_frontend: window.location.origin,
-  refresh_token: null,
   envios_ativos: true,
-  sso_ativo: false
+  sso_microsoft_ativo: false
 });
 
 // --- ESTADO: INTELIGÊNCIA ARTIFICIAL (MAGIC AI) ---
@@ -200,7 +200,7 @@ const carregarDadosConfig = async () => {
   }
 };
 
-const salvarConfigEmail = async () => { // Pode ter outro nome no seu ficheiro
+const salvarConfigEmail = async () => {
   loading.value = true;
   try {
     await api.post('/config/email', {
@@ -210,7 +210,7 @@ const salvarConfigEmail = async () => { // Pode ter outro nome no seu ficheiro
       email_remetente: config.value.email_remetente,
       base_url_frontend: config.value.base_url_frontend,
       envios_ativos: config.value.envios_ativos,
-      sso_ativo: config.value.sso_ativo
+      sso_microsoft_ativo: config.value.sso_microsoft_ativo
     });
     
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Configurações de e-mail atualizadas!', life: 3000 });
@@ -1140,7 +1140,7 @@ onMounted(() => {
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-8 border-t border-slate-50 dark:border-slate-800">
-                <Button label="1. Guardar no Banco" icon="pi pi-database" @click="salvarConfiguracoes" :loading="loading" class="w-full !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 shadow-xl hover:scale-[1.02] transition-transform" />
+                <Button label="1. Guardar no Banco" icon="pi pi-database" @click="salvarConfigEmail" :loading="loading" class="w-full !bg-slate-900 dark:!bg-white dark:!text-slate-900 !text-white !border-none !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 shadow-xl hover:scale-[1.02] transition-transform" />
                 <Button label="2. Autorizar Microsoft" icon="pi pi-microsoft" @click="autorizarMicrosoft" :loading="verificandoConexao" class="w-full !bg-transparent !border-2 !border-slate-200 dark:!border-slate-700 !text-slate-700 dark:!text-slate-300 !rounded-2xl !text-[10px] !font-black !uppercase !tracking-widest !py-4 hover:!bg-slate-50 dark:hover:!bg-slate-800 hover:scale-[1.02] transition-all" />
                 
                 <div class="sm:col-span-2">
@@ -1165,9 +1165,9 @@ onMounted(() => {
                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Login com Microsoft Entra ID</p>
               </div>
               <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-700">
-                <InputSwitch v-model="config.sso_ativo" @change="salvarConfigEmail" />
-                <span class="text-[10px] font-black uppercase tracking-widest" :class="config.sso_ativo ? 'text-indigo-500' : 'text-slate-400'">
-                  {{ config.sso_ativo ? 'SSO ATIVADO' : 'SSO DESATIVADO' }}
+                <InputSwitch v-model="config.sso_microsoft_ativo" @change="salvarConfigEmail" />
+                <span class="text-[10px] font-black uppercase tracking-widest" :class="config.sso_microsoft_ativo ? 'text-indigo-500' : 'text-slate-400'">
+                  {{ config.sso_microsoft_ativo ? 'SSO ATIVADO' : 'SSO DESATIVADO' }}
                 </span>
               </div>
             </div>
