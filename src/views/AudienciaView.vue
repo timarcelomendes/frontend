@@ -14,6 +14,7 @@ import Dropdown from 'primevue/dropdown';
 import Tag from 'primevue/tag';
 import Calendar from 'primevue/calendar';
 import InputSwitch from 'primevue/inputswitch';
+import Sidebar from 'primevue/sidebar';
 
 const toast = useToast();
 
@@ -26,6 +27,7 @@ const perfis = ref([{ nome: 'Decisor' }, { nome: 'Influenciador' }, { nome: 'Usu
 const cargos = ref([]);
 const segmentos = ref([]);   
 const loading = ref(true);
+const ajudaVisivel = ref(false);
 
 const gestores = ref([{ label: 'Todos', value: null }]);
 const companhias = ref([{ label: 'Todas', value: null }]); 
@@ -424,6 +426,13 @@ onUnmounted(() => {
       
       <div class="flex flex-wrap gap-3 items-center">
         <Button 
+          icon="pi pi-question-circle" 
+          @click="ajudaVisivel = true" 
+          class="!bg-white dark:!bg-slate-800 !text-slate-500 !border-slate-200 dark:!border-slate-700 !rounded-xl w-10 h-10 shadow-sm hover:!text-orange-500 hover:!border-orange-500 transition-all flex items-center justify-center shrink-0" 
+          v-tooltip.top="'Como funciona esta tela?'" 
+        />
+
+        <Button 
           v-if="temPermissao('audiencia:disparar')" 
           icon="pi pi-cog" 
           @click="abrirConfiguracoes" 
@@ -434,6 +443,68 @@ onUnmounted(() => {
         <Button v-if="temPermissao('clientes:criar')" label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="bg-orange-500 border-none rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-orange-500/30 hover:-translate-y-0.5 transition-transform shrink-0" />
       </div>
     </div>
+
+    <Sidebar v-model:visible="ajudaVisivel" position="right" class="w-full md:w-[400px] !bg-white dark:!bg-slate-950 dark:border-l dark:border-slate-800" :showCloseIcon="true">
+      <template #header>
+        <div class="flex items-center gap-3">
+          <div class="bg-orange-100 dark:bg-orange-500/20 p-2 rounded-xl border border-orange-200 dark:border-orange-500/30">
+            <i class="pi pi-book text-orange-600 dark:text-orange-500 text-xl"></i>
+          </div>
+          <div class="flex flex-col">
+            <h2 class="text-lg font-black text-slate-900 dark:text-white leading-none tracking-tight">Guia da Tela</h2>
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Audiência & Disparos</span>
+          </div>
+        </div>
+      </template>
+      
+      <div class="mt-6 flex flex-col gap-6">
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+          Esta é a central de comando da sua base de contatos. Aqui você acompanha quem deve receber pesquisas, monitora os envios e gerencia o relacionamento.
+        </p>
+
+        <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-2">
+            <i class="pi pi-send text-orange-500"></i> Como funcionam os Disparos?
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
+            O envio pode acontecer de duas formas:
+          </p>
+          <ul class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed list-disc pl-4 flex flex-col gap-1">
+            <li><strong>Manual/Lote:</strong> Selecione os clientes usando as caixas à esquerda e clique em "Disparo em Lote" no topo da tela.</li>
+            <li><strong>Robô Automático:</strong> Se ativado nas configurações, o robô lerá a coluna <em>"Próximo"</em> diariamente e fará o envio sozinho.</li>
+          </ul>
+        </div>
+
+        <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-2">
+            <i class="pi pi-tag text-indigo-500"></i> Entendendo os Status
+          </h3>
+          <ul class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed flex flex-col gap-3">
+            <li class="flex flex-col gap-1">
+              <span class="font-bold text-slate-700 dark:text-slate-300">⏳ Na Fila (Pendente):</span> 
+              <span>Pronto para receber a pesquisa. Aguardando disparo manual ou ação do robô.</span>
+            </li>
+            <li class="flex flex-col gap-1">
+              <span class="font-bold text-slate-700 dark:text-slate-300">📨 Enviado:</span> 
+              <span>A pesquisa chegou ao e-mail do cliente, mas ele ainda não clicou para responder. O sistema pode enviar lembretes automáticos neste status.</span>
+            </li>
+            <li class="flex flex-col gap-1">
+              <span class="font-bold text-slate-700 dark:text-slate-300">✅ Respondido:</span> 
+              <span>A avaliação foi preenchida. O ciclo foi fechado e um novo prazo de carência (ex: 90 dias) começou a contar.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-2">
+            <i class="pi pi-sync text-emerald-500"></i> Ciclo de Recorrência (Carência)
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            Para não incomodar o cliente, o sistema bloqueia novos disparos até que o prazo de carência (visível no topo da tela) se esgote. Você pode alterar essa regra clicando no botão da engrenagem.
+          </p>
+        </div>
+      </div>
+    </Sidebar>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
       <div class="bg-white dark:bg-slate-900 p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
@@ -711,32 +782,38 @@ onUnmounted(() => {
       </template>
     </Dialog>
 
-    <Dialog v-model:visible="dialogRegras" :style="{width: '450px'}" header="Regras de Disparo Automático" :modal="true" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
-      <div class="p-6 md:p-8 space-y-5 bg-slate-50/50 dark:bg-slate-900">
+    <Dialog v-model:visible="dialogRegras" :style="{width: '420px'}" header="Regras de Disparo" :modal="true" :draggable="false" class="custom-dialog">
+      
+      <div class="flex flex-col gap-6 pt-2">
         
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Ciclo de Recorrência (Dias)</label>
-          <div class="relative">
-             <i class="pi pi-sync absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-             <InputText v-model.number="regrasForm.recorrencia_dias" type="number" class="custom-input w-full pl-10" />
-          </div>
-          <small class="text-[10px] font-medium text-slate-400 mt-1">Tempo de carência até o mesmo cliente poder receber uma nova pesquisa.</small>
+        <div class="flex flex-col gap-1.5 animate-fadein">
+          <label class="text-sm font-bold text-slate-700 dark:text-slate-300">Ciclo de Carência (Dias)</label>
+          <span class="p-input-icon-left">
+             <i class="pi pi-sync text-slate-400"></i>
+             <InputText v-model.number="regrasForm.recorrencia_dias" type="number" class="custom-input w-full" placeholder="Ex: 90" />
+          </span>
+          <small class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+            Tempo em que um cliente fica bloqueado de receber novas pesquisas após responder.
+          </small>
         </div>
         
-        <div class="flex flex-col gap-1.5 mt-2">
-          <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Lembrete após (Dias)</label>
-          <div class="relative">
-             <i class="pi pi-clock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-             <InputText v-model.number="regrasForm.lembrete_dias" type="number" class="custom-input w-full pl-10" />
-          </div>
-          <small class="text-[10px] font-medium text-slate-400 mt-1">Dias de espera após o envio original para disparar o lembrete a quem não respondeu.</small>
+        <div class="flex flex-col gap-1.5 animate-fadein" style="animation-delay: 0.1s;">
+          <label class="text-sm font-bold text-slate-700 dark:text-slate-300">Lembrete Automático (Dias)</label>
+          <span class="p-input-icon-left">
+             <i class="pi pi-clock text-slate-400"></i>
+             <InputText v-model.number="regrasForm.lembrete_dias" type="number" class="custom-input w-full" placeholder="Ex: 15" />
+          </span>
+          <small class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+            Dias de espera para enviar um e-mail de reforço para quem ignorou o primeiro envio.
+          </small>
         </div>
 
       </div>
+
       <template #footer>
-        <div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900 flex gap-3 w-full border-t border-slate-100 dark:border-slate-800">
-          <Button label="Cancelar" text class="flex-1 font-bold text-[11px] text-slate-400" @click="dialogRegras = false" />
-          <Button label="Guardar Regras" :loading="savingConfig" class="flex-1 !bg-orange-500 hover:!bg-orange-600 !text-white !rounded-xl font-bold text-[11px] shadow-lg shadow-orange-500/20 border-none py-3" @click="atualizarRegras" />
+        <div class="flex items-center gap-3 w-full pt-5 mt-2 border-t border-slate-100 dark:border-slate-800/60">
+          <Button label="Cancelar" text class="flex-1 font-bold text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors" @click="dialogRegras = false" />
+          <Button label="Salvar Regras" :loading="savingConfig" iconPos="right" :icon="savingConfig ? '' : 'pi pi-check'" class="flex-1 !bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl font-bold text-sm shadow-lg shadow-orange-500/20 transition-all duration-300 !py-2.5" @click="atualizarRegras" />
         </div>
       </template>
     </Dialog>

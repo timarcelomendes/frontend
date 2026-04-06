@@ -5,16 +5,24 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { temPermissao } from './utils/permissoes';
+import api from './services/api'; 
+
+// PrimeVue Components
+import { useToast } from 'primevue/usetoast';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Sidebar from 'primevue/sidebar';
 import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
+import Dialog from 'primevue/dialog';
+import Avatar from 'primevue/avatar';
 
 // ==========================================
 // 2. SETUP (Router & Globals)
 // ==========================================
 const router = useRouter();
 const route = useRoute();
+const toast = useToast();
 
 // ==========================================
 // 3. ESTADO (Variáveis)
@@ -24,11 +32,23 @@ const sidebarExpandida = ref(true);
 const mobileMenuAberto = ref(false);
 const isDark = ref(false);
 
-// -- Dados do Utilizador
+// -- UI / Dropdown do Perfil
+const menuPerfilAberto = ref(false);
+
+// -- Dados do Utilizador e Avatar
 const isAdmin = ref(false);
 const nomeExibido = ref('');
 const cargoExibido = ref('');
 const iniciais = ref('');
+const userEmail = ref('');
+const usuarioAvatar = ref(''); // 👈 Guarda a URL da foto do cabeçalho
+
+// -- Modal de Perfil e Upload
+const dialogPerfil = ref(false);
+const salvandoPerfil = ref(false);
+const perfilForm = ref({ nome: '', email: '', cargo: '' });
+const previewImagem = ref(null);
+const arquivoSelecionado = ref(null);
 
 // ==========================================
 // 4. COMPUTED PROPERTIES
@@ -42,33 +62,32 @@ const exibirLayout = computed(() => {
 // ==========================================
 // 5. FUNÇÕES (Methods)
 // ==========================================
+
+// Atualiza todas as informações visuais baseadas no Storage
 const atualizarDadosUsuario = () => {
   const nome = localStorage.getItem('usuario_nome');
   const cargo = localStorage.getItem('usuario_cargo');
   const perfil = localStorage.getItem('usuario_tipo'); 
+  const email = localStorage.getItem('usuario_email') || '';
+  const avatar = localStorage.getItem('usuario_avatar') || ''; // 👈 Puxa a foto salva
   
   isAdmin.value = (perfil || '').toLowerCase() === 'admin';
-
-  // Debug mantido para ajudar nos seus testes
-  console.log("---- DEBUG MENU ----");
-  console.log("Valor bruto que está no storage:", perfil);
-  console.log("É Admin?", isAdmin.value);
-  console.log("--------------------");
+  userEmail.value = email || '';
+  usuarioAvatar.value = avatar; // 👈 Atualiza o avatar na tela
 
   if (nome) {
     nomeExibido.value = nome;
-    cargoExibido.value = cargo || 'Analista'; // Fallback de segurança
+    cargoExibido.value = cargo || 'Analista';
     
-    // Lógica das iniciais do Avatar
     const partes = nome.trim().split(' ');
     iniciais.value = partes.length > 1 
       ? (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
       : partes[0].substring(0, 2).toUpperCase();
   } else {
-    // Limpeza de segurança caso faça logout
     nomeExibido.value = '';
     cargoExibido.value = '';
     iniciais.value = '';
+    usuarioAvatar.value = '';
   }
 };
 
@@ -78,13 +97,8 @@ const toggleSidebar = () => {
 
 const toggleTema = () => {
   isDark.value = !isDark.value;
-  if (isDark.value) {
-    document.documentElement.classList.add('dark');
-    localStorage.setItem('theme', 'dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-    localStorage.setItem('theme', 'light');
-  }
+  document.documentElement.classList.toggle('dark', isDark.value);
+  localStorage.setItem('darkMode', isDark.value.toString());
 };
 
 const logout = () => {
@@ -92,27 +106,83 @@ const logout = () => {
   router.push('/login');
 };
 
+// --- GESTÃO DO PERFIL E IMAGEM ---
+
+// Abre o modal e limpa seleções de fotos anteriores
+const abrirPerfil = () => {
+  perfilForm.value = {
+    nome: nomeExibido.value,
+    cargo: cargoExibido.value,
+    email: userEmail.value 
+  };
+  previewImagem.value = null; 
+  arquivoSelecionado.value = null;
+  dialogPerfil.value = true;
+  menuPerfilAberto.value = false;
+};
+
+// Acionado automaticamente quando o ficheiro é escolhido na janela do PC (Abordagem Nativa HTML)
+const onFileSelect = (event) => {
+  const file = event.target.files[0];
+  if (file && file.type.startsWith('image/')) {
+    arquivoSelecionado.value = file;
+    // Mostra a imagem instantaneamente na tela antes de salvar
+    previewImagem.value = URL.createObjectURL(file); 
+  }
+};
+
+// Salva as alterações na API
+const salvarPerfil = async () => {
+  salvandoPerfil.value = true;
+  
+  try {
+    // 1. Envia a nova foto se o utilizador tiver selecionado uma
+    if (arquivoSelecionado.value) {
+      const formData = new FormData();
+      formData.append('file', arquivoSelecionado.value);
+      
+      const res = await api.post('/usuarios/me/avatar', formData);
+      localStorage.setItem('usuario_avatar', res.data.avatar_url);
+    }
+    
+    // 2. Guarda os outros dados
+    localStorage.setItem('usuario_nome', perfilForm.value.nome);
+    localStorage.setItem('usuario_cargo', perfilForm.value.cargo);
+    
+    atualizarDadosUsuario(); // Sincroniza o cabeçalho
+    
+    toast.add({ severity: 'success', summary: 'Sucesso!', detail: 'O seu perfil foi atualizado.', life: 3000 });
+    dialogPerfil.value = false;
+  } catch (error) {
+    console.error("Erro ao salvar:", error);
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível salvar os dados.' });
+  } finally {
+    salvandoPerfil.value = false;
+  }
+};
+
 // ==========================================
 // 6. LIFECYCLE & WATCHERS
 // ==========================================
-// Executa quando a página carrega pela primeira vez (F5)
 onMounted(() => {
-  // 1. Carrega os dados do utilizador
-  atualizarDadosUsuario();
+  const savedTheme = localStorage.getItem('darkMode');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
+  const deveEstarEscuro = savedTheme === 'true' || (savedTheme === null && prefersDark);
+  
+  isDark.value = deveEstarEscuro;
+  document.documentElement.classList.toggle('dark', deveEstarEscuro);
 
-  // 2. Inicializa o tema (Dark/Light)
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') {
-    isDark.value = true;
-    document.documentElement.classList.add('dark');
-  }
+  atualizarDadosUsuario();
 });
 
-// Reage a mudanças de rota (ex: transição suave pós-login)
 watch(
   () => route.path,
   () => {
     atualizarDadosUsuario();
+    if (typeof menuPerfilAberto !== 'undefined') {
+      menuPerfilAberto.value = false;
+    }
   }
 );
 </script>
@@ -126,17 +196,20 @@ watch(
     <header v-if="exibirLayout" 
             class="md:hidden flex items-center justify-between p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30">
       
-      <div class="flex items-center gap-3 cursor-default">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
-          <i class="pi pi-chart-line text-white text-lg"></i>
+      <div class="p-5 flex items-center border-b border-slate-100 dark:border-slate-800 h-20 shrink-0" :class="sidebarExpandida ? 'justify-start' : 'justify-center !p-0'">
+        
+        <div v-if="sidebarExpandida" class="flex flex-col items-start relative pl-4 w-full animate-fadein">
+           <div class="absolute top-0 bottom-0 left-0 w-1 bg-orange-600 dark:bg-orange-500 rounded-full"></div>
+           <h1 class="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none whitespace-nowrap">
+               NPS<span class="font-light text-slate-500 dark:text-slate-500">Intelligence</span>
+           </h1>
+           <p class="text-[9px] text-indigo-400 font-bold uppercase tracking-[0.1em] mt-1.5 pl-px whitespace-nowrap">Gauge &bull; Stefanini Group</p>
         </div>
-        <div class="flex flex-col justify-center">
-          <span class="text-xl font-black tracking-wider text-slate-800 dark:text-white leading-none mb-1">
-            NPS
-          </span>
-          <span class="text-[9px] font-bold tracking-[0.3em] text-indigo-500 dark:text-indigo-400 uppercase leading-none">
-            Intelligence
-          </span>
+
+        <div v-else class="flex items-center justify-center w-full animate-fadein">
+            <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-orange-500/30">
+                N
+            </div>
         </div>
       </div>
 
@@ -201,6 +274,25 @@ watch(
           </span>
 
           <router-link 
+            to="/logs" 
+            :class="[
+              'group flex items-center rounded-xl transition-all duration-300 relative overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:bg-white dark:hover:bg-slate-800/80 shadow-sm mb-3',
+              sidebarExpandida ? 'px-4 py-2 gap-3' : 'px-0 py-2 justify-center w-10 h-10 mx-auto'
+            ]"
+          >
+            <div :class="[
+              'shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-110',
+              sidebarExpandida ? 'w-6 h-6' : 'w-full h-full'
+            ]">
+              <i class="pi pi-history text-slate-500 dark:text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 text-sm"></i>
+            </div>
+            
+            <div v-show="sidebarExpandida" class="flex flex-col pr-2 animate-fadein">
+              <span class="text-[11px] font-black text-slate-700 dark:text-slate-300">Auditoria</span>
+            </div>
+          </router-link>
+
+          <router-link 
             to="/admin/limpeza" 
             class="group flex items-center gap-3 px-4 py-3 rounded-[1.25rem] transition-all duration-300 relative overflow-hidden bg-rose-50/80 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 hover:border-rose-200 dark:hover:border-rose-500/30 shadow-sm"
           >
@@ -232,8 +324,11 @@ watch(
                 <span @click="logout" class="text-[9px] font-bold text-rose-500 uppercase tracking-widest cursor-pointer mt-1">Sair</span>
               </div>
             </div>
-            <button @click="toggleTema" class="p-2 rounded-lg bg-white dark:bg-slate-700 shadow-sm border border-slate-100 dark:border-slate-600">
-              <i :class="isDark ? 'pi pi-sun' : 'pi pi-moon'" class="text-orange-500"></i>
+            <button 
+              @click="toggleTema" 
+              class="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm shrink-0"
+            >
+              <i :class="isDark ? 'pi pi-sun text-yellow-500' : 'pi pi-moon'"></i>
             </button>
           </div>
         </div>
@@ -246,24 +341,26 @@ watch(
       ]">
 
       <button 
-        @click="toggleSidebar" 
+        @click="sidebarExpandida = !sidebarExpandida" 
         class="absolute -right-3 top-8 bg-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center shadow-md hover:bg-orange-600 transition-colors z-50"
       >
         <i :class="['pi text-[10px] transition-transform duration-300', sidebarExpandida ? 'pi-chevron-left' : 'pi-chevron-right']"></i>
       </button>
       
-      <div class="flex items-center gap-3 py-8 px-5 cursor-default overflow-hidden border-b border-transparent">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
-          <i class="pi pi-chart-line text-white text-lg"></i>
-        </div>
+            <div class="p-5 flex items-center border-b border-slate-100 dark:border-slate-800 h-20 shrink-0" :class="sidebarExpandida ? 'justify-start' : 'justify-center !p-0'">
         
-        <div class="flex flex-col justify-center whitespace-nowrap transition-opacity duration-300" :class="sidebarExpandida ? 'opacity-100' : 'opacity-0 w-0'">
-          <span class="text-xl font-black tracking-wider text-slate-800 dark:text-white leading-none mb-1">
-            NPS
-          </span>
-          <span class="text-[9px] font-bold tracking-[0.3em] text-indigo-500 dark:text-indigo-400 uppercase leading-none">
-            Intelligence
-          </span>
+        <div v-if="sidebarExpandida" class="flex flex-col items-start relative pl-4 w-full animate-fadein">
+           <div class="absolute top-0 bottom-0 left-0 w-1 bg-orange-600 dark:bg-orange-500 rounded-full"></div>
+           <h1 class="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none whitespace-nowrap">
+               NPS<span class="font-light text-slate-500 dark:text-slate-500">Intelligence</span>
+           </h1>
+           <p class="text-[9px] text-indigo-400 font-bold uppercase tracking-[0.1em] mt-1.5 pl-px whitespace-nowrap">Gauge &bull; Stefanini Group</p>
+        </div>
+
+        <div v-else class="flex items-center justify-center w-full animate-fadein">
+            <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-orange-500/30">
+                N
+            </div>
         </div>
       </div>
 
@@ -277,9 +374,7 @@ watch(
           <i class="pi pi-chart-line shrink-0"></i> 
           <div v-show="sidebarExpandida" class="flex items-center justify-between flex-1 whitespace-nowrap transition-opacity duration-300">
             <span>Relatórios</span>
-            <span class="bg-indigo-500 text-[7px] text-white px-1.5 py-0.5 rounded-md font-black tracking-tighter animate-pulse shadow-sm shadow-indigo-500/50">
-              AI
-            </span>
+            <span class="bg-indigo-500 text-[7px] text-white px-1.5 py-0.5 rounded-md font-black tracking-tighter animate-pulse shadow-sm shadow-indigo-500/50">AI</span>
           </div>
         </router-link>
 
@@ -303,11 +398,6 @@ watch(
           <span v-show="sidebarExpandida" class="whitespace-nowrap transition-opacity duration-300">Audiência</span>
         </router-link>
 
-        <router-link v-if="isAdmin" to="/configuracoes" :class="['nav-item', sidebarExpandida ? 'justify-start px-4' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Configurações' : null">
-          <i class="pi pi-cog shrink-0"></i> 
-          <span v-show="sidebarExpandida" class="whitespace-nowrap transition-opacity duration-300">Configurações</span>
-        </router-link>
-
         <router-link to="/acoes" :class="['nav-item border border-orange-100 dark:border-orange-500/20 bg-orange-50/50 dark:bg-orange-500/10', sidebarExpandida ? 'justify-start px-4' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Planos de Ação' : null">
           <i class="pi pi-check-square text-orange-500 shrink-0"></i> 
           <div v-show="sidebarExpandida" class="flex items-center justify-between flex-1 whitespace-nowrap transition-opacity duration-300">
@@ -320,75 +410,180 @@ watch(
         </router-link>
 
         <div v-if="temPermissao('admin')" class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800/80">
-          
           <span v-show="sidebarExpandida" class="block px-4 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3 animate-fadein">
             Ações Críticas
           </span>
 
-          <router-link 
-            to="/admin/limpeza" 
-            :class="[
-              'group flex items-center rounded-[1.25rem] transition-all duration-300 relative overflow-hidden bg-rose-50/80 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 hover:border-rose-200 dark:hover:border-rose-500/30 shadow-sm',
-              // 👇 Se estiver aberto (true), usa padding. Se fechado (false), tira padding e centraliza.
-              sidebarExpandida ? 'px-4 py-3 gap-3' : 'px-0 py-3 justify-center w-12 h-12 mx-auto'
-            ]"
-          >
+          <router-link to="/logs" :class="['group flex items-center rounded-xl transition-all duration-300 relative overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:bg-white dark:hover:bg-slate-800/80 shadow-sm mb-3', sidebarExpandida ? 'px-4 py-2 gap-3' : 'px-0 py-2 justify-center w-10 h-10 mx-auto']">
+            <div :class="['shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-110', sidebarExpandida ? 'w-6 h-6' : 'w-full h-full']">
+              <i class="pi pi-history text-slate-500 dark:text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 text-sm"></i>
+            </div>
+            <div v-show="sidebarExpandida" class="flex flex-col pr-2 animate-fadein">
+              <span class="text-[11px] font-black text-slate-700 dark:text-slate-300">Auditoria</span>
+            </div>
+          </router-link>
+
+          <router-link to="/admin/limpeza" :class="['group flex items-center rounded-[1.25rem] transition-all duration-300 relative overflow-hidden bg-rose-50/80 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20 hover:border-rose-200 dark:hover:border-rose-500/30 shadow-sm', sidebarExpandida ? 'px-4 py-3 gap-3' : 'px-0 py-3 justify-center w-12 h-12 mx-auto']">
             <div v-if="sidebarExpandida" class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center animate-fadein">
               <div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
             </div>
-            
-            <div :class="[
-              'shrink-0 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300',
-              sidebarExpandida ? 'w-9 h-9' : 'w-10 h-10'
-            ]">
+            <div :class="['shrink-0 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300', sidebarExpandida ? 'w-9 h-9' : 'w-10 h-10']">
               <i class="pi pi-exclamation-triangle text-rose-600 dark:text-rose-400 text-sm"></i>
             </div>
-            
             <div v-show="sidebarExpandida" class="flex flex-col pr-6 animate-fadein">
               <span class="text-xs font-black text-rose-700 dark:text-rose-400">Danger Zone</span>
               <span class="text-[10px] font-bold text-rose-500/80 dark:text-rose-400/80 mt-0.5 leading-tight">Limpeza de Dados</span>
             </div>
           </router-link>
-          
         </div>
       </nav>
 
-      <div class="mt-auto border-t border-slate-100 dark:border-slate-800 p-3 space-y-2">
-        <button @click="toggleTema" :class="['w-full flex items-center py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all', sidebarExpandida ? 'gap-4 px-4 justify-start' : 'justify-center px-0']" v-tooltip.right="!sidebarExpandida ? 'Alternar Tema' : null">
-          <i :class="[isDark ? 'pi pi-sun' : 'pi pi-moon', 'shrink-0']"></i>
-          <span v-show="sidebarExpandida" class="text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-opacity duration-300">{{ isDark ? 'Modo Claro' : 'Modo Escuro' }}</span>
-        </button>
-
-        <div :class="['flex items-center rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800', sidebarExpandida ? 'gap-3 p-2 justify-start' : 'p-2 justify-center']">
-          <div class="w-10 h-10 rounded-xl bg-orange-600 flex-shrink-0 flex items-center justify-center text-white text-xs font-black shadow-lg" v-tooltip.right="!sidebarExpandida ? nomeExibido : null">
-            {{ iniciais }}
-          </div>
+      <div class="mt-auto p-3 border-t border-slate-100 dark:border-slate-800 space-y-1 bg-white dark:bg-slate-900 z-10 relative shrink-0">
+          <router-link v-if="temPermissao('admin')" to="/configuracoes" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors group" v-tooltip.right="!sidebarExpandida ? 'Configurações' : null">
+              <i class="pi pi-cog text-[1.1rem] shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-white transition-colors"></i>
+              <span v-show="sidebarExpandida" class="text-[13px] tracking-tight font-medium">Configurações</span>
+          </router-link>
           
-          <div v-show="sidebarExpandida" class="flex-1 min-w-0 flex flex-col justify-center whitespace-nowrap transition-opacity duration-300 overflow-hidden">
-            <p class="text-[11px] font-black text-slate-800 dark:text-white truncate leading-none mb-1">
-              {{ nomeExibido }}
-            </p>
-            <p class="text-[9px] font-bold text-orange-500 uppercase tracking-widest leading-none truncate">
-              {{ cargoExibido }}
-            </p>
-          </div>
-          
-          <button @click="logout" v-show="sidebarExpandida" class="p-2 text-slate-400 hover:text-rose-500 transition-colors shrink-0" title="Sair do sistema">
-            <i class="pi pi-sign-out"></i>
+          <button @click="sidebarExpandida = !sidebarExpandida" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-colors group">
+              <i :class="['pi text-[1rem] shrink-0 transition-transform duration-300', sidebarExpandida ? 'pi-align-right' : 'pi-align-left']"></i>
+              <span v-show="sidebarExpandida" class="text-[12px] font-bold">Recolher Menu</span>
           </button>
-        </div>
       </div>
     </aside>
+    <div class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
+      
+      <header v-if="exibirLayout" class="h-20 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-6 md:px-8 flex items-center justify-between shrink-0 relative z-10 transition-colors">
+        
+        <div class="flex items-center gap-4">
+        </div>
 
-    <main :class="['flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 transition-all duration-300', exibirLayout ? 'p-4 md:p-8 lg:p-12' : 'p-0']">
-      <router-view v-slot="{ Component }">
-        <transition name="page" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
-    </main>
+        <div class="flex items-center gap-5">
+          <button 
+            @click="toggleTema" 
+            class="w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm shrink-0"
+          >
+            <i :class="isDark ? 'pi pi-sun text-yellow-500' : 'pi pi-moon'"></i>
+          </button>
 
+          <div class="h-8 w-px bg-slate-200 dark:bg-slate-800"></div>
+
+          <div class="relative flex items-center gap-3 cursor-pointer group" @click="menuPerfilAberto = !menuPerfilAberto">
+            
+              <div class="flex flex-col text-right hidden md:flex">
+                <span class="text-[13px] font-black text-slate-800 dark:text-white leading-tight tracking-tight">{{ nomeExibido || 'Usuário' }}</span>
+                <span class="text-[9px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-[0.15em] mt-0.5">{{ cargoExibido || 'Analista' }}</span>
+              </div>
+            
+            <Avatar 
+              :image="usuarioAvatar" 
+              :label="!usuarioAvatar ? (iniciais || 'U') : null" 
+              class="rounded-full bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-500/20 dark:to-orange-500/5 text-orange-600 dark:text-orange-500 border border-orange-200 dark:border-orange-500/30 shadow-sm group-hover:scale-105 transition-all duration-300 shrink-0" 
+              shape="circle" 
+              style="width: 48px; height: 48px; font-size: 1.2rem; font-weight: 900;"
+            />
+            
+              <i class="pi pi-chevron-down text-slate-400 text-[10px] transition-transform duration-300" :class="{'rotate-180': menuPerfilAberto}"></i>
+            
+            <transition name="fade-fast">
+              <div v-if="menuPerfilAberto" class="absolute top-16 right-0 w-56 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl shadow-slate-200/50 dark:shadow-black/50 py-2 z-[100] transform origin-top-right">
+                
+                <button 
+                  @click.stop="abrirPerfil" 
+                  class="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <i class="pi pi-user text-slate-400"></i> O Meu Perfil
+                </button>
+                
+                <button @click="logout" class="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors">
+                  <i class="pi pi-sign-out"></i> Encerrar Sessão
+                </button>
+                
+              </div>
+            </transition>
+          </div>
+          
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto relative p-6 md:p-8">
+         <router-view />
+      </main>
+
+    </div>
   </div>
+
+  <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="onFileSelect" />
+
+  <Dialog 
+      v-model:visible="dialogPerfil" 
+      header="Os Meus Dados" 
+      :modal="true" 
+      :draggable="false" 
+      class="custom-dialog" 
+      :style="{width: '400px'}"
+    >
+      <div class="flex flex-col gap-6 pt-2">
+        
+        <div class="flex justify-center mt-2 mb-2">
+          <label for="upload-foto" class="relative group cursor-pointer block rounded-full shadow-2xl">
+            
+            <Avatar 
+              :image="previewImagem || usuarioAvatar" 
+              :label="!(previewImagem || usuarioAvatar) ? (iniciais || 'U') : null" 
+              class="border-4 border-white dark:border-slate-800 bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-500/20 dark:to-orange-500/5 text-orange-600 dark:text-orange-500" 
+              shape="circle" 
+              style="width: 120px; height: 120px; font-size: 2.5rem; font-weight: 900;"
+            />
+            
+            <div class="absolute inset-0 bg-black/60 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <i class="pi pi-camera text-white text-3xl mb-1"></i>
+              <span class="text-white text-[10px] font-black uppercase tracking-widest">Alterar</span>
+            </div>
+            
+            <input 
+              id="upload-foto" 
+              type="file" 
+              class="hidden" 
+              accept="image/*" 
+              @change="onFileSelect" 
+            />
+          </label>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome Completo</label>
+          <InputText v-model="perfilForm.nome" class="custom-input w-full" placeholder="Seu nome" />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Cargo / Função</label>
+          <InputText v-model="perfilForm.cargo" class="custom-input w-full" placeholder="Ex: Head de Produtos" />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[10px] font-black uppercase text-slate-500 ml-1">E-mail Corporativo</label>
+          <div class="relative">
+            <i class="pi pi-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <InputText 
+              v-model="perfilForm.email" 
+              disabled 
+              class="custom-input w-full !pl-10 opacity-60 cursor-not-allowed !bg-slate-50 dark:!bg-slate-800" 
+            />
+          </div>
+          <small class="text-[9px] text-slate-400 ml-1 italic">
+            * Campo gerido pela organização (SSO).
+          </small>
+        </div>
+
+      </div>
+
+      <template #footer>
+        <div class="flex items-center gap-3 w-full pt-4 border-t border-slate-100 dark:border-slate-800">
+          <Button label="Cancelar" text class="flex-1 font-bold text-xs text-slate-400" @click="dialogPerfil = false" />
+          <Button label="Salvar Alterações" :loading="salvandoPerfil" @click="salvarPerfil" class="flex-1 !bg-orange-500 !border-none !rounded-xl font-bold text-xs !py-3 shadow-lg shadow-orange-500/20" />
+        </div>
+      </template>
+    </Dialog>
+
 </template>
 
 <style scoped lang="postcss">

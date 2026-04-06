@@ -28,6 +28,9 @@ const verificandoConexao = ref(false);
 const carregandoDados = ref(false);
 const carregandoUtilizadores = ref(false);
 
+// Captura o ID de quem está logado para ocultar o botão de exclusão da própria conta
+const idUsuarioLogado = ref(localStorage.getItem('usuario_id') || '');
+
 // --- ESTADO: GESTOR DE IMAGENS (E-MAIL) ---
 const enviandoImagem = ref(false);
 const imagensUpload = ref([]);
@@ -42,7 +45,8 @@ const config = ref({
   email_remetente: '',
   base_url_frontend: window.location.origin,
   envios_ativos: true,
-  sso_microsoft_ativo: false
+  sso_microsoft_ativo: false,
+  robo_ativo: false
 });
 
 // --- ESTADO: INTELIGÊNCIA ARTIFICIAL (MAGIC AI) ---
@@ -80,8 +84,14 @@ const formatarDataHora = (dataString) => {
 
 const gerarSenhaAleatoria = () => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
+  const randomValues = new Uint32Array(12);
+  window.crypto.getRandomValues(randomValues);
+  
   let pass = "";
-  for (let i = 0; i < 12; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (let i = 0; i < 12; i++) {
+    pass += chars[randomValues[i] % chars.length];
+  }
+  
   usuario.value.password = pass;
   toast.add({ severity: 'info', summary: 'Senha Gerada', detail: 'Uma nova senha foi gerada. Copie antes de salvar.', life: 3000 });
 };
@@ -127,7 +137,10 @@ const loadingSessoes = ref(false);
 const carregarSessoesReais = async () => {
   loadingSessoes.value = true;
   try {
-    const response = await api.get('/usuarios/sessoes?usuario_id=1');
+    // Busca o ID do utilizador logado no momento
+    const meuId = localStorage.getItem('usuario_id') || 1; 
+    const response = await api.get(`/usuarios/sessoes?usuario_id=${meuId}`);
+    
     if (response.data) {
       sessoesAtivas.value = response.data.map((sessao, index) => ({
         ...sessao, atual: index === 0
@@ -195,7 +208,9 @@ const carregarDadosConfig = async () => {
       }
     }
   } catch (error) {
-  } finally {
+  console.error("Erro ao carregar configurações de e-mail:", error);
+  toast.add({ severity: 'error', summary: 'Erro', detail: 'Não foi possível carregar os dados.', life: 3000 });
+} finally {
     carregandoDados.value = false;
   }
 };
@@ -210,7 +225,8 @@ const salvarConfigEmail = async () => {
       email_remetente: config.value.email_remetente,
       base_url_frontend: config.value.base_url_frontend,
       envios_ativos: config.value.envios_ativos,
-      sso_microsoft_ativo: config.value.sso_microsoft_ativo
+      sso_microsoft_ativo: config.value.sso_microsoft_ativo,
+      robo_ativo: config.value.robo_ativo
     });
     
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Configurações de e-mail atualizadas!', life: 3000 });
@@ -532,6 +548,7 @@ const regrasConfig = ref({
   email_template_lembrete_1: '',
   email_template_lembrete_2: '',
   email_template_lembrete_3: '',
+  robo_ativo: false
 });
 
 const opcoesCamposFillout = ref([
@@ -546,6 +563,7 @@ const carregarRegras = async () => {
     const res = await api.get('/config/regras');
     regrasConfig.value = { 
       ...res.data, 
+      robo_ativo: String(res.data.robo_ativo).toLowerCase() === 'true',
       fillout_campos: res.data.fillout_campos ? res.data.fillout_campos.split(',') : [],
       lembrete_qtd_maxima: parseInt(res.data.lembrete_qtd_maxima) || 0,
       lembrete_dias_1: parseInt(res.data.lembrete_dias_1) || 3,
@@ -596,10 +614,8 @@ const processarUploadImagem = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
 
-  // 1. VERIFICA SE A IMAGEM JÁ EXISTE PELO NOME
   const imagemExistenteIndex = imagensUpload.value.findIndex(img => img.nome === file.name);
 
-  // 2. SE EXISTIR, PEDE CONFIRMAÇÃO AO UTILIZADOR
   if (imagemExistenteIndex !== -1) {
     const querSubstituir = confirm(
       `⚠️ Já existe uma imagem com o nome "${file.name}".\n\nDeseja substituí-la?\nAo confirmar, todos os templates que usam esta imagem passarão a exibir a nova versão.`
@@ -996,6 +1012,18 @@ const salvarDominios = async () => {
     }
 };
 
+const excluirUtilizador = async (usuario_id) => {
+  if (!confirm("Tem certeza que deseja excluir permanentemente este utilizador? Esta ação não pode ser desfeita.")) return;
+  
+  try {
+    await api.delete(`/usuarios/${usuario_id}`);
+    toast.add({ severity: 'success', summary: 'Excluído', detail: 'Utilizador removido do sistema.', life: 3000 });
+    carregarUtilizadores(); // Atualiza a tabela
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Acesso Negado', detail: error.response?.data?.detail || 'Não foi possível excluir o utilizador.', life: 5000 });
+  }
+};
+
 onMounted(() => {
   carregarDadosConfig();
   carregarConfiguracoesAI();
@@ -1267,21 +1295,28 @@ onMounted(() => {
             </div>
 
             <DataTable :value="utilizadores" responsiveLayout="stack" breakpoint="960px" class="p-datatable-sm custom-table" :rows="10" paginator rowHover>
-              <Column field="nome" header="Utilizador">
+              
+              <Column header="Usuário">
                 <template #body="s">
-                  <div class="flex items-center gap-4 py-1">
-                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 font-black text-[11px] shadow-inner shrink-0">
-                      {{ getIniciais(s.data.nome) }}
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 shadow-sm">
+                      <span class="text-xs font-bold text-slate-600 dark:text-slate-300">
+                        {{ s.data.nome ? s.data.nome.charAt(0).toUpperCase() : 'U' }}
+                      </span>
                     </div>
+                    
                     <div class="flex flex-col">
-                      <span class="font-black text-sm text-slate-800 dark:text-white">{{ s.data.nome }}</span>
-                      <span class="text-[10px] font-bold text-slate-400">{{ s.data.email }}</span>
+                      <span class="text-[13px] font-black text-slate-800 dark:text-white leading-tight">
+                        {{ s.data.nome }}
+                      </span>
+                      <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                        {{ s.data.email }}
+                      </span>
                     </div>
-                    <Tag v-if="!s.data.ativo" value="Pendente" class="ml-2 !text-[9px] !font-black uppercase tracking-widest !bg-yellow-100 dark:!bg-yellow-500/10 !text-yellow-600 dark:!text-yellow-500 !border !border-yellow-200 dark:!border-yellow-500/20" rounded />
                   </div>
                 </template>
               </Column>
-              
+
               <Column field="cargo" header="Função">
                 <template #body="s">
                   <div class="flex items-center gap-2">
@@ -1297,7 +1332,7 @@ onMounted(() => {
                 </template>
               </Column>
               
-              <Column header="Estado">
+              <Column header="Status">
                 <template #body="s">
                   <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 w-fit px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700/50">
                     <div :class="['w-2 h-2 rounded-full', s.data.ativo ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-slate-400']"></div>
@@ -1314,11 +1349,21 @@ onMounted(() => {
                 </template>
               </Column>
               
-              <Column alignFrozen="right" style="width: 120px">
+              <Column alignFrozen="right" style="width: 150px">
                 <template #body="s">
                   <div class="flex gap-2 justify-end">
-                    <Button icon="pi pi-pencil" @click="prepararEdicaoUser(s.data)" v-tooltip.top="'Editar Utilizador'" class="w-9 h-9 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-xs rounded-xl hover:!bg-indigo-50 hover:!text-indigo-500 transition-all shadow-sm" />
+                    
+                    <Button icon="pi pi-pencil" @click="prepararEdicaoUser(s.data)" v-tooltip.top="'Editar Usuário'" class="w-9 h-9 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none !text-xs rounded-xl hover:!bg-indigo-50 hover:!text-indigo-500 transition-all shadow-sm" />
+                    
                     <Button :icon="s.data.ativo ? 'pi pi-lock' : 'pi pi-unlock'" @click="alternarStatus(s.data)" v-tooltip.top="s.data.ativo ? 'Bloquear Acesso' : 'Desbloquear Acesso'" :class="['w-9 h-9 !border-none !text-xs rounded-xl transition-all shadow-sm', s.data.ativo ? '!bg-rose-50 dark:!bg-rose-500/10 !text-rose-500 hover:!bg-rose-500 hover:!text-white' : '!bg-emerald-50 dark:!bg-emerald-500/10 !text-emerald-500 hover:!bg-emerald-500 hover:!text-white']" />
+                    
+                    <Button 
+                      v-if="String(s.data.usuario_id) !== String(idUsuarioLogado)" 
+                      icon="pi pi-trash" 
+                      @click="excluirUtilizador(s.data.usuario_id)" 
+                      v-tooltip.top="'Excluir Definitivamente'" 
+                      class="w-9 h-9 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 hover:!bg-rose-500 hover:!text-white !border-none !text-xs rounded-xl transition-all shadow-sm" 
+                    />
                   </div>
                 </template>
               </Column>
@@ -1326,7 +1371,7 @@ onMounted(() => {
               <template #empty>
                 <div class="flex flex-col items-center justify-center p-12 text-slate-400">
                   <i class="pi pi-users text-4xl mb-4 opacity-50"></i>
-                  <span class="text-[10px] font-black uppercase tracking-widest">Nenhum utilizador encontrado.</span>
+                  <span class="text-[10px] font-black uppercase tracking-widest">Nenhum usuário encontrado.</span>
                 </div>
               </template>
             </DataTable>
@@ -1710,14 +1755,14 @@ onMounted(() => {
                 </div>
                 
                 <div class="flex items-center gap-3 bg-white/5 border border-white/10 py-2.5 px-4 rounded-xl w-fit backdrop-blur-sm">
-                  <InputSwitch v-model="regrasConfig.envios_ativos" @change="salvarRegras" class="scale-90" />
-                  <div class="flex flex-col">
-                    <span class="text-[10px] font-black uppercase tracking-widest text-white">Robô Automático</span>
-                    <span class="text-[8.5px] font-bold mt-0.5" :class="regrasConfig.envios_ativos ? 'text-emerald-400' : 'text-rose-400'">
-                      {{ regrasConfig.envios_ativos ? 'LIGADO (Disparos em Background)' : 'DESLIGADO (Apenas Disparos Manuais)' }}
-                    </span>
-                  </div>
+                <InputSwitch v-model="regrasConfig.robo_ativo" @change="salvarRegras" class="scale-90" />
+                <div class="flex flex-col">
+                  <span class="text-[10px] font-black uppercase tracking-widest text-white">Robô Automático</span>
+                  <span class="text-[8.5px] font-bold mt-0.5" :class="regrasConfig.robo_ativo ? 'text-emerald-400' : 'text-rose-400'">
+                    {{ regrasConfig.robo_ativo ? 'LIGADO (Disparos em Background)' : 'DESLIGADO (Apenas Disparos Manuais)' }}
+                  </span>
                 </div>
+              </div>
               </div>
               
               <div class="flex flex-wrap items-center gap-4 bg-white/5 border border-white/10 p-3 md:p-4 rounded-2xl backdrop-blur-sm">

@@ -1,178 +1,526 @@
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2 min-h-screen bg-white dark:bg-slate-950 font-sans overflow-hidden relative">
+  <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 transition-colors duration-300 relative overflow-hidden font-sans">
     
-    <div v-if="processandoRetorno" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/95 dark:bg-slate-950/95 backdrop-blur-md">
-      <i class="pi pi-spin pi-spinner text-6xl text-indigo-600 mb-6"></i>
-      <h2 class="text-2xl font-bold text-slate-800 dark:text-white mb-2">A validar o seu acesso...</h2>
-      <p class="text-slate-500 font-medium animate-pulse">Estabelecendo uma conexão segura.</p>
-    </div>
-    
-    <div class="hidden md:flex flex-col justify-between p-16 lg:p-24 bg-slate-900 text-white relative overflow-hidden group">
-      
-      <div class="absolute inset-0 opacity-[0.03] transition-opacity duration-1000 scale-125 group-hover:scale-110">
-        <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <defs>
-            <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" stroke-width="0.1"/>
-            </pattern>
-          </defs>
-          <rect width="100" height="100" fill="url(#grid)" />
-        </svg>
-      </div>
-      
-      <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/20 to-orange-500/10 rounded-full blur-[120px] -mr-32 -mt-32"></div>
-
-      <div class="z-10 mt-10">
-         <div class="flex items-center gap-5 mb-12 animate-fadein">
-            <img src="/nps.png" alt="Logo" class="w-16 h-16 object-contain drop-shadow-[0_10px_15px_rgba(249,115,22,0.3)] transition-transform duration-500 group-hover:scale-110" />
-            <div class="h-10 w-px bg-slate-700"></div>
-            <span class="text-4xl font-black uppercase tracking-tighter italic text-white leading-[0.8]">
-              NPS <br><span class="text-2xl text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500">Intelligence</span>
-            </span>
-         </div>
-         
-         <h2 class="text-5xl lg:text-6xl font-black leading-[0.95] tracking-tighter max-w-md mb-8 animate-fadein">
-           Transforme feedbacks em <br>
-           <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-rose-400 italic">inteligência ativa.</span>
-         </h2>
-
-         <div class="w-20 h-1.5 bg-gradient-to-r from-orange-500 to-rose-500 rounded-full mb-10 animate-fadein"></div>
-         
-         <p class="text-lg text-slate-400 leading-relaxed font-normal max-w-sm animate-fadein">
-           Processe, analise e atue proativamente sobre a experiência dos seus clientes em tempo real.
-         </p>
-      </div>
-
-      <div class="grid grid-cols-3 gap-8 pt-10 border-t border-slate-800/60 z-10 animate-fadein">
-        <div class="flex flex-col gap-1.5">
-          <span class="text-[10px] font-black uppercase text-indigo-400 tracking-[0.2em]">Monitoramento</span>
-          <span class="text-2xl font-black text-white italic tracking-tighter">Real-time</span>
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <span class="text-[10px] font-black uppercase text-rose-400 tracking-[0.2em]">Visão Cliente</span>
-          <span class="text-2xl font-black text-white italic tracking-tighter">360º</span>
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <span class="text-[10px] font-black uppercase text-orange-400 tracking-[0.2em]">Tecnologia</span>
-          <span class="text-2xl font-black text-white italic tracking-tighter">GAUGE AI</span>
-        </div>
-      </div>
-
-      <div class="absolute bottom-10 right-10 text-slate-600 text-[10px] font-black uppercase tracking-[0.4em] z-10 italic">
-        © 2026 NPS Intelligence
+    <div class="fixed inset-0 z-0 opacity-40 dark:opacity-100 pointer-events-none">
+      <div v-for="n in 50" :key="n" 
+           class="absolute bg-slate-300 dark:bg-white rounded-full animate-twinkle"
+           :style="{
+             width: Math.random() * 3 + 'px',
+             height: Math.random() * 3 + 'px',
+             top: Math.random() * 100 + '%',
+             left: Math.random() * 100 + '%',
+             animationDelay: Math.random() * 5 + 's',
+             animationDuration: Math.random() * 3 + 2 + 's'
+           }">
       </div>
     </div>
 
-    <div class="flex flex-col justify-center items-center px-8 py-12 md:px-20 bg-slate-50/50 dark:bg-slate-950 relative">
+    <transition name="fade">
+      <div v-if="processandoRetorno" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-[999] flex items-center justify-center">
+        <div class="flex flex-col items-center gap-8 text-center p-10 bg-slate-950 rounded-3xl border border-slate-800 shadow-3xl w-[340px] relative overflow-hidden">
+          <div class="absolute -top-20 -left-20 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="absolute -bottom-20 -right-20 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div class="flex items-center gap-1.5 w-full justify-center relative h-8 mt-2">
+            <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1 bg-slate-800 rounded-full z-0"></div>
+            <div v-for="n in 10" :key="n" :class="['w-5 h-5 rounded-full border-4 border-slate-950 z-10 transition-all duration-300 transform scale-100', 'bg-slate-800 loading-dot-' + n]"></div>
+            <div class="absolute -right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-slate-950 border-4 border-slate-950 z-20 loading-check-final shadow-lg">
+                <i class="pi pi-check text-white text-xs font-bold"></i>
+            </div>
+          </div>
+          
+          <div class="flex flex-col gap-1.5 relative z-10">
+            <span class="text-base font-black text-white tracking-tighter uppercase">Mapeando Jornada</span>
+            <span class="text-xs text-slate-400 leading-tight">Validando as credenciais de acesso seguro à plataforma...</span>
+          </div>
+        </div>
+      </div>
+    </transition>
+    
+    <div class="fixed top-4 right-4 z-50 flex items-center gap-2">
       
-      <div class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-orange-500 to-rose-500 md:hidden"></div>
+      <button @click="ajudaVisivel = true" class="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:border-orange-500 hover:text-orange-500 transition-all shadow-sm" title="Como funciona esta tela?">
+        <i class="pi pi-question-circle text-[1.1rem]"></i>
+      </button>
+
+      <button @click="toggleDarkMode" class="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:border-orange-300 dark:hover:border-orange-500 transition-all shadow-sm">
+        <i :class="isDarkMode ? 'pi pi-sun' : 'pi pi-moon'"></i>
+      </button>
       
-      <div class="w-full max-w-sm animate-fadein">
-        
-        <div class="flex flex-col items-center md:items-start mb-12 text-center md:text-left">
-          <img src="/nps.png" class="w-16 h-16 mb-6 md:hidden drop-shadow-lg" />
-          <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight italic leading-tight">
-            {{ isLoginMode ? 'Bem-vindo de volta' : 'Solicitar Acesso' }}<span class="text-orange-500">.</span>
-          </h1>
-          <div class="h-1 w-10 bg-orange-500 mt-3 mb-2 rounded-full hidden md:block"></div>
-          <p class="text-sm text-slate-400 font-medium">
-            {{ isLoginMode ? 'Introduza os seus dados para acessar ao painel.' : 'Preencha os dados abaixo para criar a sua conta.' }}
+      <button v-if="!isLoginMode" @click="alternarModo" class="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:border-orange-300 dark:hover:border-orange-500 transition-all shadow-sm">
+        <i class="pi pi-arrow-left text-[10px]"></i> Voltar
+      </button>
+    </div>
+
+    <Sidebar v-model:visible="ajudaVisivel" position="right" class="w-full md:w-[400px] !bg-white dark:!bg-slate-950 dark:border-l dark:border-slate-800" :showCloseIcon="true">
+      <template #header>
+        <div class="flex items-center gap-3">
+          <div class="bg-orange-100 dark:bg-orange-500/20 p-2 rounded-xl border border-orange-200 dark:border-orange-500/30">
+            <i class="pi pi-book text-orange-600 dark:text-orange-500 text-xl"></i>
+          </div>
+          <div class="flex flex-col">
+            <h2 class="text-lg font-black text-slate-900 dark:text-white leading-none tracking-tight">Guia da Tela</h2>
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Acesso & Segurança</span>
+          </div>
+        </div>
+      </template>
+      
+      <div class="mt-6 flex flex-col gap-6">
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+          Bem-vindo à autenticação do <strong>NPS Intelligence</strong>. Aqui você valida sua identidade para acessar a gestão de clientes.
+        </p>
+
+        <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-2">
+            <i class="pi pi-microsoft text-indigo-500"></i> Acesso via Microsoft
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            Se a sua conta corporativa (Stefanini Group) já estiver configurada, clique em <strong>"Entrar com Microsoft"</strong> para acessar sem precisar decorar novas senhas.
           </p>
         </div>
 
-        <form @submit.prevent="handleSubmit" class="flex flex-col gap-6">
+        <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-2">
+            <i class="pi pi-user-plus text-emerald-500"></i> Solicitar Acesso
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            Ainda não tem conta? Clique em <strong>"Solicitar uma conta"</strong>. O administrador receberá um alerta e, após aprovar, você receberá um e-mail de confirmação.
+          </p>
+        </div>
+
+        <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-2">
+            <i class="pi pi-shield text-orange-500"></i> Erros Comuns
+          </h3>
+          <ul class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed list-disc pl-4 flex flex-col gap-1">
+            <li><strong>Usuário inativo:</strong> Se você foi desligado do projeto, a tela mostrará uma mensagem em vermelho.</li>
+            <li><strong>Link expirado:</strong> Se pediu reenvio de e-mail de validação, use sempre o link mais recente que chegou na caixa de entrada.</li>
+          </ul>
+        </div>
+      </div>
+    </Sidebar>
+
+    <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-center z-10 relative">
+      
+      <div class="hidden md:flex flex-col gap-6 pr-8 transition-all animate-fadein">
+        <div class="flex items-center gap-1 ml-[-2px]">
+          <div class="flex flex-col items-start relative">
+             <div class="absolute top-0 bottom-0 left-[-15px] w-1 bg-orange-600 dark:bg-orange-500 rounded-full"></div>
+             <h1 class="text-4xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+               NPS<span class="font-light text-slate-500 dark:text-slate-500">Intelligence</span>
+             </h1>
+             <p class="text-[11px] text-indigo-400 font-bold uppercase tracking-[0.2em] mt-2 pl-px">Gauge &bull; Stefanini Group</p>
+          </div>
+        </div>
+        
+        <p class="text-lg text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
+          A plataforma Gauge para gestão da <strong class="text-orange-600 dark:text-orange-500 font-bold">experiência do cliente</strong>. Centralize respostas, automatize disparos em background e impulsione a lealdade com inteligência de dados.
+        </p>
+        
+        <div class="flex items-center gap-6 mt-4">
+          <div class="flex -space-x-3">
+            <img v-for="n in 4" :key="n" :src="`https://i.pravatar.cc/40?u=${n+10}`" class="w-9 h-9 rounded-full border-2 border-slate-50 dark:border-slate-950"/>
+          </div>
+          <p class="text-sm text-slate-500 dark:text-slate-500 font-medium">Equipes Stefanini utilizam esta plataforma diariamente.</p>
+        </div>
+      </div>
+
+      <div class="w-full max-w-md mx-auto md:max-w-full bg-white dark:bg-slate-900/60 p-8 md:p-10 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-slate-950/30 backdrop-blur-xl animate-fadein relative overflow-hidden">
+        
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-orange-500/5 dark:bg-orange-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="flex items-center gap-3 mb-10 pb-6 border-b border-slate-100 dark:border-slate-800 relative z-10">
+          <div class="md:hidden flex flex-col items-start relative ml-px">
+             <div class="absolute top-0 bottom-0 left-[-12px] w-1 bg-orange-600 dark:bg-orange-500 rounded-full"></div>
+             <h2 class="text-2xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+               NPS<span class="font-light text-slate-500 dark:text-slate-500">Intel.</span>
+             </h2>
+          </div>
+          <h2 class="hidden md:block text-2xl font-black text-slate-900 dark:text-white tracking-tighter">
+            {{ isLoginMode ? 'Acessar a Plataforma' : 'Criar Nova Conta' }}
+          </h2>
+        </div>
+
+        <form @submit.prevent="handleSubmit" class="flex flex-col gap-5 relative z-10" novalidate>
           
-          <div v-if="!isLoginMode" class="flex flex-col gap-2 animate-fadein">
-            <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Nome Completo</label>
-            <div class="relative flex items-center group">
-              <i class="pi pi-user absolute left-4 text-slate-400 z-10 group-focus-within:text-orange-500 transition-colors" />
-              <InputText v-model="registro.nome" type="text" placeholder="Seu nome" class="custom-input w-full" required />
+          <div v-if="erros.geral" class="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 p-4 rounded-xl flex items-center gap-3 animate-fadein shadow-sm transition-colors duration-300">
+            <i class="pi pi-exclamation-triangle text-lg shrink-0"></i>
+            <span class="text-[11.5px] font-bold leading-tight">{{ erros.geral }}</span>
+          </div>
+
+          <div v-if="!isLoginMode" class="flex flex-col gap-1.5 animate-fadein">
+            <label for="nome" class="text-sm font-bold text-slate-700 dark:text-slate-300">Nome Completo</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-user text-slate-400" :class="{'!text-rose-500': erros.nome}" />
+              <InputText id="nome" v-model="registro.nome" placeholder="Ex: João da Silva" class="w-full custom-input" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.nome}" @input="limparErroDe('nome')" />
+            </span>
+            <small v-if="erros.nome" class="text-xs font-bold text-rose-500 pl-2 mt-0.5 animate-fadein">{{ erros.nome }}</small>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label for="email" class="text-sm font-bold text-slate-700 dark:text-slate-300">E-mail Corporativo</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-envelope text-slate-400" :class="{'!text-rose-500': erros.email}" />
+              <InputText v-if="isLoginMode" id="email" v-model="credenciais.email" type="email" placeholder="seu.nome@stefanini.com" class="w-full custom-input" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.email || erros.geral}" @input="limparErroDe('email')" />
+              <InputText v-else id="email_reg" v-model="registro.email" type="email" placeholder="seu.nome@stefanini.com" class="w-full custom-input" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.email}" @input="limparErroDe('email')" />
+            </span>
+            <small v-if="erros.email" class="text-xs font-bold text-rose-500 pl-2 mt-0.5 animate-fadein">{{ erros.email }}</small>
+          </div>
+
+          <div class="flex flex-col gap-1.5 relative">
+            <div class="flex justify-between items-center">
+              <label for="password" class="text-sm font-bold text-slate-700 dark:text-slate-300 tracking-tight">Senha</label>
+              <a v-if="isLoginMode" href="#" class="text-xs font-semibold text-orange-600 dark:text-orange-500 hover:underline">Esqueceu a senha?</a>
+            </div>
+            <Password v-if="isLoginMode" id="password" v-model="credenciais.password" :feedback="false" placeholder="••••••••" class="w-full custom-password" inputClass="w-full" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.password || erros.geral}" toggleMask @input="limparErroDe('password')" />
+            <Password v-else id="password_reg" v-model="registro.password" placeholder="Crie uma senha forte" class="w-full custom-password" inputClass="w-full" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.password}" toggleMask @input="limparErroDe('password')" />
+            <small v-if="erros.password" class="text-xs font-bold text-rose-500 pl-2 mt-0.5 animate-fadein">{{ erros.password }}</small>
+          </div>
+
+          <div v-if="isLoginMode" class="flex items-center justify-between gap-2 mt-1">
+            <div class="flex items-center gap-2">
+              <Checkbox id="remember" v-model="lembrarDeMim" :binary="true" class="custom-checkbox" />
+              <label for="remember" class="text-xs font-semibold text-slate-600 dark:text-slate-400 cursor-pointer">Lembrar meu e-mail</label>
             </div>
           </div>
 
-          <div class="flex flex-col gap-2">
-            <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">E-mail Corporativo</label>
-            <div class="relative flex items-center group">
-              <i class="pi pi-envelope absolute left-4 text-slate-400 z-10 group-focus-within:text-orange-500 transition-colors" />
-              <InputText v-if="isLoginMode" v-model="credenciais.email" type="email" placeholder="nome@empresa.com" class="custom-input w-full" :class="{ 'p-invalid': temErro }" required />
-              <InputText v-else v-model="registro.email" type="email" placeholder="nome@empresa.com" class="custom-input w-full" required />
+          <Button type="submit" :loading="loading" class="w-full custom-submit-btn group mt-2 transition-all duration-300">
+            <template #loading><i class="pi pi-spin pi-spinner mr-2 text-sm"></i></template>
+            <span class="flex items-center justify-center gap-2 w-full text-[14px] font-bold tracking-wide">
+              {{ isLoginMode ? 'Entrar na Plataforma' : 'Criar Minha Conta' }}
+              <i :class="isLoginMode ? 'pi pi-arrow-right' : 'pi pi-user-plus'" class="text-[10px] opacity-70 group-hover:translate-x-1 transition-transform"></i>
+            </span>
+          </Button>
+          
+          <div v-if="isLoginMode && ssoAtivo" class="relative my-4">
+            <Divider align="center" class="custom-divider">
+              <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 px-4 uppercase tracking-[0.2em]">OU</span>
+            </Divider>
+          </div>
+          
+          <Button v-if="isLoginMode && ssoAtivo" @click="loginComMicrosoft" type="button" class="w-full custom-ms-btn group pButton transition-colors duration-200" :disabled="loadingMicrosoft">
+            <template #loading><i class="pi pi-spin pi-spinner mr-2"></i></template>
+            <span class="flex items-center justify-center gap-3 w-full font-semibold text-[14px]">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 23 23">
+                <path fill="#f35325" d="M0 0h11v11H0z"/><path fill="#81bc06" d="M12 0h11v11H12z"/><path fill="#05a6f0" d="M0 12h11v11H0z"/><path fill="#ffba08" d="M12 12h11v11H12z"/>
+              </svg>
+              {{ loadingMicrosoft ? 'Autenticando...' : 'Entrar com Microsoft' }}
+            </span>
+          </Button>
+
+          <div class="mt-4 flex flex-col gap-4 text-center">
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              {{ isLoginMode ? 'Não tem acesso?' : 'Já possui uma conta?' }}
+              <a @click.prevent="alternarModo" href="#" class="font-bold text-slate-800 dark:text-white hover:text-orange-600 dark:hover:text-orange-500 transition-colors duration-300">
+                {{ isLoginMode ? 'Solicitar uma conta' : 'Fazer login' }}
+              </a>
+            </p>
+
+            <div v-if="isLoginMode" class="pt-4 border-t border-slate-200 dark:border-slate-800/60">
+              <p class="text-[11px] text-slate-500 dark:text-slate-600 font-medium">
+                Aguardando aprovação por e-mail? 
+                <a @click.prevent="reenviarEmail" href="#" class="font-bold text-orange-600 hover:text-orange-500 hover:underline inline-flex items-center gap-1 transition-colors duration-200">
+                  <i class="pi" :class="loadingReenvio ? 'pi-spin pi-spinner' : 'pi-envelope'" style="font-size: 0.6rem"></i>
+                  Reenviar link de verificação
+                </a>
+              </p>
             </div>
           </div>
 
-          <div class="flex flex-col gap-2">
-            <div class="flex justify-between items-center ml-1">
-              <label class="text-[10px] font-black uppercase tracking-widest text-slate-500">Palavra-passe</label>
-              <router-link v-if="isLoginMode" to="/forgot-password" class="text-[10px] font-black text-orange-500 hover:text-orange-600 transition-colors uppercase tracking-widest">
-                Esqueceu a senha?
-              </router-link>
-            </div>
-            <div class="relative flex items-center group">
-              <i class="pi pi-lock absolute left-4 text-slate-400 z-20 group-focus-within:text-orange-500 transition-colors" />
-              <Password v-if="isLoginMode" v-model="credenciais.password" :feedback="false" toggleMask placeholder="••••••••" inputClass="custom-input w-full !pl-12" class="w-full" :class="{ 'p-invalid': temErro }" required />
-              <Password v-else v-model="registro.password" :feedback="true" toggleMask placeholder="••••••••" inputClass="custom-input w-full !pl-12" class="w-full" required />
-            </div>
-          </div>
-
-          <div v-if="isLoginMode" class="flex items-center gap-3 px-1">
-            <Checkbox v-model="lembrarDeMim" :binary="true" inputId="rememberMe" />
-            <label for="rememberMe" class="text-[11px] font-bold text-slate-500 uppercase cursor-pointer select-none">Lembrar acesso</label>
-          </div>
-
-          <div class="mt-4 flex flex-col gap-6">
-            <Button 
-              type="submit" 
-              :loading="loading" 
-              loadingIcon="pi pi-spinner pi-spin"
-              :label="loading ? 'A processar...' : (isLoginMode ? 'Entrar na Plataforma' : 'Solicitar Registro')"
-              class="w-full !bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 !py-4.5 !rounded-2xl !font-black !text-[11px] uppercase tracking-[0.2em] !shadow-2xl !border-none hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
-            />
-
-            <div class="mt-4 text-center">
-              <button 
-                type="button" 
-                @click.prevent="reenviarEmail"
-                :disabled="loadingReenvio"
-                class="text-sm text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 font-medium transition-colors cursor-pointer bg-transparent border-none p-0"
-              >
-                <span v-if="!loadingReenvio">Não recebeu o e-mail de confirmação? Reenviar.</span>
-                <span v-else><i class="pi pi-spin pi-spinner mr-2"></i> A enviar...</span>
-              </button>
-            </div>
-            
-            <div v-if="ssoAtivo" class="relative my-6">
-              <div class="absolute inset-0 flex items-center">
-                <div class="w-full border-t border-slate-200 dark:border-slate-700"></div>
-              </div>
-              <div class="relative flex justify-center text-[10px] font-black tracking-widest uppercase">
-                <span class="px-4 bg-white dark:bg-slate-900 text-slate-400">OU</span>
-              </div>
-            </div>
-
-            <Button 
-              v-if="ssoAtivo"
-              type="button"
-              label="Entrar com a Microsoft" 
-              icon="pi pi-microsoft" 
-              class="w-full !bg-white dark:!bg-slate-900 !text-slate-700 dark:!text-white !border-slate-200 dark:!border-slate-700 hover:!bg-slate-50 dark:hover:!bg-slate-800 transition-colors shadow-sm"
-              @click="loginComMicrosoft" 
-              :loading="loadingMicrosoft"
-            />
-            <button type="button" @click="isLoginMode = !isLoginMode" class="text-[11px] font-black text-slate-400 hover:text-orange-500 uppercase tracking-[0.1em] bg-transparent border-none cursor-pointer transition-colors text-center">
-              {{ isLoginMode ? 'Não tem acesso? Criar conta' : 'Já possui conta? Fazer login' }}
-            </button>
-          </div>
         </form>
       </div>
+    </div>
+    
+    <div class="fixed bottom-4 left-4 z-10 transition-colors duration-500">
+      <p class="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest">Gauge © {{ new Date().getFullYear() }} • Stefanini Group</p>
     </div>
   </div>
 </template>
 
+<script setup>
+import { ref, onMounted } from 'vue'; 
+import { useRoute, useRouter } from 'vue-router';
+import { useToast } from 'primevue/usetoast';
+import { PublicClientApplication } from '@azure/msal-browser';
+import api from '../services/api';
+
+import InputText from 'primevue/inputtext';
+import Password from 'primevue/password';
+import Button from 'primevue/button';
+import Checkbox from 'primevue/checkbox';
+import Divider from 'primevue/divider';
+import Toast from 'primevue/toast';
+import Sidebar from 'primevue/sidebar';
+
+const router = useRouter();
+const route = useRoute();
+const toast = useToast(); 
+
+// --- ESTADOS DE UI E CONTROLE ---
+const processandoRetorno = ref(false);
+const isLoginMode = ref(true); 
+const loading = ref(false);
+const isDarkMode = ref(true);
+const ssoAtivo = ref(false);
+const loadingMicrosoft = ref(false);
+const loadingReenvio = ref(false);
+const ajudaVisivel = ref(false);
+let msalInstance = null;
+
+// --- DADOS DO FORMULÁRIO E ERROS ---
+const credenciais = ref({ email: '', password: '' });
+const registro = ref({ nome: '', email: '', password: '' });
+const lembrarDeMim = ref(false);
+
+const erros = ref({
+  geral: '',
+  nome: '',
+  email: '',
+  password: ''
+});
+
+// --- FUNÇÕES DE INTERFACE ---
+const limparErros = () => {
+  erros.value = { geral: '', nome: '', email: '', password: '' };
+};
+
+const limparErroDe = (campo) => {
+  erros.value[campo] = '';
+  erros.value.geral = '';
+};
+
+const alternarModo = () => {
+  isLoginMode.value = !isLoginMode.value;
+  limparErros();
+  registro.value = { nome: '', email: '', password: '' };
+  credenciais.value.password = '';
+};
+
+const toggleDarkMode = () => {
+  isDarkMode.value = !isDarkMode.value;
+  document.documentElement.classList.toggle('dark', isDarkMode.value);
+  localStorage.setItem('darkMode', isDarkMode.value.toString());
+};
+
+const armazenarSessao = (data) => {
+  localStorage.setItem('token', data.access_token);
+  localStorage.setItem('access_token', data.access_token);
+  localStorage.setItem('usuario_id', data.usuario_id || '');
+  localStorage.setItem('usuario_nome', data.nome);
+  localStorage.setItem('usuario_email', data.email);
+  localStorage.setItem('usuario_tipo', data.tipo);
+  localStorage.setItem('usuario_cargo', data.cargo || 'Analista');
+  localStorage.setItem('usuario_avatar', data.avatar || '');
+  if (data.permissoes) {
+    localStorage.setItem('usuario_permissoes', JSON.stringify(data.permissoes));
+  }
+};
+
+// --- CICLO DE VIDA (INIT) ---
+onMounted(async () => {
+  // --- 1. GESTÃO DE TEMA (Otimizada) ---
+  const savedTheme = localStorage.getItem('darkMode');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
+  // Se houver algo salvo, usa o salvo. Se não, usa a preferência do sistema.
+  const isDark = savedTheme === 'true' || (savedTheme === null && prefersDark);
+  
+  isDarkMode.value = isDark;
+  document.documentElement.classList.toggle('dark', isDark);
+
+  // --- 2. TRATAMENTO DE URL E TOASTS ---
+  if (window.location.hash.includes('code=') || window.location.hash.includes('state=')) {
+      processandoRetorno.value = true;
+  }
+
+  if (route.query.verificado === 'true') {
+      toast.add({ severity: 'success', summary: 'E-mail Confirmado!', detail: 'Acesso liberado.', life: 5000 });
+      router.replace({ query: null }); 
+  } else if (route.query.erro) {
+      erros.value.geral = 'O link de verificação expirou ou é inválido.';
+      router.replace({ query: null });
+  }
+
+  // --- 3. REMEMBER ME (E-mail salvo) ---
+  const emailSalvo = localStorage.getItem('nps_remember_email');
+  if (emailSalvo) {
+    credenciais.value.email = emailSalvo;
+    lembrarDeMim.value = true;
+  }
+  
+  // --- 4. CONFIGURAÇÃO SSO MICROSOFT (Async) ---
+  try {
+    const res = await api.get('/auth/sso-config'); 
+    
+    if (res.data && res.data.sso_ativo && res.data.client_id) {
+        ssoAtivo.value = true; 
+        
+        const msalConfig = {
+            auth: {
+                clientId: res.data.client_id,
+                authority: `https://login.microsoftonline.com/${res.data.tenant_id}`, 
+                redirectUri: window.location.origin + '/login', 
+            },
+            cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false }
+        };
+        
+        msalInstance = new PublicClientApplication(msalConfig);
+        await msalInstance.initialize();
+
+        // Verifica se o usuário está voltando do redirecionamento da Microsoft
+        const responseMSAL = await msalInstance.handleRedirectPromise();
+        
+        if (responseMSAL) {
+            loadingMicrosoft.value = true;
+            processandoRetorno.value = true; // Ativa o overlay de animação
+            
+            const authRes = await api.post('/auth/microsoft', { 
+                access_token: responseMSAL.accessToken 
+            });
+
+            if (authRes.data.access_token) {
+                armazenarSessao(authRes.data);
+                // Pequeno delay para a animação do "caminho do NPS" ser vista
+                setTimeout(() => { router.push('/'); }, 1500);
+            }
+        }
+    }
+  } catch (error) {
+      loadingMicrosoft.value = false;
+      processandoRetorno.value = false;
+      
+      let msgErro = "Falha ao autenticar com a Microsoft.";
+      if (error.response?.data?.detail) {
+        msgErro = error.response.data.detail; 
+      } else if (error.message) {
+        msgErro = error.message; 
+      }
+      erros.value.geral = msgErro; 
+  }
+});
+
+// --- REQUISIÇÕES (API) ---
+const handleSubmit = () => {
+  if (isLoginMode.value) { fazerLogin(); } else { fazerRegistro(); }
+};
+
+const fazerLogin = async () => {
+  limparErros();
+  let possuiErro = false;
+
+  if (!credenciais.value.email) { erros.value.email = 'Informe o seu e-mail corporativo.'; possuiErro = true; }
+  if (!credenciais.value.password) { erros.value.password = 'A senha é obrigatória.'; possuiErro = true; }
+  if (possuiErro) return;
+
+  processandoRetorno.value = true;
+  loading.value = true;
+  
+  try {
+    const response = await api.post('/login', {
+      email: credenciais.value.email,
+      password: credenciais.value.password,
+      remember: lembrarDeMim.value
+    }); 
+
+    if (response.data?.access_token) {
+      armazenarSessao(response.data);
+
+      if (lembrarDeMim.value) localStorage.setItem('nps_remember_email', credenciais.value.email);
+      else localStorage.removeItem('nps_remember_email'); 
+
+      setTimeout(() => { router.push('/'); }, 2500); 
+    }
+  } catch (error) {
+    processandoRetorno.value = false;
+    loading.value = false;
+    
+    let msgErro = "E-mail ou senha incorretos.";
+    if (error.response?.data?.detail) {
+      msgErro = Array.isArray(error.response.data.detail) ? "Formato de dados inválido." : error.response.data.detail;
+    } else if (error.message && !error.message.includes("401")) {
+      msgErro = "Sem conexão com o servidor. Tente novamente mais tarde.";
+    }
+
+    erros.value.geral = msgErro; 
+  }
+};
+
+const fazerRegistro = async () => {
+  limparErros();
+  let possuiErro = false;
+
+  if (!registro.value.nome) { erros.value.nome = 'O nome completo é obrigatório.'; possuiErro = true; }
+  if (!registro.value.email) { erros.value.email = 'O e-mail é obrigatório.'; possuiErro = true; }
+  if (!registro.value.password) { erros.value.password = 'Crie uma senha de acesso.'; possuiErro = true; }
+  else if (registro.value.password.length < 8) { erros.value.password = 'A senha deve conter no mínimo 8 caracteres.'; possuiErro = true; }
+  
+  if (possuiErro) return;
+
+  loading.value = true;
+  try {
+    const response = await api.post('/register', registro.value); 
+    toast.add({ severity: 'success', summary: 'Conta Solicitada!', detail: response.data.mensagem || 'Aguarde aprovação.', life: 5000 });
+    alternarModo(); 
+  } catch (error) {
+    erros.value.geral = error.response?.data?.detail || 'Erro ao solicitar acesso. Tente novamente.';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const loginComMicrosoft = async () => {
+    limparErros(); 
+    if (!msalInstance) {
+        erros.value.geral = "O serviço de SSO da Microsoft não está disponível no momento.";
+        return;
+    }
+    
+    loadingMicrosoft.value = true;
+    try {
+        await msalInstance.loginRedirect({ scopes: ["User.Read"] });
+    } catch (error) {
+        loadingMicrosoft.value = false;
+        erros.value.geral = error.message || "Falha ao iniciar o login seguro da Microsoft.";
+    }
+};
+
+const reenviarEmail = async () => {
+  limparErros();
+  const emailAlvo = credenciais.value.email;
+  
+  if (!emailAlvo) {
+    erros.value.email = 'Digite o seu e-mail aqui antes de solicitar o reenvio.';
+    return;
+  }
+
+  loadingReenvio.value = true;
+  try {
+    await api.post('/reenviar-confirmacao', { email: emailAlvo });
+    toast.add({ severity: 'success', summary: 'E-mail Enviado', detail: 'Verifique a sua caixa de entrada.', life: 6000 });
+  } catch (error) {
+    erros.value.geral = error.response?.data?.detail || 'Não foi possível reenviar o e-mail.';
+  } finally {
+    loadingReenvio.value = false;
+  }
+};
+</script>
+
 <style scoped lang="postcss">
 @reference "tailwindcss";
 
+/* =========================================================
+   1. ANIMAÇÕES GERAIS E LAYOUT
+========================================================= */
 .animate-fadein { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
+.fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* =========================================================
+   2. INPUTS E ÍCONES DO PRIMEVUE
+========================================================= */
 .p-input-icon-left {
   display: flex !important;
   align-items: center !important;
@@ -225,6 +573,7 @@
 :global(.dark) :deep(.p-password input:focus) {
   background-color: #0f172a !important;
   border-color: #f97316 !important;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.2) !important;
 }
 
 :deep(.p-invalid) .custom-input,
@@ -232,285 +581,90 @@
   border-color: #ef4444 !important;
   box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
 }
+
+/* =========================================================
+   3. BOTÕES PREMIUM
+========================================================= */
+:deep(.custom-submit-btn) {
+  background: linear-gradient(180deg, #f97316 0%, #ea580c 100%) !important;
+  border: 1px solid #c2410c !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+  color: white !important;
+  border-radius: 1.2rem !important; 
+  padding: 0.9rem 1rem !important; 
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+:deep(.custom-submit-btn:hover:not(:disabled)) {
+  background: linear-gradient(180deg, #fb923c 0%, #f97316 100%) !important;
+  box-shadow: 0 4px 14px rgba(249,115,22,0.3), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+  transform: translateY(-1px);
+}
+
+:deep(.custom-submit-btn:active:not(:disabled)) {
+  transform: scale(0.98) translateY(0);
+  box-shadow: none !important;
+}
+
+:deep(.custom-ms-btn) {
+  background-color: transparent !important;
+  border: 1.5px solid #e2e8f0 !important; 
+  color: #334155 !important;
+  border-radius: 1.2rem !important; 
+  padding: 0.9rem 1rem !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
+}
+
+:global(.dark) :deep(.custom-ms-btn) {
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+:deep(.custom-ms-btn:hover:not(:disabled)) {
+  background-color: #f8fafc !important; 
+  border-color: #cbd5e1 !important; 
+}
+
+:global(.dark) :deep(.custom-ms-btn:hover:not(:disabled)) {
+  background-color: #0f172a !important; 
+  border-color: #475569 !important; 
+}
+
+:deep(.custom-ms-btn:active:not(:disabled)) { transform: scale(0.98); }
+
+/* =========================================================
+   4. JORNADA NPS (Animação de Loading Overlay)
+========================================================= */
+@keyframes fillDot {
+  0% { transform: scale(1); box-shadow: 0 0 0 rgba(255,255,255,0); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+@keyframes colorDetractor { 100% { background-color: #ef4444; border-color: #ef4444; } }
+@keyframes colorPassive { 100% { background-color: #f59e0b; border-color: #f59e0b; } }
+@keyframes colorPromoter { 100% { background-color: #10b981; border-color: #10b981; } }
+
+.loading-dot-1 { animation: fillDot 0.4s ease-out forwards, colorDetractor 0.1s forwards 0.4s; animation-delay: 0.1s; }
+.loading-dot-2 { animation: fillDot 0.4s ease-out forwards, colorDetractor 0.1s forwards 0.8s; animation-delay: 0.3s; }
+.loading-dot-3 { animation: fillDot 0.4s ease-out forwards, colorDetractor 0.1s forwards 1.2s; animation-delay: 0.5s; }
+.loading-dot-4 { animation: fillDot 0.4s ease-out forwards, colorDetractor 0.1s forwards 1.6s; animation-delay: 0.7s; }
+.loading-dot-5 { animation: fillDot 0.4s ease-out forwards, colorDetractor 0.1s forwards 2.0s; animation-delay: 0.9s; }
+.loading-dot-6 { animation: fillDot 0.4s ease-out forwards, colorDetractor 0.1s forwards 2.4s; animation-delay: 1.1s; }
+.loading-dot-7 { animation: fillDot 0.4s ease-out forwards, colorPassive 0.1s forwards 2.8s; animation-delay: 1.3s; }
+.loading-dot-8 { animation: fillDot 0.4s ease-out forwards, colorPassive 0.1s forwards 3.2s; animation-delay: 1.5s; }
+.loading-dot-9 { animation: fillDot 0.4s forwards, colorPromoter 0.1s forwards 3.6s; animation-delay: 1.7s; }
+.loading-dot-10 { animation: fillDot 0.4s forwards, colorPromoter 0.1s forwards 4.0s; animation-delay: 1.9s; }
+
+@keyframes checkPop {
+  0% { transform: translate(50%, -50%) scale(0); opacity: 0; }
+  80% { transform: translate(50%, -50%) scale(1.2); opacity: 1; }
+  100% { transform: translate(50%, -50%) scale(1); opacity: 1; border-color: #10b981; }
+}
+.loading-check-final {
+  opacity: 0;
+  animation: checkPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: 2.3s; 
+}
 </style>
-
-<script setup>
-import { ref, onMounted } from 'vue'; 
-import { useRoute, useRouter } from 'vue-router';
-import { useToast } from 'primevue/usetoast';
-import { PublicClientApplication } from '@azure/msal-browser';
-import api from '../services/api';
-
-import InputText from 'primevue/inputtext';
-import Password from 'primevue/password';
-import Button from 'primevue/button';
-import Checkbox from 'primevue/checkbox';
-
-const router = useRouter();
-const toast = useToast();
-const route = useRoute();
-const processandoRetorno = ref(false);
-
-const isLoginMode = ref(true); 
-const loading = ref(false);
-const temErro = ref(false);
-
-const credenciais = ref({ email: '', password: '' });
-const registro = ref({ nome: '', email: '', password: '' });
-const lembrarDeMim = ref(false);
-
-const ssoAtivo = ref(false);
-const loadingMicrosoft = ref(false);
-let msalInstance = null;
-
-onMounted(async () => {
-  // 👇 A MÁGICA: Deteta se estamos a voltar de um redirecionamento da Microsoft
-  if (window.location.hash.includes('code=') || window.location.hash.includes('state=')) {
-      processandoRetorno.value = true;
-  }
-  if (route.query.verificado === 'true') {
-      toast.add({ severity: 'success', summary: 'E-mail Confirmado!', detail: 'Titularidade comprovada. O seu acesso agora aguarda a liberação do Administrador.', life: 8000 });
-      router.replace({ query: null }); // Limpa a URL para não repetir a mensagem ao dar F5
-  } else if (route.query.erro) {
-      toast.add({ severity: 'error', summary: 'Falha na Confirmação', detail: 'O link de verificação expirou ou é inválido. Contacte o suporte.', life: 8000 });
-      router.replace({ query: null });
-  }
-
-  // 2. LÓGICA DE LEMBRAR E-MAIL
-  const emailSalvo = localStorage.getItem('nps_remember_email');
-  if (emailSalvo) {
-    credenciais.value = { ...credenciais.value, email: emailSalvo };
-    lembrarDeMim.value = true;
-  }
-  
-  // 3. LÓGICA DE SSO MICROSOFT (MSAL)
-  try {
-    console.log("🔍 [1] A buscar configurações de SSO...");
-    const res = await api.get('/auth/sso-config'); 
-    
-    if (res.data && res.data.sso_ativo && res.data.client_id) {
-        console.log("✅ [2] SSO Configurado! Inicializando MSAL...");
-        ssoAtivo.value = true; 
-        
-        const msalConfig = {
-            auth: {
-                clientId: res.data.client_id,
-                authority: `https://login.microsoftonline.com/${res.data.tenant_id}`, 
-                redirectUri: window.location.origin + '/login', 
-            },
-            cache: {
-                cacheLocation: "sessionStorage", 
-                storeAuthStateInCookie: false
-            }
-        };
-        
-        msalInstance = new PublicClientApplication(msalConfig);
-        await msalInstance.initialize();
-
-        console.log("⏳ [3] A aguardar resposta da Microsoft (caso venha de um redirecionamento)...");
-        const responseMSAL = await msalInstance.handleRedirectPromise();
-        
-        if (responseMSAL) {
-            console.log("🔐 [4] Token recebido da Microsoft! A enviar para o FastAPI...");
-            loadingMicrosoft.value = true;
-            const tokenMicrosoft = responseMSAL.accessToken;
-
-            const authRes = await api.post('/auth/microsoft', { 
-                access_token: tokenMicrosoft 
-            });
-
-            console.log("🟢 [5] Resposta do FastAPI de Autorização:", authRes.data);
-
-            if (authRes.data.access_token) {
-                localStorage.setItem('token', authRes.data.access_token);
-                localStorage.setItem('access_token', authRes.data.access_token);
-                localStorage.setItem('usuario_nome', authRes.data.nome);
-                localStorage.setItem('usuario_tipo', authRes.data.tipo);
-                localStorage.setItem('usuario_cargo', authRes.data.cargo || 'Analista');
-                
-                if (authRes.data.permissoes) {
-                    localStorage.setItem('usuario_permissoes', JSON.stringify(authRes.data.permissoes));
-                }
-
-                //toast.add({ severity: 'success', summary: 'Autenticado!', detail: `Bem-vindo, ${authRes.data.nome}! A redirecionar...`, life: 3000 });
-                
-                setTimeout(() => { 
-                    router.push('/');
-                }, 1000);
-            }
-        } else {
-            console.log("ℹ️ Nenhum redirecionamento pendente. Tela inicial carregada normal.");
-        }
-    }
-  } catch (error) {
-      console.error("🔥 [ERRO] O fluxo parou com o seguinte erro:", error);
-      
-      // Captura reforçada para garantir que a mensagem aparece na tela!
-      let msgErro = "Ocorreu um erro ao conectar com o servidor.";
-      if (error.response && error.response.data && error.response.data.detail) {
-          msgErro = error.response.data.detail;
-      } else if (error.message) {
-          msgErro = error.message;
-      }
-      
-      toast.add({ severity: 'error', summary: 'Acesso Negado', detail: msgErro, life: 8000 });
-      loadingMicrosoft.value = false;
-  }
-});
-
-const fazerLogin = async () => {
-  // 1. Radar inicial para termos a certeza absoluta que a função nova compilou
-  console.log("🚀 [SISTEMA] Botão de Login clicado!");
-
-  if (!credenciais.value.email || !credenciais.value.password) {
-    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha o e-mail e a palavra-passe.', life: 3000 });
-    return;
-  }
-
-  // 2. Desce a cortina e liga o spinner do botão
-  processandoRetorno.value = true;
-  loading.value = true;
-  temErro.value = false;
-  
-  try {
-    const response = await api.post('/login', {
-      email: credenciais.value.email,
-      password: credenciais.value.password,
-      remember: lembrarDeMim.value
-    }); 
-
-    const token = response.data?.access_token;
-
-    if (token) {
-      const emailSalvo = credenciais.value.email;
-            
-      localStorage.setItem('token', token);
-      localStorage.setItem('access_token', token); 
-      localStorage.setItem('usuario_id', response.data.usuario_id || '');
-      localStorage.setItem('usuario_nome', response.data.nome || 'Utilizador');
-      localStorage.setItem('usuario_tipo', response.data.tipo || '');
-      localStorage.setItem('usuario_cargo', response.data.cargo || 'Analista');
-      
-      if (response.data.permissoes) {
-        localStorage.setItem('usuario_permissoes', JSON.stringify(response.data.permissoes));
-      }
-
-      if (lembrarDeMim.value) {
-        localStorage.setItem('nps_remember_email', emailSalvo);
-      } else {
-        localStorage.removeItem('nps_remember_email'); 
-      }
-
-      // Redirecionamento instantâneo (O sucesso é silencioso)
-      setTimeout(() => { 
-        router.push('/'); 
-      }, 400); 
-
-    } else {
-      throw new Error("O servidor não devolveu um token de acesso válido.");
-    }
-
-  } catch (error) {
-    // 3. Sobe a cortina para mostrar o erro
-    processandoRetorno.value = false;
-    loading.value = false;
-    temErro.value = true;
-    
-    console.error("🕵️ [DEBUG] Erro capturado no catch:", error);
-    
-    // 4. Tradutor Inteligente de Erros (FastAPI -> Humano)
-    let msgErro = "E-mail ou palavra-passe incorretos.";
-    
-    if (error.response?.data?.detail) {
-      // Se o FastAPI atirar um Array (Erro 422 de validação)
-      if (Array.isArray(error.response.data.detail)) {
-        msgErro = "Formato de dados inválido. Verifique o seu e-mail.";
-      } else {
-        // Se atirar uma String normal (Erro 401 de acesso negado)
-        msgErro = error.response.data.detail;
-      }
-    } else if (error.message && !error.message.includes("401")) {
-      msgErro = "Sem ligação ao servidor. Tente novamente mais tarde.";
-    }
-
-    // 5. Exibição da Mensagem de Erro (Garantia Dupla)
-    const erroNormalizado = String(msgErro).toLowerCase();
-    
-    try {
-      if (erroNormalizado.includes('inativa') || erroNormalizado.includes('aprova')) {
-        toast.add({ severity: 'warn', summary: 'Acesso Pendente', detail: String(msgErro), life: 6000 });
-      } else {
-        toast.add({ severity: 'error', summary: 'Acesso Negado', detail: String(msgErro), life: 5000 });
-      }
-    } catch (toastError) {
-      // Se o componente visual do PrimeVue falhar a renderização, o alerta nativo salva a experiência
-      console.warn("⚠️ O componente Toast falhou. Exibindo alerta nativo.");
-      alert(`Acesso Negado: ${msgErro}`);
-    }
-  }
-};
-
-const loginComMicrosoft = async () => {
-    if (!msalInstance) return;
-    
-    loadingMicrosoft.value = true;
-    try {
-        // Redireciona a página inteira para a Microsoft (Bypass total a problemas de popups)
-        await msalInstance.loginRedirect({
-            scopes: ["User.Read"]
-        });
-    } catch (error) {
-        console.error("Erro ao iniciar redirecionamento:", error);
-        loadingMicrosoft.value = false;
-    }
-};
-
-const fazerRegistro = async () => {
-  if (!registro.value.nome || !registro.value.email || !registro.value.password) {
-    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha todos os campos para solicitar o acesso.', life: 3000 });
-    return;
-  }
-
-  loading.value = true;
-  try {
-    const response = await api.post('/register', registro.value); 
-    toast.add({ severity: 'success', summary: 'Sucesso!', detail: response.data.mensagem, life: 5000 });
-    registro.value = { nome: '', email: '', password: '' };
-    isLoginMode.value = true; 
-  } catch (error) {
-    const msgErro = error.response?.data?.detail || 'Erro ao solicitar acesso. Tente novamente.';
-    toast.add({ severity: 'error', summary: 'Erro no Registo', detail: msgErro, life: 5000 });
-  } finally {
-    loading.value = false;
-  }
-};
-
-const handleSubmit = () => {
-  if (isLoginMode.value) { fazerLogin(); } else { fazerRegistro(); }
-};
-
-const loadingReenvio = ref(false);
-
-const reenviarEmail = async () => {
-  // Pega o e-mail que o utilizador digitou na tela de login
-  const emailAlvo = credenciais.value.email;
-
-  if (!emailAlvo) {
-    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Digite o seu e-mail no campo acima antes de clicar em reenviar.', life: 4000 });
-    return;
-  }
-
-  loadingReenvio.value = true;
-  try {
-    const response = await api.post('/reenviar-confirmacao', { email: emailAlvo });
-    
-    toast.add({ severity: 'success', summary: 'E-mail Enviado', detail: 'Verifique a sua caixa de entrada e a pasta de SPAM.', life: 6000 });
-  } catch (error) {
-    const msgErro = error.response?.data?.detail || 'Não foi possível reenviar o e-mail.';
-    toast.add({ severity: 'error', summary: 'Falha no Reenvio', detail: msgErro, life: 5000 });
-  } finally {
-    loadingReenvio.value = false;
-  }
-};
-
-</script>

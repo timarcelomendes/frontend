@@ -87,6 +87,13 @@ const routes = [
   meta: { requiresAuth: true } 
   },
 
+  {
+    path: '/logs',
+    name: 'Logs',
+    component: () => import('../views/LogsView.vue'),
+    meta: { requiresAuth: true, roles: ['Admin'] } 
+  },
+
 
   // ==========================================
   // ❌ ROTA FALLBACK (Página não encontrada)
