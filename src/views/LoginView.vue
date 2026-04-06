@@ -76,7 +76,7 @@
           </h1>
           <div class="h-1 w-10 bg-orange-500 mt-3 mb-2 rounded-full hidden md:block"></div>
           <p class="text-sm text-slate-400 font-medium">
-            {{ isLoginMode ? 'Introduza os seus dados para aceder ao painel.' : 'Preencha os dados abaixo para criar a sua conta.' }}
+            {{ isLoginMode ? 'Introduza os seus dados para acessar ao painel.' : 'Preencha os dados abaixo para criar a sua conta.' }}
           </p>
         </div>
 
@@ -126,6 +126,18 @@
               :label="loading ? 'A processar...' : (isLoginMode ? 'Entrar na Plataforma' : 'Solicitar Registro')"
               class="w-full !bg-slate-900 dark:!bg-white !text-white dark:!text-slate-900 !py-4.5 !rounded-2xl !font-black !text-[11px] uppercase tracking-[0.2em] !shadow-2xl !border-none hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
             />
+
+            <div class="mt-4 text-center">
+              <button 
+                type="button" 
+                @click.prevent="reenviarEmail"
+                :disabled="loadingReenvio"
+                class="text-sm text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 font-medium transition-colors cursor-pointer bg-transparent border-none p-0"
+              >
+                <span v-if="!loadingReenvio">Não recebeu o e-mail de confirmação? Reenviar.</span>
+                <span v-else><i class="pi pi-spin pi-spinner mr-2"></i> A enviar...</span>
+              </button>
+            </div>
             
             <div v-if="ssoAtivo" class="relative my-6">
               <div class="absolute inset-0 flex items-center">
@@ -257,7 +269,7 @@ onMounted(async () => {
       processandoRetorno.value = true;
   }
   if (route.query.verificado === 'true') {
-      toast.add({ severity: 'success', summary: 'E-mail Confirmado!', detail: 'Titularidade comprovada. O seu acesso agora aguarda a libertação do Administrador.', life: 8000 });
+      toast.add({ severity: 'success', summary: 'E-mail Confirmado!', detail: 'Titularidade comprovada. O seu acesso agora aguarda a liberação do Administrador.', life: 8000 });
       router.replace({ query: null }); // Limpa a URL para não repetir a mensagem ao dar F5
   } else if (route.query.erro) {
       toast.add({ severity: 'error', summary: 'Falha na Confirmação', detail: 'O link de verificação expirou ou é inválido. Contacte o suporte.', life: 8000 });
@@ -347,11 +359,15 @@ onMounted(async () => {
 });
 
 const fazerLogin = async () => {
+  // 1. Radar inicial para termos a certeza absoluta que a função nova compilou
+  console.log("🚀 [SISTEMA] Botão de Login clicado!");
+
   if (!credenciais.value.email || !credenciais.value.password) {
     toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Preencha o e-mail e a palavra-passe.', life: 3000 });
     return;
   }
 
+  // 2. Desce a cortina e liga o spinner do botão
   processandoRetorno.value = true;
   loading.value = true;
   temErro.value = false;
@@ -363,7 +379,7 @@ const fazerLogin = async () => {
       remember: lembrarDeMim.value
     }); 
 
-    const token = response.data.access_token;
+    const token = response.data?.access_token;
 
     if (token) {
       const emailSalvo = credenciais.value.email;
@@ -371,10 +387,13 @@ const fazerLogin = async () => {
       localStorage.setItem('token', token);
       localStorage.setItem('access_token', token); 
       localStorage.setItem('usuario_id', response.data.usuario_id || '');
-      localStorage.setItem('usuario_nome', response.data.nome);
-      localStorage.setItem('usuario_tipo', response.data.tipo);
+      localStorage.setItem('usuario_nome', response.data.nome || 'Utilizador');
+      localStorage.setItem('usuario_tipo', response.data.tipo || '');
       localStorage.setItem('usuario_cargo', response.data.cargo || 'Analista');
-      localStorage.setItem('usuario_permissoes', JSON.stringify(response.data.permissoes));
+      
+      if (response.data.permissoes) {
+        localStorage.setItem('usuario_permissoes', JSON.stringify(response.data.permissoes));
+      }
 
       if (lembrarDeMim.value) {
         localStorage.setItem('nps_remember_email', emailSalvo);
@@ -382,29 +401,52 @@ const fazerLogin = async () => {
         localStorage.removeItem('nps_remember_email'); 
       }
 
-      //toast.add({ severity: 'success', summary: '✅ Conectado', detail: `Bem-vindo, ${response.data.nome.split(' ')[0]}! Sincronizando...`, life: 2500 });
-      
+      // Redirecionamento instantâneo (O sucesso é silencioso)
       setTimeout(() => { 
         router.push('/'); 
-      }, 700); 
+      }, 400); 
+
     } else {
-      throw new Error("O servidor não devolveu um token de acesso.");
+      throw new Error("O servidor não devolveu um token de acesso válido.");
     }
 
   } catch (error) {
+    // 3. Sobe a cortina para mostrar o erro
     processandoRetorno.value = false;
+    loading.value = false;
     temErro.value = true;
     
-    const msgErro = error.response?.data?.detail || 'Não foi possível conectar ao servidor.';
-    const erroNormalizado = msgErro.toLowerCase();
+    console.error("🕵️ [DEBUG] Erro capturado no catch:", error);
     
-    if (erroNormalizado.includes('inativa') || erroNormalizado.includes('aprovação')) {
-      toast.add({ severity: 'warn', summary: 'Acesso Pendente', detail: msgErro, life: 6000 });
-    } else {
-      toast.add({ severity: 'error', summary: 'Erro de Autenticação', detail: msgErro, life: 4000 });
+    // 4. Tradutor Inteligente de Erros (FastAPI -> Humano)
+    let msgErro = "E-mail ou palavra-passe incorretos.";
+    
+    if (error.response?.data?.detail) {
+      // Se o FastAPI atirar um Array (Erro 422 de validação)
+      if (Array.isArray(error.response.data.detail)) {
+        msgErro = "Formato de dados inválido. Verifique o seu e-mail.";
+      } else {
+        // Se atirar uma String normal (Erro 401 de acesso negado)
+        msgErro = error.response.data.detail;
+      }
+    } else if (error.message && !error.message.includes("401")) {
+      msgErro = "Sem ligação ao servidor. Tente novamente mais tarde.";
     }
-  } finally {
-    loading.value = false;
+
+    // 5. Exibição da Mensagem de Erro (Garantia Dupla)
+    const erroNormalizado = String(msgErro).toLowerCase();
+    
+    try {
+      if (erroNormalizado.includes('inativa') || erroNormalizado.includes('aprova')) {
+        toast.add({ severity: 'warn', summary: 'Acesso Pendente', detail: String(msgErro), life: 6000 });
+      } else {
+        toast.add({ severity: 'error', summary: 'Acesso Negado', detail: String(msgErro), life: 5000 });
+      }
+    } catch (toastError) {
+      // Se o componente visual do PrimeVue falhar a renderização, o alerta nativo salva a experiência
+      console.warn("⚠️ O componente Toast falhou. Exibindo alerta nativo.");
+      alert(`Acesso Negado: ${msgErro}`);
+    }
   }
 };
 
@@ -446,4 +488,29 @@ const fazerRegistro = async () => {
 const handleSubmit = () => {
   if (isLoginMode.value) { fazerLogin(); } else { fazerRegistro(); }
 };
+
+const loadingReenvio = ref(false);
+
+const reenviarEmail = async () => {
+  // Pega o e-mail que o utilizador digitou na tela de login
+  const emailAlvo = credenciais.value.email;
+
+  if (!emailAlvo) {
+    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'Digite o seu e-mail no campo acima antes de clicar em reenviar.', life: 4000 });
+    return;
+  }
+
+  loadingReenvio.value = true;
+  try {
+    const response = await api.post('/reenviar-confirmacao', { email: emailAlvo });
+    
+    toast.add({ severity: 'success', summary: 'E-mail Enviado', detail: 'Verifique a sua caixa de entrada e a pasta de SPAM.', life: 6000 });
+  } catch (error) {
+    const msgErro = error.response?.data?.detail || 'Não foi possível reenviar o e-mail.';
+    toast.add({ severity: 'error', summary: 'Falha no Reenvio', detail: msgErro, life: 5000 });
+  } finally {
+    loadingReenvio.value = false;
+  }
+};
+
 </script>
