@@ -11,15 +11,16 @@ import Slider from 'primevue/slider';
 import Calendar from 'primevue/calendar';
 import Tooltip from 'primevue/tooltip';
 import Dropdown from 'primevue/dropdown';
-import InputSwitch from 'primevue/inputswitch'; // 👈 Adicionado para garantir o funcionamento do Toggle
+import InputSwitch from 'primevue/inputswitch';
+import Sidebar from 'primevue/sidebar';
 
 const router = useRouter();
 const vTooltip = Tooltip;
 const toast = useToast();
 const loading = ref(true);
 const nomeUsuario = ref('');
-
 const datasFiltro = ref(null);
+const ajudaVisivel = ref(false);
 
 // --- ESTADOS DE DADOS ---
 const kpis = ref({
@@ -403,8 +404,9 @@ onMounted(() => {
   <div class="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-4 lg:p-8">
     <div class="max-w-[1600px] mx-auto space-y-8 animate-fadein">
       
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
-        <div>
+      <div class="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 pb-6 border-b border-slate-200/60 dark:border-slate-800/60 mb-6">
+        
+        <div class="z-20 relative">
           <h1 class="text-4xl lg:text-5xl font-black tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-slate-400">
             Visão Geral <span class="text-orange-500">.</span>
           </h1>
@@ -421,7 +423,7 @@ onMounted(() => {
         
         <div class="flex flex-wrap md:flex-nowrap gap-3">
           
-          <div class="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 h-12 shadow-sm transition-all hover:border-indigo-500/50">
+          <div class="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 h-12 shadow-sm transition-all hover:border-indigo-500/50 shrink-0">
             <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-0.5">Ativas</span>
             <InputSwitch v-model="apenasAtivos" class="custom-switch-small" />
           </div>
@@ -432,7 +434,7 @@ onMounted(() => {
               v-model="companhiaSelecionada" 
               :options="listaCompanhias" 
               placeholder="Todas as Companhias" 
-              class="custom-dropdown-minimal border-none shadow-none w-48 xl:w-56 bg-transparent" 
+              class="custom-dropdown-minimal border-none shadow-none w-40 xl:w-56 bg-transparent" 
             />
             <i v-if="companhiaSelecionada && companhiaSelecionada !== 'Todas as Companhias'" 
               class="pi pi-times text-slate-300 hover:text-rose-500 cursor-pointer ml-2 transition-colors text-xs" 
@@ -449,7 +451,7 @@ onMounted(() => {
               :manualInput="false" 
               placeholder="Filtrar por período..." 
               dateFormat="dd/mm/yy" 
-              class="custom-calendar-minimal border-none shadow-none w-48 xl:w-56 bg-transparent" 
+              class="custom-calendar-minimal border-none shadow-none w-40 xl:w-56 bg-transparent" 
               @hide="carregarDashboard" 
               :showIcon="false"
             />
@@ -465,6 +467,13 @@ onMounted(() => {
             @click="carregarDashboard" 
             :loading="loading" 
             class="w-12 h-12 !bg-white dark:!bg-slate-900 !text-slate-600 dark:!text-slate-300 !border !border-slate-200 dark:!border-slate-700 !rounded-2xl hover:!border-indigo-500/50 hover:!text-indigo-500 transition-all shadow-sm shrink-0" 
+          />
+
+          <Button 
+            icon="pi pi-question-circle" 
+            @click="ajudaVisivel = true" 
+            v-tooltip.top="'Dicionário de Métricas'"
+            class="w-12 h-12 !bg-white dark:!bg-slate-900 !text-slate-600 dark:!text-slate-300 !border !border-slate-200 dark:!border-slate-700 !rounded-2xl hover:!border-orange-500/50 hover:!text-orange-500 transition-all shadow-sm shrink-0" 
           />
           
           <Button 
@@ -937,6 +946,105 @@ onMounted(() => {
       </div>
     </div>
   </div>
+  <Sidebar v-model:visible="ajudaVisivel" position="right" class="w-full md:w-[32rem] !bg-slate-50 dark:!bg-slate-900 border-l border-slate-200 dark:border-slate-800 p-0">
+      <template #header>
+        <div class="flex items-center gap-3 px-2">
+          <div class="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500 shadow-sm">
+            <i class="pi pi-question-circle text-lg"></i>
+          </div>
+          <span class="font-black italic text-lg tracking-tight text-slate-800 dark:text-white">Dicionário de Métricas</span>
+        </div>
+      </template>
+
+      <div class="p-4 space-y-5 custom-scrollbar pb-10">
+        
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden">
+          <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-sky-500"></div>
+          <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2 ml-1">NPS Score Global</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed ml-1">
+            O <strong>Net Promoter Score (NPS)</strong> é a métrica principal de lealdade. Varia de -100 a +100. É calculado subtraindo a percentagem de Detratores da percentagem de Promotores: <br>
+            <code class="block mt-3 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg text-[10px] font-mono text-sky-600 dark:text-sky-400 font-bold border border-slate-100 dark:border-slate-800">% Promotores - % Detratores = NPS Global</code>
+          </p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
+          <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white mb-4">Classificação de Respostas</h3>
+          <div class="space-y-4">
+            <div class="flex items-start gap-3">
+              <Tag value="9 - 10" class="!bg-emerald-500/10 !text-emerald-600 dark:!text-emerald-400 !text-[10px] !font-black w-14 shrink-0" />
+              <div>
+                <span class="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 block mb-0.5">Promotores</span>
+                <span class="text-[10px] text-slate-500 leading-tight block">Clientes leais que continuarão a comprar e a recomendar a sua empresa.</span>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <Tag value="7 - 8" class="!bg-yellow-500/10 !text-yellow-600 dark:!text-yellow-500 !text-[10px] !font-black w-14 shrink-0" />
+              <div>
+                <span class="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 block mb-0.5">Neutros</span>
+                <span class="text-[10px] text-slate-500 leading-tight block">Satisfeitos, mas vulneráveis à concorrência. Não entram no cálculo do NPS.</span>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <Tag value="0 - 6" class="!bg-rose-500/10 !text-rose-600 dark:!text-rose-400 !text-[10px] !font-black w-14 shrink-0" />
+              <div>
+                <span class="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 block mb-0.5">Detratores</span>
+                <span class="text-[10px] text-slate-500 leading-tight block">Clientes insatisfeitos com alto risco de Churn. Requerem ação imediata.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3">
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden group hover:border-purple-500/30 transition-colors">
+            <div class="absolute left-0 top-0 bottom-0 w-1 bg-purple-500"></div>
+            <h4 class="text-[10px] font-black uppercase tracking-widest text-purple-500 mb-1.5 flex items-center gap-2 ml-1">
+              <i class="pi pi-briefcase"></i> NPS de Decisores
+            </h4>
+            <p class="text-[10px] text-slate-500 ml-1">Recalcula o Score isolando <strong>apenas as respostas</strong> de contatos marcados como "Decisor". Fundamental para entender se quem assina o contrato está engajado.</p>
+          </div>
+
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden group hover:border-orange-500/30 transition-colors">
+            <div class="absolute left-0 top-0 bottom-0 w-1 bg-orange-500"></div>
+            <h4 class="text-[10px] font-black uppercase tracking-widest text-orange-500 mb-1.5 flex items-center gap-2 ml-1">
+              <i class="pi pi-dollar"></i> Revenue at Risk (Receita)
+            </h4>
+            <p class="text-[10px] text-slate-500 ml-1">Mostra a soma do valor de contrato de <strong>todas as empresas</strong> que possuem pelo menos um cliente Detrator (Nota 0 a 6). É o montante financeiro real em risco.</p>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
+          <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2"><i class="pi pi-history mr-1 text-slate-400"></i> Termômetro de Retenção</h3>
+          <p class="text-[10px] text-slate-500 mb-4">Cruza o histórico de respostas. Compara a nota <strong>mais recente</strong> do cliente com a sua nota <strong>imediatamente anterior</strong>.</p>
+          
+          <div class="space-y-3">
+            <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div class="flex items-center gap-2.5">
+                <div class="w-6 h-6 rounded-md bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0"><i class="pi pi-arrow-up text-[10px]"></i></div>
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Resgatados</span>
+              </div>
+              <span class="text-[9px] font-medium text-slate-500 text-right w-32">Eram Neutros ou Detratores e <strong>viraram Promotores</strong>.</span>
+            </div>
+            
+            <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div class="flex items-center gap-2.5">
+                <div class="w-6 h-6 rounded-md bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 flex items-center justify-center shrink-0"><i class="pi pi-arrow-down-right text-[10px]"></i></div>
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Em Risco</span>
+              </div>
+              <span class="text-[9px] font-medium text-slate-500 text-right w-32">Eram Promotores e <strong>caíram para Neutros</strong> (7-8).</span>
+            </div>
+
+            <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div class="flex items-center gap-2.5">
+                <div class="w-6 h-6 rounded-md bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0"><i class="pi pi-arrow-down text-[10px]"></i></div>
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Queda Drástica</span>
+              </div>
+              <span class="text-[9px] font-medium text-slate-500 text-right w-32">Eram Promotores e <strong>caíram para Detratores</strong>.</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </Sidebar>
 </template>
 
 <style scoped lang="postcss">
