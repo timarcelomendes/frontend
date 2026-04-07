@@ -406,15 +406,16 @@ const handleSubmit = () => {
 };
 
 const fazerLogin = async () => {
+  if (loading.value) return; 
   limparErros();
-  let possuiErro = false;
+  
+  if (!credenciais.value.email || !credenciais.value.password) {
+    erros.value.geral = "Preencha todos os campos.";
+    return;
+  }
 
-  if (!credenciais.value.email) { erros.value.email = 'Informe o seu e-mail corporativo.'; possuiErro = true; }
-  if (!credenciais.value.password) { erros.value.password = 'A senha é obrigatória.'; possuiErro = true; }
-  if (possuiErro) return;
-
-  processandoRetorno.value = true;
   loading.value = true;
+  processandoRetorno.value = true;
   
   try {
     const response = await api.post('/login', {
@@ -423,26 +424,30 @@ const fazerLogin = async () => {
       remember: lembrarDeMim.value
     }); 
 
-    if (response.data?.access_token) {
+    if (response.data && response.data.access_token && response.data.nome) {
       armazenarSessao(response.data);
-
+      
       if (lembrarDeMim.value) localStorage.setItem('nps_remember_email', credenciais.value.email);
       else localStorage.removeItem('nps_remember_email'); 
 
-      setTimeout(() => { router.push('/'); }, 2500); 
+      setTimeout(() => { router.push('/'); }, 2200); 
+    } else {
+      throw new Error("Dados de perfil incompletos no servidor.");
     }
+
   } catch (error) {
     processandoRetorno.value = false;
     loading.value = false;
     
-    let msgErro = "E-mail ou senha incorretos.";
-    if (error.response?.data?.detail) {
-      msgErro = Array.isArray(error.response.data.detail) ? "Formato de dados inválido." : error.response.data.detail;
-    } else if (error.message && !error.message.includes("401")) {
-      msgErro = "Sem conexão com o servidor. Tente novamente mais tarde.";
+    let msg = "E-mail ou senha incorretos.";
+    
+    if (error.response && error.response.data && error.response.data.detail) {
+      msg = error.response.data.detail;
+    } else if (error.message) {
+      msg = error.message;
     }
 
-    erros.value.geral = msgErro; 
+    erros.value.geral = msg;
   }
 };
 

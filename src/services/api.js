@@ -12,14 +12,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// INTERCETOR DE RESPOSTA
+// INTERCEPTOR DE RESPOSTA
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token');
+    const status = error.response ? error.response.status : null;
+
+    if (status === 401 || status === 403) {
+      if (window.location.pathname === '/login' || (error.config && error.config.url.includes('/login'))) {
+        return Promise.reject(error);
+      }
       localStorage.clear();
-      
       window.location.href = '/login'; 
     }
     return Promise.reject(error);

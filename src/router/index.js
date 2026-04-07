@@ -1,4 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
+
+// Mantenha aqui os imports que já tinha
+// import LoginView from '../views/LoginView.vue'; // (Descomente se estiver a importar no topo)
 import AdminLimpezaView from '../views/AdminLimpezaView.vue';
 
 const routes = [
@@ -8,7 +11,7 @@ const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('../views/LoginView.vue'),
+    component: () => import('../views/LoginView.vue'), // Certifique-se de importar corretamente
     meta: { requiresAuth: false } 
   },
   {
@@ -24,15 +27,15 @@ const routes = [
     meta: { requiresAuth: false }
   },
   
-
   // ==========================================
   // 🔒 ROTAS PRIVADAS (Core da Aplicação)
   // ==========================================
-{
+  {
     path: '/',
     name: 'Dashboard',
     component: () => import('../views/DashboardView.vue'),
-    meta: { requiresAuth: true, roles: ['Admin', 'Manager', 'Viewer'] } // Todos acedem
+    // 🎯 CORREÇÃO: Adicionado 'Usuário' (que é o que a sua API envia)
+    meta: { requiresAuth: true, roles: ['Admin', 'Manager', 'Viewer', 'Usuário'] }
   },
   {
     path: '/respostas',
@@ -40,11 +43,12 @@ const routes = [
     component: () => import('../views/RespostasView.vue'),
     meta: { requiresAuth: true }
   },
-{
+  {
     path: '/acoes',
     name: 'Acoes',
     component: () => import('../views/AcoesView.vue'),
-    meta: { requiresAuth: true, roles: ['Admin', 'Manager', 'Viewer'] } // Viewers apenas leem (bloqueio visual no .vue)
+    // 🎯 CORREÇÃO: Adicionado 'Usuário'
+    meta: { requiresAuth: true, roles: ['Admin', 'Manager', 'Viewer', 'Usuário'] } 
   },
   {
     path: '/audiencia',
@@ -68,7 +72,7 @@ const routes = [
   // ==========================================
   // ⚙️ ROTAS PRIVADAS (Gestão e Sistema)
   // ==========================================
-{
+  {
     path: '/configuracoes',
     name: 'Configuracoes',
     component: () => import('../views/ConfiguracoesView.vue'),
@@ -78,22 +82,20 @@ const routes = [
     path: '/importacao',
     name: 'Importacao',
     component: () => import('../views/ImportacaoView.vue'),
-    meta: { requiresAuth: true, roles: ['Admin', 'Manager'] } // 🚫 SEM VIEWERS
+    meta: { requiresAuth: true, roles: ['Admin', 'Manager'] } // 🚫 SEM VIEWERS / USUÁRIOS
   },
   {
-  path: '/admin/limpeza',
-  name: 'limpeza-dados',
-  component: AdminLimpezaView,
-  meta: { requiresAuth: true } 
+    path: '/admin/limpeza',
+    name: 'limpeza-dados',
+    component: AdminLimpezaView,
+    meta: { requiresAuth: true, roles: ['Admin'] } 
   },
-
   {
     path: '/logs',
     name: 'Logs',
     component: () => import('../views/LogsView.vue'),
     meta: { requiresAuth: true, roles: ['Admin'] } 
   },
-
 
   // ==========================================
   // ❌ ROTA FALLBACK (Página não encontrada)
@@ -109,18 +111,32 @@ const router = createRouter({
   routes
 });
 
-// Guardião de Navegação Blindado
+// ==========================================
+// 🛡️ GUARDIÃO DE NAVEGAÇÃO BLINDADO
+// ==========================================
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('token');
-  const usuarioTipo = localStorage.getItem('usuario_tipo') || 'Viewer'; 
+  const token = localStorage.getItem('token');
+  const isAuthenticated = !!token;
+  const usuarioTipo = localStorage.getItem('usuario_tipo') || 'Usuário'; 
+
+  if (to.path === '/login' && isAuthenticated) {
+    return next('/');
+  }
 
   if (to.meta.requiresAuth && !isAuthenticated) {
-    next('/login');
-  } else if (to.meta.roles && !to.meta.roles.includes(usuarioTipo)) {
-    next('/'); 
-  } else {
-    next();
+    return next('/login');
   }
+
+  if (to.meta.roles && !to.meta.roles.includes(usuarioTipo)) {
+    if (to.path === '/') {
+      localStorage.clear();
+      return next('/login');
+    } else {
+      return next('/');
+    }
+  }
+
+  next();
 });
 
 export default router;
