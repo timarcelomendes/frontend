@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
 import { useRoute, useRouter } from 'vue-router';
 import { temPermissao } from '../utils/permissoes';
+import { formatarDataLocal } from '../utils/formatters';
 
 import Menu from 'primevue/menu';
 import Button from 'primevue/button';
@@ -99,8 +100,12 @@ const acoesFiltradas = computed(() => {
     }
 
     if (filtroData.value && filtroData.value[0] && filtroData.value[1]) {
-      const dataAcao = new Date(acao.created_at || new Date());
+      let dataStr = acao.created_at || '';
+      if (dataStr && !dataStr.includes('Z')) dataStr = dataStr.replace(' ', 'T') + 'Z';
+      
+      const dataAcao = new Date(dataStr || new Date());
       dataAcao.setHours(0,0,0,0);
+      
       const start = new Date(filtroData.value[0]);
       start.setHours(0,0,0,0);
       const end = new Date(filtroData.value[1]);
@@ -271,48 +276,45 @@ const aoMudarEmpresa = () => {
 };
 
 const salvarAcao = async () => {
-  if (!acaoAtual.value.titulo) return toast.add({ severity: 'warn', summary: 'Obrigatório', detail: 'O título é obrigatório.', life: 4000 });
-  if (!acaoAtual.value.empresa_nome) return toast.add({ severity: 'warn', summary: 'Obrigatório', detail: 'A empresa é obrigatória.', life: 4000 });
-
   salvando.value = true;
+  
   try {
-    const emp = empresasDetalhes.value.find(e => (e.empresa || e.nome) === acaoAtual.value.empresa_nome);
     
-    // 👇 CÁLCULO DINÂMICO DO PRAZO (SLA) BASEADO NAS REGRAS DO BANCO
-    let dataPrazo = null;
-    if (!acaoAtual.value.id) {
-       const hoje = new Date();
-       let dias = regrasSLA.value.sla_promotor_dias; // Default
-       
-       if (acaoAtual.value.contexto === 'detrator') dias = regrasSLA.value.sla_detrator_dias;
-       else if (acaoAtual.value.contexto === 'neutro') dias = regrasSLA.value.sla_neutro_dias;
-       
-       hoje.setDate(hoje.getDate() + dias);
-       dataPrazo = hoje.toISOString();
+    let prazoFormatado = null;
+    const prazoCru = acaoAtual.value.prazo_limite; 
+    
+    if (prazoCru) {
+      const d = new Date(prazoCru);
+      prazoFormatado = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
     const payload = {
       titulo: acaoAtual.value.titulo,
-      descricao: acaoAtual.value.descricao,
-      empresa_id: emp ? emp.id : acaoAtual.value.empresa_id,
-      gestor_id: acaoAtual.value.gestor_id,
-      companhia: acaoAtual.value.companhia,
-      prioridade: acaoAtual.value.prioridade,
-      status: acaoAtual.value.status,
-      prazo_limite: dataPrazo || acaoAtual.value.prazo_limite, // 👈 Garante que o SLA é enviado ao banco
-      resposta_id: acaoAtual.value.resposta_id || null
+      descricao: acaoAtual.value.descricao || "",
+      
+      empresa_id: acaoAtual.value.empresa_id ? parseInt(acaoAtual.value.empresa_id) : null,
+      gestor_id: acaoAtual.value.gestor_id ? parseInt(acaoAtual.value.gestor_id) : null,
+      
+      resposta_id: acaoAtual.value.resposta_id ? String(acaoAtual.value.resposta_id) : null,
+      
+      companhia: acaoAtual.value.companhia || null,
+      prioridade: acaoAtual.value.prioridade || "Média",
+      status: acaoAtual.value.status || "Pendente",
+      prazo_limite: prazoFormatado 
     };
 
     if (acaoAtual.value.id) {
       await api.put(`/acoes/${acaoAtual.value.id}`, payload); 
     } else {
-      await api.post('/acoes', payload);
+      await api.post('/acoes', payload); 
     }
     
     dialogAcao.value = false;
     await carregarAcoes(); 
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Ação guardada com sucesso.', life: 3000 });
+    
   } catch (error) {
+    console.error("Erro ao salvar:", error);
     toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar a ação.', life: 5000 });
   } finally {
     salvando.value = false;
@@ -379,8 +381,12 @@ const obterSLA = (acao) => {
   if (nota !== null && nota <= 6) diasSLA = regrasSLA.value.sla_detrator_dias;
   else if (nota !== null && nota <= 8) diasSLA = regrasSLA.value.sla_neutro_dias;
 
-  const dataAlvo = new Date(acao.created_at || new Date());
+  let dataStr = acao.created_at || '';
+  if (dataStr && !dataStr.includes('Z')) dataStr = dataStr.replace(' ', 'T') + 'Z';
+
+  const dataAlvo = new Date(dataStr || new Date());
   dataAlvo.setDate(dataAlvo.getDate() + diasSLA);
+  
   const hoje = new Date();
   hoje.setHours(0,0,0,0); dataAlvo.setHours(0,0,0,0);
   
@@ -518,10 +524,15 @@ onMounted(async () => {
               <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
             </div>
             
-            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug mb-2">
-                <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
-                {{ acao.titulo }}
-            </h4>
+            <div class="mb-2">
+              <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug">
+                  <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
+                  {{ acao.titulo }}
+              </h4>
+              <span class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mt-1">
+                  <i class="pi pi-clock text-[8px]"></i> {{ formatarDataLocal(acao.created_at) }}
+              </span>
+            </div>
             <p v-if="acao.descricao || acao.resposta_comentario" class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-4 whitespace-pre-line leading-relaxed border-l-2 border-orange-500/50 pl-2">
                 {{ acao.descricao || acao.resposta_comentario }}
             </p>
@@ -566,10 +577,15 @@ onMounted(async () => {
               <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-sky-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
             </div>
             
-            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug mb-2">
-                <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
-                {{ acao.titulo }}
-            </h4>
+            <div class="mb-2">
+              <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug">
+                  <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
+                  {{ acao.titulo }}
+              </h4>
+              <span class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mt-1">
+                  <i class="pi pi-clock text-[8px]"></i> {{ formatarDataLocal(acao.created_at) }}
+              </span>
+            </div>
             <p v-if="acao.descricao || acao.resposta_comentario" class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-4 whitespace-pre-line leading-relaxed border-l-2 border-orange-500/50 pl-2">
                 {{ acao.descricao || acao.resposta_comentario }}
             </p>
@@ -614,10 +630,15 @@ onMounted(async () => {
               <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-emerald-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
             </div>
             
-            <h4 class="text-sm font-bold text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600 leading-snug mb-2">
-                <span class="text-orange-500/60 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
-                {{ acao.titulo }}
-            </h4>
+            <div class="mb-2">
+              <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug">
+                  <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
+                  {{ acao.titulo }}
+              </h4>
+              <span class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mt-1">
+                  <i class="pi pi-clock text-[8px]"></i> {{ formatarDataLocal(acao.created_at) }}
+              </span>
+            </div>
             
             <div class="flex items-center gap-3 pt-3 mt-auto">
               
