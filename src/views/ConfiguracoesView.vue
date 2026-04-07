@@ -2193,8 +2193,6 @@ onMounted(() => {
                 </div>
 
                 <Textarea ref="textareaConvite" v-model="regrasConfig.email_template_html" rows="12" :placeholder="modeloBaseConvite" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-sky-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
-
-                <Textarea v-model="regrasConfig.email_template_html" rows="12" :placeholder="modeloBaseConvite" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-sky-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
               </div>
             </div>
 
@@ -2254,16 +2252,6 @@ onMounted(() => {
                 </div>
                 <div v-show="abaEmailLembrete === '3' && regrasConfig.lembrete_qtd_maxima === 3" class="animate-fadein bg-slate-800/30">
                   <Textarea ref="textareaLembrete3" v-model="regrasConfig.email_template_lembrete_3" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
-                </div>
-
-                <div v-show="abaEmailLembrete === '1' && regrasConfig.lembrete_qtd_maxima >= 1" class="animate-fadein bg-slate-800/30">
-                  <Textarea v-model="regrasConfig.email_template_lembrete_1" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
-                </div>
-                <div v-show="abaEmailLembrete === '2' && regrasConfig.lembrete_qtd_maxima >= 2" class="animate-fadein bg-slate-800/30">
-                  <Textarea v-model="regrasConfig.email_template_lembrete_2" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
-                </div>
-                <div v-show="abaEmailLembrete === '3' && regrasConfig.lembrete_qtd_maxima === 3" class="animate-fadein bg-slate-800/30">
-                  <Textarea v-model="regrasConfig.email_template_lembrete_3" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
                 </div>
 
               </div>
@@ -2328,18 +2316,6 @@ onMounted(() => {
 
                 <div v-show="abaEmailAgradecimento === 'detrator'" class="animate-fadein bg-slate-800/30">
                   <Textarea ref="textareaAgraDetrator" v-model="regrasConfig.email_agradecimento_detrator" rows="12" :placeholder="modeloBaseAgradecimento" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-rose-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
-                </div>
-
-                <div v-show="abaEmailAgradecimento === 'promotor'" class="animate-fadein bg-slate-800/30">
-                  <Textarea v-model="regrasConfig.email_agradecimento_promotor" rows="12" :placeholder="modeloBaseAgradecimento" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-emerald-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
-                </div>
-
-                <div v-show="abaEmailAgradecimento === 'neutro'" class="animate-fadein bg-slate-800/30">
-                  <Textarea v-model="regrasConfig.email_agradecimento_neutro" rows="12" :placeholder="modeloBaseAgradecimento" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-yellow-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
-                </div>
-
-                <div v-show="abaEmailAgradecimento === 'detrator'" class="animate-fadein bg-slate-800/30">
-                  <Textarea v-model="regrasConfig.email_agradecimento_detrator" rows="12" :placeholder="modeloBaseAgradecimento" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-rose-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
                 </div>
 
               </div>
