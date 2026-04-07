@@ -1067,6 +1067,87 @@ const reenviarEmailConfirmacao = async (emailUsuario) => {
   }
 };
 
+// ==========================================
+// 🔍 SISTEMA DE PESQUISA NOS TEMPLATES HTML
+// ==========================================
+
+// Estados independentes para cada secção
+const buscaConvite = ref({ termo: '', matches: [], atual: -1 });
+const buscaLembrete = ref({ termo: '', matches: [], atual: -1 });
+const buscaAgradecimento = ref({ termo: '', matches: [], atual: -1 });
+
+// Referências para os Textareas
+const textareaConvite = ref(null);
+const textareaLembrete1 = ref(null);
+const textareaLembrete2 = ref(null);
+const textareaLembrete3 = ref(null);
+const textareaAgraPromotor = ref(null);
+const textareaAgraNeutro = ref(null);
+const textareaAgraDetrator = ref(null);
+
+const resetarBusca = (secao) => {
+  if (secao === 'convite') { buscaConvite.value.matches = []; buscaConvite.value.atual = -1; }
+  if (secao === 'lembrete') { buscaLembrete.value.matches = []; buscaLembrete.value.atual = -1; }
+  if (secao === 'agradecimento') { buscaAgradecimento.value.matches = []; buscaAgradecimento.value.atual = -1; }
+};
+
+const buscarNoTemplate = (secao) => {
+  let estado, textoAlvo, refTextarea;
+
+  // 1. Identifica qual a secção e qual a aba ativa
+  if (secao === 'convite') {
+    estado = buscaConvite.value;
+    textoAlvo = regrasConfig.value.email_template_html;
+    refTextarea = textareaConvite.value;
+  } 
+  else if (secao === 'lembrete') {
+    estado = buscaLembrete.value;
+    if (abaEmailLembrete.value === '1') { textoAlvo = regrasConfig.value.email_template_lembrete_1; refTextarea = textareaLembrete1.value; }
+    else if (abaEmailLembrete.value === '2') { textoAlvo = regrasConfig.value.email_template_lembrete_2; refTextarea = textareaLembrete2.value; }
+    else if (abaEmailLembrete.value === '3') { textoAlvo = regrasConfig.value.email_template_lembrete_3; refTextarea = textareaLembrete3.value; }
+  } 
+  else if (secao === 'agradecimento') {
+    estado = buscaAgradecimento.value;
+    if (abaEmailAgradecimento.value === 'promotor') { textoAlvo = regrasConfig.value.email_agradecimento_promotor; refTextarea = textareaAgraPromotor.value; }
+    else if (abaEmailAgradecimento.value === 'neutro') { textoAlvo = regrasConfig.value.email_agradecimento_neutro; refTextarea = textareaAgraNeutro.value; }
+    else if (abaEmailAgradecimento.value === 'detrator') { textoAlvo = regrasConfig.value.email_agradecimento_detrator; refTextarea = textareaAgraDetrator.value; }
+  }
+
+  if (!estado.termo || !textoAlvo) return;
+
+  const texto = textoAlvo.toLowerCase();
+  const termo = estado.termo.toLowerCase();
+
+  // 2. Procura todas as ocorrências na primeira vez
+  if (estado.matches.length === 0) {
+    let startIndex = 0;
+    let index;
+    while ((index = texto.indexOf(termo, startIndex)) > -1) {
+      estado.matches.push(index);
+      startIndex = index + termo.length;
+    }
+
+    if (estado.matches.length === 0) {
+      toast.add({ severity: 'info', summary: 'Não encontrado', detail: `O termo "${estado.termo}" não existe neste template.`, life: 3000 });
+      return;
+    }
+  }
+
+  // 3. Avança para o próximo e faz o Scroll/Foco
+  estado.atual = (estado.atual + 1) % estado.matches.length;
+  const matchStart = estado.matches[estado.atual];
+  
+  const el = refTextarea?.$el || refTextarea;
+  if (el && typeof el.setSelectionRange === 'function') {
+    el.focus();
+    el.setSelectionRange(matchStart, matchStart + termo.length);
+    
+    const textBeforeMatch = el.value.substring(0, matchStart);
+    const linesBeforeMatch = textBeforeMatch.split('\n').length;
+    el.scrollTop = (linesBeforeMatch - 2) * 16; // Ajustado para o tamanho da fonte do seu layout
+  }
+};
+
 onMounted(() => {
   carregarDadosConfig();
   carregarConfiguracoesAI();
@@ -1798,7 +1879,7 @@ onMounted(() => {
         </div>
       </TabPanel>
 
-<TabPanel>
+      <TabPanel>
         <template #header>
           <div class="flex items-center gap-2 px-2">
             <i class="pi pi-cog text-slate-400"></i> <span class="font-bold">Regras & Operação</span>
@@ -2102,6 +2183,17 @@ onMounted(() => {
                   <Button label="Auto-Corrigir Imagens" icon="pi pi-magic" @click="aplicarImagensInteligente('convite')" class="ml-auto !bg-sky-500/10 hover:!bg-sky-500/30 !text-sky-300 !border-none !text-[9px] !font-black !uppercase tracking-widest !py-1 !px-3 rounded-lg shadow-sm transition-colors shrink-0" v-tooltip.top="'Injeta as URLs das imagens hospedadas.'" />
                 </div>
 
+                <div class="bg-[#0b1120] px-6 py-1.5 border-b border-slate-800/80 flex items-center gap-2">
+                  <i class="pi pi-search text-slate-500 text-[10px]"></i>
+                  <input v-model="buscaConvite.termo" @keyup.enter="buscarNoTemplate('convite')" @input="resetarBusca('convite')" placeholder="Localizar no código (Enter)..." class="bg-transparent border-none outline-none text-[10px] text-slate-300 flex-1 placeholder:text-slate-600 focus:ring-0" spellcheck="false" />
+                  <div v-if="buscaConvite.matches.length > 0" class="flex items-center gap-2 animate-fadein">
+                    <span class="text-[9px] font-black text-sky-400 tracking-widest">{{ buscaConvite.atual + 1 }} DE {{ buscaConvite.matches.length }}</span>
+                    <button @click="buscarNoTemplate('convite')" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors" v-tooltip.top="'Próximo'"><i class="pi pi-angle-down text-[10px]"></i></button>
+                  </div>
+                </div>
+
+                <Textarea ref="textareaConvite" v-model="regrasConfig.email_template_html" rows="12" :placeholder="modeloBaseConvite" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-sky-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+
                 <Textarea v-model="regrasConfig.email_template_html" rows="12" :placeholder="modeloBaseConvite" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-sky-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
               </div>
             </div>
@@ -2143,6 +2235,25 @@ onMounted(() => {
                   <Tag value="{survey_url}" class="!bg-rose-900/40 !text-rose-300 !text-[9px] !font-mono border border-rose-800/50" v-tooltip.top="'Obrigatório (Link do Botão)'" />
                   
                   <Button label="Auto-Corrigir Imagens" icon="pi pi-magic" @click="aplicarImagensInteligente('lembrete' + abaEmailLembrete)" class="ml-auto !bg-purple-500/10 hover:!bg-purple-500/30 !text-purple-300 !border-none !text-[9px] !font-black !uppercase tracking-widest !py-1 !px-3 rounded-lg shadow-sm transition-colors shrink-0" v-tooltip.top="'Injeta as URLs das imagens hospedadas na aba atual.'" />
+                </div>
+
+                <div class="bg-[#0b1120] px-6 py-1.5 border-b border-slate-800/80 flex items-center gap-2">
+                  <i class="pi pi-search text-slate-500 text-[10px]"></i>
+                  <input v-model="buscaLembrete.termo" @keyup.enter="buscarNoTemplate('lembrete')" @input="resetarBusca('lembrete')" placeholder="Localizar na aba atual (Enter)..." class="bg-transparent border-none outline-none text-[10px] text-slate-300 flex-1 placeholder:text-slate-600 focus:ring-0" spellcheck="false" />
+                  <div v-if="buscaLembrete.matches.length > 0" class="flex items-center gap-2 animate-fadein">
+                    <span class="text-[9px] font-black text-purple-400 tracking-widest">{{ buscaLembrete.atual + 1 }} DE {{ buscaLembrete.matches.length }}</span>
+                    <button @click="buscarNoTemplate('lembrete')" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"><i class="pi pi-angle-down text-[10px]"></i></button>
+                  </div>
+                </div>
+
+                <div v-show="abaEmailLembrete === '1' && regrasConfig.lembrete_qtd_maxima >= 1" class="animate-fadein bg-slate-800/30">
+                  <Textarea ref="textareaLembrete1" v-model="regrasConfig.email_template_lembrete_1" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+                </div>
+                <div v-show="abaEmailLembrete === '2' && regrasConfig.lembrete_qtd_maxima >= 2" class="animate-fadein bg-slate-800/30">
+                  <Textarea ref="textareaLembrete2" v-model="regrasConfig.email_template_lembrete_2" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+                </div>
+                <div v-show="abaEmailLembrete === '3' && regrasConfig.lembrete_qtd_maxima === 3" class="animate-fadein bg-slate-800/30">
+                  <Textarea ref="textareaLembrete3" v-model="regrasConfig.email_template_lembrete_3" rows="12" :placeholder="modeloBaseLembrete" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-purple-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
                 </div>
 
                 <div v-show="abaEmailLembrete === '1' && regrasConfig.lembrete_qtd_maxima >= 1" class="animate-fadein bg-slate-800/30">
@@ -2196,6 +2307,27 @@ onMounted(() => {
                   <Tag value="{motivo}" class="!bg-orange-900/30 !text-orange-400 !text-[9px] !font-mono border border-orange-800/50" />
                   
                   <Button label="Auto-Corrigir Imagens" icon="pi pi-magic" @click="aplicarImagensInteligente('agradecimento_' + abaEmailAgradecimento)" class="ml-auto !bg-emerald-500/10 hover:!bg-emerald-500/30 !text-emerald-300 !border-none !text-[9px] !font-black !uppercase tracking-widest !py-1 !px-3 rounded-lg shadow-sm transition-colors shrink-0" v-tooltip.top="'Injeta as URLs das imagens hospedadas na aba atual.'" />
+                </div>
+
+                <div class="bg-[#0b1120] px-6 py-1.5 border-b border-slate-800/80 flex items-center gap-2">
+                  <i class="pi pi-search text-slate-500 text-[10px]"></i>
+                  <input v-model="buscaAgradecimento.termo" @keyup.enter="buscarNoTemplate('agradecimento')" @input="resetarBusca('agradecimento')" placeholder="Localizar na aba atual (Enter)..." class="bg-transparent border-none outline-none text-[10px] text-slate-300 flex-1 placeholder:text-slate-600 focus:ring-0" spellcheck="false" />
+                  <div v-if="buscaAgradecimento.matches.length > 0" class="flex items-center gap-2 animate-fadein">
+                    <span class="text-[9px] font-black text-emerald-400 tracking-widest">{{ buscaAgradecimento.atual + 1 }} DE {{ buscaAgradecimento.matches.length }}</span>
+                    <button @click="buscarNoTemplate('agradecimento')" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"><i class="pi pi-angle-down text-[10px]"></i></button>
+                  </div>
+                </div>
+
+                <div v-show="abaEmailAgradecimento === 'promotor'" class="animate-fadein bg-slate-800/30">
+                  <Textarea ref="textareaAgraPromotor" v-model="regrasConfig.email_agradecimento_promotor" rows="12" :placeholder="modeloBaseAgradecimento" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-emerald-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+                </div>
+
+                <div v-show="abaEmailAgradecimento === 'neutro'" class="animate-fadein bg-slate-800/30">
+                  <Textarea ref="textareaAgraNeutro" v-model="regrasConfig.email_agradecimento_neutro" rows="12" :placeholder="modeloBaseAgradecimento" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-yellow-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
+                </div>
+
+                <div v-show="abaEmailAgradecimento === 'detrator'" class="animate-fadein bg-slate-800/30">
+                  <Textarea ref="textareaAgraDetrator" v-model="regrasConfig.email_agradecimento_detrator" rows="12" :placeholder="modeloBaseAgradecimento" class="w-full font-mono text-[11px] leading-relaxed !bg-transparent !text-rose-100 !border-none !p-6 focus:!ring-0 placeholder:text-slate-700 resize-y" spellcheck="false" />
                 </div>
 
                 <div v-show="abaEmailAgradecimento === 'promotor'" class="animate-fadein bg-slate-800/30">
