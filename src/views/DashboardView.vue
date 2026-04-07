@@ -710,7 +710,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-1 gap-6">
           
           <div class="lg:col-span-2 bg-white dark:bg-slate-900/80 p-8 lg:p-10 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
             <div class="absolute -right-20 -top-20 w-64 h-64 bg-orange-500/5 dark:bg-orange-500/10 rounded-full blur-[80px] pointer-events-none group-hover:bg-orange-500/20 transition-colors duration-700"></div>
@@ -735,6 +735,10 @@ onMounted(() => {
               <Chart v-if="chartDataLine" type="line" :data="chartDataLine" :options="chartOptionsLine" class="h-full" />
             </div>
           </div>
+
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
 
           <div class="bg-white dark:bg-slate-900/80 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
             <i class="pi pi-trophy absolute -right-4 -bottom-4 text-[120px] text-slate-50 dark:text-slate-800/30 -rotate-12 pointer-events-none group-hover:scale-110 transition-transform duration-500"></i>
@@ -761,58 +765,6 @@ onMounted(() => {
                     <div class="h-full transition-all duration-1000 shadow-sm" :class="item.nps >= 50 ? 'bg-emerald-500 shadow-emerald-500/50' : item.nps > 0 ? 'bg-yellow-500 shadow-yellow-500/50' : 'bg-rose-500 shadow-rose-500/50'" :style="{ width: Math.max(((item.nps + 100) / 200) * 100, 5) + '%' }"></div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          <div class="bg-gradient-to-br from-indigo-900 to-slate-900 p-8 lg:p-10 rounded-[2.5rem] border border-indigo-500/20 shadow-xl relative overflow-hidden group flex flex-col justify-between">
-            <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-[40px] pointer-events-none"></div>
-            <div>
-              <div class="flex items-center gap-2 mb-2">
-                <i class="pi pi-sparkles text-indigo-400 text-xs"></i>
-                <h3 class="text-xs font-black text-indigo-400 uppercase tracking-[0.2em]">Simulador de Retenção</h3>
-              </div>
-              <p class="text-[10px] text-slate-400 font-medium mb-8">Arraste a barra para prever impacto.</p>
-              <div class="mb-6 relative z-10">
-                <div class="flex justify-between text-white text-xs font-bold mb-3">
-                  <span class="uppercase tracking-widest text-[9px] text-slate-300">Meta Conversão</span>
-                  <span class="text-indigo-400 font-black">{{ porcentagemConversao }}%</span>
-                </div>
-                <Slider v-model="porcentagemConversao" :min="0" :max="100" class="w-full custom-slider" />
-              </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4 mt-auto relative z-10">
-              <div class="bg-white/5 p-4 rounded-[1.5rem] border border-white/10 backdrop-blur-sm transition-all duration-300 hover:bg-white/10" :class="{'border-emerald-500/30 bg-emerald-500/5': simulador.npsGanho > 0}">
-                <span class="text-[8px] font-black uppercase text-slate-400 tracking-widest">NPS Projetado</span>
-                <div class="text-3xl font-black text-white mt-1">{{ simulador.npsNovo }}</div>
-                <div class="text-[9px] font-black text-emerald-400 uppercase mt-1" v-if="simulador.npsGanho > 0">+{{ simulador.npsGanho }} pts</div>
-              </div>
-              <div class="bg-white/5 p-4 rounded-[1.5rem] border border-white/10 backdrop-blur-sm transition-all duration-300 hover:bg-white/10" :class="{'border-emerald-500/30 bg-emerald-500/5': simulador.receitaSalva > 0}">
-                <span class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Receita Salva</span>
-                <div class="text-2xl font-black text-emerald-400 mt-1 truncate">€ {{ (simulador.receitaSalva / 1000).toFixed(1) }}k</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-gradient-to-br from-slate-900 to-slate-950 p-8 rounded-[2.5rem] shadow-sm relative overflow-hidden flex flex-col justify-center border border-slate-800 group hover:shadow-rose-500/10 transition-shadow duration-500">
-            <div class="absolute -right-16 -top-16 w-64 h-64 bg-rose-500/20 rounded-full blur-[60px] group-hover:bg-rose-500/30 group-hover:scale-110 transition-all duration-700 pointer-events-none"></div>
-            
-            <div class="relative z-10 flex justify-between items-center mb-8">
-              <h3 class="text-xs font-black text-rose-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                <i class="pi pi-exclamation-triangle"></i> Revenue at Risk
-              </h3>
-            </div>
-            
-            <div class="relative z-10 flex-1 flex flex-col justify-center items-start">
-              <div class="text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 tracking-tighter drop-shadow-md truncate w-full">
-                {{ smartInsights.valor_em_risco }}
-              </div>
-              <div class="mt-8 inline-flex items-center gap-3 px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl backdrop-blur-md">
-                 <div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
-                 <span class="text-[9px] text-rose-200 font-black uppercase tracking-widest">Base Detratora Financeira</span>
               </div>
             </div>
           </div>
@@ -845,6 +797,57 @@ onMounted(() => {
                </div>
             </div>
           </div>
+        </div>
+          
+          <div v-if="false" class="bg-gradient-to-br from-indigo-900 to-slate-900 p-8 lg:p-10 rounded-[2.5rem] border border-indigo-500/20 shadow-xl relative overflow-hidden group flex flex-col justify-between">
+            <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-[40px] pointer-events-none"></div>
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <i class="pi pi-sparkles text-indigo-400 text-xs"></i>
+                <h3 class="text-xs font-black text-indigo-400 uppercase tracking-[0.2em]">Simulador de Retenção</h3>
+              </div>
+              <p class="text-[10px] text-slate-400 font-medium mb-8">Arraste a barra para prever impacto.</p>
+              <div class="mb-6 relative z-10">
+                <div class="flex justify-between text-white text-xs font-bold mb-3">
+                  <span class="uppercase tracking-widest text-[9px] text-slate-300">Meta Conversão</span>
+                  <span class="text-indigo-400 font-black">{{ porcentagemConversao }}%</span>
+                </div>
+                <Slider v-model="porcentagemConversao" :min="0" :max="100" class="w-full custom-slider" />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mt-auto relative z-10">
+              <div class="bg-white/5 p-4 rounded-[1.5rem] border border-white/10 backdrop-blur-sm transition-all duration-300 hover:bg-white/10" :class="{'border-emerald-500/30 bg-emerald-500/5': simulador.npsGanho > 0}">
+                <span class="text-[8px] font-black uppercase text-slate-400 tracking-widest">NPS Projetado</span>
+                <div class="text-3xl font-black text-white mt-1">{{ simulador.npsNovo }}</div>
+                <div class="text-[9px] font-black text-emerald-400 uppercase mt-1" v-if="simulador.npsGanho > 0">+{{ simulador.npsGanho }} pts</div>
+              </div>
+              <div class="bg-white/5 p-4 rounded-[1.5rem] border border-white/10 backdrop-blur-sm transition-all duration-300 hover:bg-white/10" :class="{'border-emerald-500/30 bg-emerald-500/5': simulador.receitaSalva > 0}">
+                <span class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Receita Salva</span>
+                <div class="text-2xl font-black text-emerald-400 mt-1 truncate">€ {{ (simulador.receitaSalva / 1000).toFixed(1) }}k</div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="false" class="bg-gradient-to-br from-slate-900 to-slate-950 p-8 rounded-[2.5rem] shadow-sm relative overflow-hidden flex flex-col justify-center border border-slate-800 group hover:shadow-rose-500/10 transition-shadow duration-500">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-rose-500/20 rounded-full blur-[60px] group-hover:bg-rose-500/30 group-hover:scale-110 transition-all duration-700 pointer-events-none"></div>
+            
+            <div class="relative z-10 flex justify-between items-center mb-8">
+              <h3 class="text-xs font-black text-rose-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <i class="pi pi-exclamation-triangle"></i> Revenue at Risk
+              </h3>
+            </div>
+            
+            <div class="relative z-10 flex-1 flex flex-col justify-center items-start">
+              <div class="text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 tracking-tighter drop-shadow-md truncate w-full">
+                {{ smartInsights.valor_em_risco }}
+              </div>
+              <div class="mt-8 inline-flex items-center gap-3 px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl backdrop-blur-md">
+                 <div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+                 <span class="text-[9px] text-rose-200 font-black uppercase tracking-widest">Base Detratora Financeira</span>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <div class="bg-white dark:bg-slate-900/80 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm relative group mt-6">
@@ -945,7 +948,7 @@ onMounted(() => {
 
       </div>
     </div>
-  </div>
+  
   <Sidebar v-model:visible="ajudaVisivel" position="right" class="w-full md:w-[32rem] !bg-slate-50 dark:!bg-slate-900 border-l border-slate-200 dark:border-slate-800 p-0">
       <template #header>
         <div class="flex items-center gap-3 px-2">

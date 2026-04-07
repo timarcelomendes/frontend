@@ -8,7 +8,11 @@
       
       <span class="p-input-icon-left w-full md:w-auto">
         <i class="pi pi-search" />
-        <InputText v-model="filters['global'].value" placeholder="Pesquisar nos logs..." class="w-full md:w-80 custom-input" />
+        <InputText 
+          v-model="filters['global'].value" 
+          placeholder="Pesquisar em todos os logs..." 
+          class="w-full md:w-80 custom-input" 
+        />
       </span>
     </div>
 
@@ -17,13 +21,11 @@
         :value="logs" 
         :paginator="true" 
         :rows="15" 
-        :rowsPerPageOptions="[15, 50, 100]"
-        :loading="loading"
         v-model:filters="filters"
-        :globalFilterFields="['mensagem', 'acao', 'usuario_nome', 'nivel']"
+        :loading="loading"
+        :globalFilterFields="['nivel', 'acao', 'mensagem', 'usuario_nome', 'data_criacao']"
         responsiveLayout="scroll"
-        class="p-datatable-sm text-sm"
-        emptyMessage="Nenhum registo encontrado."
+        class="p-datatable-sm"
       >
         <Column field="nivel" header="Nível" :sortable="true" style="width: 10%">
           <template #body="slotProps">
@@ -35,8 +37,8 @@
 
         <Column field="data_criacao" header="Data/Hora" :sortable="true" style="width: 15%">
           <template #body="slotProps">
-            <span class="font-medium text-slate-600 dark:text-slate-300">
-              {{ formatarData(slotProps.data.data_criacao) }}
+            <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              {{ formatarDataLocal(slotProps.data.data_criacao) }}
             </span>
           </template>
         </Column>
@@ -72,24 +74,30 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { FilterMatchMode } from 'primevue/api';
+import { FilterMatchMode, FilterOperator } from 'primevue/api';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
 import { useToast } from 'primevue/usetoast';
 import api from '../services/api';
+import { formatarDataLocal } from '../utils/formatters';
 
 const toast = useToast();
 const logs = ref([]);
 const loading = ref(true);
 
+// Configuração dos filtros
 const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    
+    nivel: { value: null, matchMode: FilterMatchMode.EQUALS },
+    acao: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    mensagem: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    usuario_nome: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    data_criacao: { value: null, matchMode: FilterMatchMode.CONTAINS }
 });
 
-onMounted(() => {
-    carregarLogs();
-});
+
 
 const carregarLogs = async () => {
     loading.value = true;
@@ -112,14 +120,10 @@ const getBadgeClass = (nivel) => {
     return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30';
 };
 
-const formatarData = (dataStr) => {
-    if (!dataStr) return '-';
-    const data = new Date(dataStr);
-    return data.toLocaleString('pt-PT', { 
-        day: '2-digit', month: '2-digit', year: 'numeric', 
-        hour: '2-digit', minute: '2-digit', second: '2-digit' 
-    });
-};
+onMounted(() => {
+    carregarLogs();
+});
+
 </script>
 
 <style scoped lang="postcss">
