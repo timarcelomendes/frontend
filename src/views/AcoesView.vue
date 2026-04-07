@@ -13,11 +13,14 @@ import Dropdown from 'primevue/dropdown';
 import Textarea from 'primevue/textarea';
 import Calendar from 'primevue/calendar';
 import MultiSelect from 'primevue/multiselect';
+import Sidebar from 'primevue/sidebar';
 
 const toast = useToast();
 
 const acoes = ref([]);
 const loading = ref(true);
+const ajudaVisivel = ref(false);
+
 const regrasSLA = ref({ 
   sla_detrator_dias: 2, 
   sla_neutro_dias: 5, 
@@ -408,16 +411,44 @@ onMounted(async () => {
 <template>
   <div class="max-w-[1600px] mx-auto animate-fadein p-4 lg:p-8">
     
-    <div class="flex justify-between items-end mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8 z-20 relative">
+      
       <div>
-        <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight italic">
-          Planos de Ação <span class="text-orange-500">.</span>
+        <h1 class="text-4xl lg:text-5xl font-black tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-slate-400">
+          Plano de Ação <span class="text-indigo-500">.</span>
         </h1>
-        <p class="text-[12px] text-slate-500 font-medium mt-1">Gestão de Close The Loop e Pendências.</p>
+        <p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-3">
+          Gestão de Respostas e Recuperação de Clientes
+        </p>
       </div>
-      <div class="flex gap-3">
-        <Button icon="pi pi-refresh" @click="carregarAcoes" :loading="loading" class="w-10 h-10 !bg-slate-50 dark:!bg-slate-800 !text-slate-600 !border-none !rounded-lg hover:!bg-slate-100 transition-colors" v-tooltip.top="'Atualizar Kanban'" />
-        <Button v-if="temPermissao('acoes:criar')" label="Nova Ação" icon="pi pi-plus" @click="abrirNovaAcao" class="!bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform shrink-0" />
+
+      <div class="flex items-center gap-3">
+        
+        <Button 
+          icon="pi pi-question-circle" 
+          @click="ajudaVisivel = true" 
+          v-tooltip.top="'Guia da Metodologia'"
+          class="w-10 h-10 !bg-slate-50 dark:!bg-slate-800 !text-slate-600 dark:!text-slate-400 !border-none !rounded-lg hover:!bg-slate-100 dark:hover:!bg-slate-700 hover:!text-indigo-500 transition-colors shrink-0" 
+        />
+
+        <Button 
+          icon="pi pi-refresh" 
+          @click="carregarAcoes" 
+          :loading="loading" 
+          class="w-10 h-10 !bg-slate-50 dark:!bg-slate-800 !text-slate-600 dark:!text-slate-400 !border-none !rounded-lg hover:!bg-slate-100 dark:hover:!bg-slate-700 hover:!text-indigo-500 transition-colors shrink-0" 
+          v-tooltip.top="'Atualizar Kanban'" 
+        />
+        
+        <div class="hidden md:block w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
+        <Button 
+          v-if="temPermissao('acoes:criar')" 
+          label="Nova Ação" 
+          icon="pi pi-plus" 
+          @click="abrirNovaAcao" 
+          class="!bg-orange-500 hover:!bg-orange-600 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 !py-3 shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform shrink-0" 
+        />
+        
       </div>
     </div>
 
@@ -709,6 +740,80 @@ onMounted(async () => {
       </div>
     </Dialog>
   </div>
+  <Sidebar v-model:visible="ajudaVisivel" position="right" class="w-full md:w-[32rem] !bg-slate-50 dark:!bg-slate-900 border-l border-slate-200 dark:border-slate-800 p-0">
+      <template #header>
+        <div class="flex items-center gap-3 px-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 shadow-sm">
+            <i class="pi pi-info-circle text-lg"></i>
+          </div>
+          <span class="font-black italic text-lg tracking-tight text-slate-800 dark:text-white">Guia: Plano de Ação</span>
+        </div>
+      </template>
+
+      <div class="p-4 space-y-5 custom-scrollbar pb-10">
+        
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden">
+          <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-500"></div>
+          <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2 ml-1">Metodologia Close the Loop</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed ml-1">
+            O objetivo desta tela é garantir que <strong>toda resposta</strong> de cliente receba uma tratativa. O ciclo só termina quando o cliente é ouvido e a pendência é movida para "Concluído".
+          </p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
+          <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white mb-4">Prazos de Atendimento (SLA)</h3>
+          <div class="space-y-4">
+            <div class="flex items-start gap-3">
+              <div class="w-2 h-10 rounded-full bg-rose-500 shrink-0 mt-1"></div>
+              <div>
+                <span class="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 block mb-0.5">Detratores (0-6)</span>
+                <span class="text-[10px] text-slate-500 leading-tight block">Prioridade Crítica. Requerem resposta em até <strong>{{ regrasSLA.sla_detrator_dias }} dias</strong> para evitar o cancelamento imediato.</span>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-2 h-10 rounded-full bg-yellow-500 shrink-0 mt-1"></div>
+              <div>
+                <span class="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 block mb-0.5">Neutros (7-8)</span>
+                <span class="text-[10px] text-slate-500 leading-tight block">Prioridade Média. Tratativa em até <strong>{{ regrasSLA.sla_neutro_dias }} dias</strong> para evitar que se tornem detratores.</span>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-2 h-10 rounded-full bg-emerald-500 shrink-0 mt-1"></div>
+              <div>
+                <span class="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 block mb-0.5">Promotores (9-10)</span>
+                <span class="text-[10px] text-slate-500 leading-tight block">Foco em agradecimento e coleta de depoimentos em até <strong>{{ regrasSLA.sla_promotor_dias }} dias</strong>.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-indigo-900/5 dark:bg-indigo-500/5 rounded-2xl p-5 border border-indigo-100 dark:border-indigo-500/20 shadow-sm">
+          <h3 class="text-[11px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-3"><i class="pi pi-directions mr-1"></i> Fluxo de Trabalho</h3>
+          <ul class="space-y-3">
+            <li class="flex items-center gap-3 text-[10px] text-slate-600 dark:text-slate-400">
+              <i class="pi pi-circle-fill text-[6px] text-indigo-400"></i>
+              <span><strong>A Fazer:</strong> Ações criadas automaticamente a cada resposta nova.</span>
+            </li>
+            <li class="flex items-center gap-3 text-[10px] text-slate-600 dark:text-slate-400">
+              <i class="pi pi-circle-fill text-[6px] text-indigo-400"></i>
+              <span><strong>Em Andamento:</strong> Cards que já estão a ser tratados pelo gestor.</span>
+            </li>
+            <li class="flex items-center gap-3 text-[10px] text-slate-600 dark:text-slate-400">
+              <i class="pi pi-circle-fill text-[6px] text-indigo-400"></i>
+              <span><strong>Concluído:</strong> O cliente foi contatado e o ciclo foi fechado.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="p-4 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-100 dark:border-amber-500/20 flex gap-3">
+          <i class="pi pi-lightbulb text-amber-500 text-lg"></i>
+          <p class="text-[10px] text-amber-700 dark:text-amber-400 font-medium italic">
+            "Um cliente detrator cujo problema foi resolvido rapidamente tem mais chances de se tornar um promotor fiel do que um cliente que nunca teve problemas."
+          </p>
+        </div>
+
+      </div>
+    </Sidebar>
 </template>
 
 <style scoped lang="postcss">
