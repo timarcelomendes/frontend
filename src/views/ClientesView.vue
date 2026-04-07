@@ -37,10 +37,6 @@ const tipoExclusao = ref(''); // Vai guardar a rota (ex: 'cadastros/empresas')
 const nomeExclusao = ref(''); // Vai guardar o texto (ex: 'esta empresa')
 const excluindo = ref(false);
 
-const cliente = ref({
-  cliente_id: null, nome: '', email: '', telefone: '', empresa: '', perfil_decisor: null, cargo: null, ativo: true
-});
-
 const dialogEmpresa = ref(false);
 const editandoEmpresa = ref(false);
 const empresaForm = ref({
@@ -126,28 +122,54 @@ const carregarTudo = async () => {
   } 
 }; 
 
-const abrirNovo = () => { cliente.value = { cliente_id: null, nome: '', email: '', telefone: '', empresa: '', perfil_decisor: null, cargo: null }; editando.value = false; dialogVisivel.value = true; };
+// 1. Atualizar o objeto para usar os sufixos _id
+const cliente = ref({
+  cliente_id: null, nome: '', email: '', telefone: '', empresa_id: null, perfil_id: null, cargo_id: null, ativo: true
+});
+
+// 2. Limpar os _ids ao criar um novo
+const abrirNovo = () => { 
+  cliente.value = { cliente_id: null, nome: '', email: '', telefone: '', empresa_id: null, perfil_id: null, cargo_id: null, ativo: true }; 
+  editando.value = false; 
+  dialogVisivel.value = true; 
+};
+
+// 3. Garantir que a edição carrega os _ids que vieram do banco
 const editarCliente = (dados) => {
-  cliente.value = { ...dados }; 
-  
+  cliente.value = { 
+    ...dados,
+    empresa_id: dados.empresa_id || null,
+    cargo_id: dados.cargo_id || null,
+    perfil_id: dados.perfil_id || null
+  }; 
   cliente.value.ativo = dados.ativo === 1 || dados.ativo === true; 
-  
   editando.value = true;
   dialogVisivel.value = true;
 };
 
+// 4. Converter as strings vazias para 'null' e forçar números antes de enviar à API
 const salvarCliente = async () => {
-  if (!cliente.value.nome || !cliente.value.email || !cliente.value.cargo) {
+  if (!cliente.value.nome || !cliente.value.email || !cliente.value.cargo_id) {
     toast.add({ severity: 'warn', summary: 'Campos Obrigatórios', detail: 'Por favor, preencha o Nome, E-mail e Cargo.', life: 4000 });
     return;
   }
   
   saving.value = true;
   try {
+    const payload = {
+      ...cliente.value,
+      
+      empresa_id: cliente.value.empresa_id ? Number(cliente.value.empresa_id) : null,
+      perfil_id: cliente.value.perfil_id ? Number(cliente.value.perfil_id) : null,
+      cargo_id: cliente.value.cargo_id ? Number(cliente.value.cargo_id) : null,
+      
+      segmento_id: cliente.value.segmento_id ? Number(cliente.value.segmento_id) : null 
+    };
+
     if (editando.value) {
-      await api.put(`/clientes/${cliente.value.cliente_id || cliente.value.id}`, cliente.value);
+      await api.put(`/clientes/${cliente.value.cliente_id || cliente.value.id}`, payload);
     } else {
-      await api.post('/clientes', cliente.value);
+      await api.post('/clientes', payload);
     }
     
     dialogVisivel.value = false; 
@@ -155,16 +177,8 @@ const salvarCliente = async () => {
     toast.add({ severity: 'success', summary: 'Atualizado', detail: 'Pessoa salva com sucesso.', life: 3000 });
   } catch (error) { 
     console.error(error);
-    
-    // 🟢 Extrai a mensagem de erro amigável vinda do Python (FastAPI)
     const mensagemErro = error.response?.data?.detail || 'Falha ao guardar os dados.';
-    
-    toast.add({ 
-      severity: 'error', 
-      summary: 'Ação Bloqueada', 
-      detail: mensagemErro, 
-      life: 6000 // Tempo maior para o utilizador conseguir ler a mensagem
-    }); 
+    toast.add({ severity: 'error', summary: 'Ação Bloqueada', detail: mensagemErro, life: 6000 }); 
   } finally { 
     saving.value = false; 
   }
@@ -215,26 +229,31 @@ const editarFichaEmpresa = (dados) => {
 const salvarEmpresa = async () => {
   saving.value = true;
   
+  // 🎯 Payload Blindado: Força a conversão para Número ou devolve null
   const payload = {
     nome: empresaForm.value.nome,
-    segmento: empresaForm.value.segmento,
     valor_contrato: empresaForm.value.valor_contrato,
-    gestor: empresaForm.value.gestor ? empresaForm.value.gestor.nome : null,
-    gestor_id: empresaForm.value.gestor ? empresaForm.value.gestor.id : null,
-    companhia_id: empresaForm.value.companhia ? empresaForm.value.companhia.id : null,
-    ativo: empresaForm.value.ativo 
+    ativo: empresaForm.value.ativo,
+
+    segmento_id: empresaForm.value.segmento ? Number(empresaForm.value.segmento) : null,
+
+    gestor_id: empresaForm.value.gestor ? Number(empresaForm.value.gestor.id || empresaForm.value.gestor) : null,
+    
+    companhia_id: empresaForm.value.companhia ? Number(empresaForm.value.companhia.id || empresaForm.value.companhia) : null
   };
 
   try {
     const url = editandoEmpresa.value ? `/cadastros/empresas/${empresaForm.value.id}` : '/cadastros/empresas';
     const metodo = editandoEmpresa.value ? 'put' : 'post';
+    
     await api[metodo](url, payload);
     
     toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Conta salva com sucesso!', life: 3000 });
     dialogEmpresa.value = false;
     carregarTudo(); 
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao comunicar com o servidor.', life: 4000 });
+    const mensagemErro = error.response?.data?.detail || 'Falha ao comunicar com o servidor.';
+    toast.add({ severity: 'error', summary: 'Ação Bloqueada', detail: mensagemErro, life: 5000 });
   } finally {
     saving.value = false;
   }
@@ -658,9 +677,20 @@ onMounted(carregarTudo);
           <div class="flex flex-col gap-1.5 md:col-span-2"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome Completo *</label><InputText v-model="cliente.nome" class="custom-input w-full" /></div>
           <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">E-mail *</label><InputText v-model="cliente.email" type="email" class="custom-input w-full" /></div>
           <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Telefone</label><InputText v-model="cliente.telefone" class="custom-input w-full" /></div>
-          <div class="flex flex-col gap-1.5 md:col-span-2"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Conta (Empresa)</label><Dropdown v-model="cliente.empresa" :options="empresas" optionLabel="nome" optionValue="nome" editable filter class="custom-dropdown w-full" /></div>
-          <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Perfil</label><Dropdown v-model="cliente.perfil_decisor" :options="perfis" optionLabel="nome" optionValue="nome" editable class="custom-dropdown w-full" /></div>
-          <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Cargo *</label><Dropdown v-model="cliente.cargo" :options="cargos" optionLabel="nome" optionValue="nome" editable filter class="custom-dropdown w-full" /></div>
+          <div class="flex flex-col gap-1.5 md:col-span-2">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Conta (Empresa)</label>
+            <Dropdown v-model="cliente.empresa_id" :options="empresas" optionLabel="nome" optionValue="id" filter showClear placeholder="Selecione a Empresa" class="custom-dropdown w-full" />
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Perfil</label>
+            <Dropdown v-model="cliente.perfil_id" :options="perfis" optionLabel="nome" optionValue="id" showClear placeholder="Selecione o Perfil" class="custom-dropdown w-full" />
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Cargo *</label>
+            <Dropdown v-model="cliente.cargo_id" :options="cargos" optionLabel="nome" optionValue="id" filter showClear placeholder="Selecione o Cargo" class="custom-dropdown w-full" />
+          </div>
           
           <div class="flex flex-col gap-2 pt-2 md:col-span-2">
             <div class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col gap-2">
@@ -698,7 +728,16 @@ onMounted(carregarTudo);
 
           <div class="flex flex-col gap-1.5">
             <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Segmento</label>
-            <Dropdown v-model="empresaForm.segmento" :options="segmentos" optionLabel="nome" optionValue="nome" editable filter placeholder="Selecione ou digite" class="custom-dropdown w-full" />
+            <Dropdown 
+              v-model="empresa.segmento_id" 
+              :options="segmentos" 
+              optionLabel="nome" 
+              optionValue="id" 
+              filter 
+              showClear 
+              placeholder="Selecione o Segmento" 
+              class="custom-dropdown w-full" 
+            />
           </div>
           
           <div class="flex flex-col gap-1.5 pt-2">
