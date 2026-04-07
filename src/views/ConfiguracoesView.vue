@@ -333,6 +333,17 @@ const carregarUtilizadores = async () => {
 };
 
 const salvarUtilizador = async () => {
+  // 🎯 TRAVA 1: Impede guardar o formulário se estiver a ativar sem um perfil válido
+  if (usuario.value.ativo && !opcoesTipo.includes(usuario.value.tipo)) {
+    toast.add({ 
+      severity: 'warn', 
+      summary: 'Perfil Obrigatório', 
+      detail: 'Selecione um Nível de Acesso (Admin, Manager ou Viewer) antes de aprovar a conta.', 
+      life: 5000 
+    });
+    return;
+  }
+
   submetendoUser.value = true;
   try {
     if (editandoUser.value) {
@@ -353,6 +364,18 @@ const salvarUtilizador = async () => {
 
 const alternarStatus = async (user_data) => {
   const novoStatus = !user_data.ativo; 
+  
+  if (novoStatus === true && !opcoesTipo.includes(user_data.tipo)) {
+    toast.add({ 
+      severity: 'warn', 
+      summary: 'Ação Necessária', 
+      detail: 'Defina o Nível de Acesso do utilizador antes de liberar o acesso.', 
+      life: 5000 
+    });
+    prepararEdicaoUser(user_data);
+    return;
+  }
+
   try {
     await api.put(`/usuarios/${user_data.usuario_id}`, { ...user_data, ativo: novoStatus });
     user_data.ativo = novoStatus; 
@@ -1024,6 +1047,26 @@ const excluirUtilizador = async (usuario_id) => {
   }
 };
 
+const reenviarEmailConfirmacao = async (emailUsuario) => {
+  try {
+    // Usa a mesma rota que o utilizador usaria no ecrã de login
+    await api.post('/reenviar-confirmacao', { email: emailUsuario });
+    toast.add({ 
+      severity: 'success', 
+      summary: 'E-mail Enviado', 
+      detail: `O link de confirmação foi reenviado para ${emailUsuario}.`, 
+      life: 5000 
+    });
+  } catch (error) {
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Falha no Envio', 
+      detail: error.response?.data?.detail || 'Não foi possível reenviar o e-mail de confirmação.', 
+      life: 5000 
+    });
+  }
+};
+
 onMounted(() => {
   carregarDadosConfig();
   carregarConfiguracoesAI();
@@ -1309,9 +1352,31 @@ onMounted(() => {
                       <span class="text-[13px] font-black text-slate-800 dark:text-white leading-tight">
                         {{ s.data.nome }}
                       </span>
-                      <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-                        {{ s.data.email }}
-                      </span>
+                      
+                      <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                          {{ s.data.email }}
+                        </span>
+                        
+                        <div v-if="s.data.email_verificado" class="bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center gap-1 border border-emerald-200 dark:border-emerald-500/20" v-tooltip.top="'E-mail Verificado'">
+                          <i class="pi pi-check-circle text-[8px] text-emerald-500"></i>
+                          <span class="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">OK</span>
+                        </div>
+                        
+                        <div v-else class="flex items-center gap-2">
+                          <div class="bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded flex items-center gap-1 border border-amber-200 dark:border-amber-500/20" v-tooltip.top="'Aguardando Confirmação'">
+                            <i class="pi pi-clock text-[8px] text-amber-500"></i>
+                            <span class="text-[8px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest">Pendente</span>
+                          </div>
+                          
+                          <button @click.stop="reenviarEmailConfirmacao(s.data.email)" 
+                                  class="w-5 h-5 rounded flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors shadow-sm"
+                                  v-tooltip.top="'Reenviar link de confirmação'">
+                            <i class="pi pi-envelope text-[10px]"></i>
+                          </button>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 </template>
