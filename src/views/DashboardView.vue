@@ -14,6 +14,7 @@ import Tooltip from 'primevue/tooltip';
 import Dropdown from 'primevue/dropdown';
 import InputSwitch from 'primevue/inputswitch';
 import Sidebar from 'primevue/sidebar';
+import Dialog from 'primevue/dialog';
 
 const router = useRouter();
 const vTooltip = Tooltip;
@@ -21,6 +22,8 @@ const toast = useToast();
 const loading = ref(true);
 const nomeUsuario = ref('');
 const ajudaVisivel = ref(false);
+const dialogRiscoVisivel = ref(false);
+const dialogResgatadosVisivel = ref(false);
 
 // 1. Calcula a data de hoje
 const dataFinal = new Date();
@@ -48,7 +51,9 @@ const kpis = ref({
   revenue_at_risk: 0,
   clientes_resgatados: 0,
   clientes_em_risco: 0,
-  queda_drastica: 0 
+  queda_drastica: 0,
+  lista_risco: [],
+  lista_resgatados: []
 });
 
 const ranking = ref([]);
@@ -586,7 +591,8 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="bg-white dark:bg-slate-900/80 p-6 xl:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+          <div @click="kpis.lista_resgatados?.length > 0 ? dialogResgatadosVisivel = true : null" 
+               class="bg-white dark:bg-slate-900/80 p-6 xl:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group cursor-pointer hover:border-emerald-200 dark:hover:border-emerald-500/30">
             <div class="flex justify-between items-start mb-2">
               <div>
                 <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Conversão</span>
@@ -601,15 +607,20 @@ onMounted(() => {
                  <span class="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{{ kpis.clientes_resgatados || 0 }}</span>
                  <span class="text-emerald-500 font-black text-xl">clientes</span>
                </div>
-               <div class="mt-3 flex items-center gap-2">
+               
+               <div class="mt-3 flex items-center justify-between w-full">
                   <span class="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400 px-2 py-1 rounded-lg border border-emerald-100 dark:border-emerald-500/20 flex items-center gap-1.5 uppercase tracking-widest">
                     <i class="pi pi-sync text-[8px]"></i> Convertidos p/ Promotor
                   </span>
+                  
+                  <i v-if="kpis.lista_resgatados?.length > 0" class="pi pi-search-plus text-emerald-300 dark:text-emerald-500/50 group-hover:text-emerald-500 transition-colors"></i>
                </div>
             </div>
           </div>
           
-          <div class="bg-white dark:bg-slate-900/80 p-6 xl:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
+          <div @click="kpis.lista_risco.length > 0 ? dialogRiscoVisivel = true : null" 
+               class="bg-white dark:bg-slate-900/80 p-6 xl:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/20 dark:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden cursor-pointer hover:border-rose-200 dark:hover:border-rose-500/30">
+            
             <div class="absolute right-0 top-0 w-24 h-24 bg-rose-500/5 rounded-bl-[100px] pointer-events-none group-hover:scale-110 transition-transform"></div>
             
             <div class="flex justify-between items-start mb-2 relative z-10">
@@ -627,10 +638,12 @@ onMounted(() => {
                  <span class="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{{ kpis.clientes_em_risco || 0 }}</span>
                  <span class="text-rose-500 font-black text-xl">clientes</span>
                </div>
-               <div class="mt-3 flex items-center gap-2">
+               <div class="mt-3 flex items-center justify-between w-full">
                   <span class="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400 px-2 py-1 rounded-lg border border-rose-100 dark:border-rose-500/20 flex items-center gap-1.5 uppercase tracking-widest">
                     <i class="pi pi-exclamation-circle text-[8px]"></i> {{ kpis.queda_drastica || 0 }} Quedas p/ Detrator
                   </span>
+                  
+                  <i v-if="kpis.lista_risco?.length > 0" class="pi pi-search-plus text-rose-300 dark:text-rose-500/50 group-hover:text-rose-500 transition-colors"></i>
                </div>
             </div>
           </div>
@@ -1057,6 +1070,97 @@ onMounted(() => {
 
       </div>
     </Sidebar>
+    <Dialog v-model:visible="dialogRiscoVisivel" :modal="true" :style="{width: '450px'}" :closable="false" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog-no-header shadow-2xl">
+      <div class="bg-gradient-to-r from-rose-500 to-rose-600 text-white p-6 flex justify-between items-center relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+        <div class="relative z-10">
+          <h2 class="text-lg font-black italic tracking-tight"><i class="pi pi-exclamation-triangle mr-2"></i> Risco de Churn</h2>
+          <p class="text-[10px] text-rose-100 uppercase tracking-widest mt-1 font-bold">Histórico de Promotores Perdidos</p>
+        </div>
+        <button @click="dialogRiscoVisivel = false" class="text-white/70 hover:text-white transition-colors p-2 relative z-10"><i class="pi pi-times text-xl"></i></button>
+      </div>
+
+      <div class="p-6 bg-slate-50 dark:bg-slate-900 space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
+        
+        <div v-for="(cliente, idx) in kpis.lista_risco" :key="idx" 
+             class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-3 hover:border-rose-200 dark:hover:border-rose-500/30 transition-colors">
+          
+          <div class="flex justify-between items-start">
+            <div class="flex flex-col">
+              <span class="text-xs font-black text-slate-800 dark:text-white">{{ cliente.cliente_nome }}</span>
+              <span class="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-0.5"><i class="pi pi-building text-[8px] mr-0.5"></i> {{ cliente.empresa_nome }}</span>
+            </div>
+            
+            <div v-if="cliente.queda_drastica" class="bg-rose-500/10 text-rose-500 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-rose-500/20 flex items-center gap-1">
+              <i class="pi pi-bolt text-[8px]"></i> Crítico
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+            <div class="flex-1 flex flex-col items-center">
+              <span class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Nota Anterior</span>
+              <span class="text-lg font-black text-emerald-500">{{ cliente.nota_anterior }}</span>
+            </div>
+            
+            <div class="text-slate-300 dark:text-slate-600">
+              <i class="pi pi-arrow-right text-xs"></i>
+            </div>
+            
+            <div class="flex-1 flex flex-col items-center">
+              <span class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Nota Atual</span>
+              <span class="text-lg font-black" :class="cliente.nota_atual <= 6 ? 'text-rose-500' : 'text-yellow-500'">{{ cliente.nota_atual }}</span>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </Dialog>
+
+    <Dialog v-model:visible="dialogResgatadosVisivel" :modal="true" :style="{width: '450px'}" :closable="false" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog-no-header shadow-2xl">
+      <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-6 flex justify-between items-center relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+        <div class="relative z-10">
+          <h2 class="text-lg font-black italic tracking-tight"><i class="pi pi-heart-fill mr-2"></i> Clientes Resgatados</h2>
+          <p class="text-[10px] text-emerald-100 uppercase tracking-widest mt-1 font-bold">Histórico de Reversão para Promotor</p>
+        </div>
+        <button @click="dialogResgatadosVisivel = false" class="text-white/70 hover:text-white transition-colors p-2 relative z-10"><i class="pi pi-times text-xl"></i></button>
+      </div>
+
+      <div class="p-6 bg-slate-50 dark:bg-slate-900 space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
+        
+        <div v-for="(cliente, idx) in kpis.lista_resgatados" :key="idx" 
+             class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-3 hover:border-emerald-200 dark:hover:border-emerald-500/30 transition-colors">
+          
+          <div class="flex justify-between items-start">
+            <div class="flex flex-col">
+              <span class="text-xs font-black text-slate-800 dark:text-white">{{ cliente.cliente_nome }}</span>
+              <span class="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-0.5"><i class="pi pi-building text-[8px] mr-0.5"></i> {{ cliente.empresa_nome }}</span>
+            </div>
+            
+            <div class="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border border-emerald-500/20 flex items-center gap-1">
+              <i class="pi pi-arrow-up text-[8px]"></i> Revertido
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+            <div class="flex-1 flex flex-col items-center">
+              <span class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Nota Anterior</span>
+              <span class="text-lg font-black text-rose-500">{{ cliente.nota_anterior }}</span>
+            </div>
+            
+            <div class="text-emerald-500">
+              <i class="pi pi-check-circle text-sm"></i>
+            </div>
+            
+            <div class="flex-1 flex flex-col items-center">
+              <span class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Nota Atual</span>
+              <span class="text-lg font-black text-emerald-500">{{ cliente.nota_atual }}</span>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </Dialog>
 </template>
 
 <style scoped lang="postcss">

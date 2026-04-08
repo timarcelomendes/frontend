@@ -79,16 +79,16 @@ const tratarData = (dataOriginal) => {
   try {
     let dataCorrigida = String(dataOriginal).trim();
     
-    // Se vier apenas "YYYY-MM-DD" (10 caracteres), adicionamos uma hora para o JS não se perder com fusos horários
+    // nós não inventamos uma hora falsa. Apenas invertemos para o padrão PT/BR.
     if (dataCorrigida.length === 10) {
-      dataCorrigida += 'T12:00:00';
+      const [ano, mes, dia] = dataCorrigida.split('-');
+      return `${dia}/${mes}/${ano}`; // Retorna "08/04/2026"
     }
     
-    // Verifica se a data é válida antes de tentar formatar
+    // Se a base enviar uma data completa (com horas), passa pelo formatador global
     const d = new Date(dataCorrigida);
     if (isNaN(d.getTime())) return null;
     
-    // Passa a data corrigida para o seu formatador global
     return formatarDataLocal(dataCorrigida);
   } catch (error) {
     return null;
