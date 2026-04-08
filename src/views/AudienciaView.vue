@@ -521,87 +521,73 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 p-3 pl-4 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-nowrap items-center w-full overflow-x-auto hide-scrollbar no-print relative mb-6 gap-4">
+    <div class="bg-white dark:bg-slate-900 p-4 md:p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden mb-6 flex flex-col gap-4 no-print">
       
-      <div class="absolute left-0 top-0 w-1.5 h-full bg-sky-500 rounded-l-[1.5rem]"></div>
+      <div class="absolute left-0 top-0 w-1.5 h-full bg-sky-500"></div>
       
-      <div class="flex flex-col gap-1 shrink-0 w-[180px]">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-search text-[8px]"></i> Pesquisa</span>
-        <InputText v-model="pesquisa" @input="atualizarFiltro" placeholder="Nome, email..." class="custom-input-minimal w-full" />
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center pl-2 md:pl-3">
+        
+        <div class="md:col-span-4 flex flex-col gap-1 pr-2">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-search text-[8px]"></i> Pesquisa</span>
+          <InputText v-model="pesquisa" @input="atualizarFiltro" placeholder="Nome, email ou empresa..." class="custom-minimal-element w-full" />
+        </div>
+
+        <div class="md:col-span-3 flex flex-col gap-1 md:border-l border-slate-100 dark:border-slate-800 md:pl-4 pr-2">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-clock text-[8px]"></i> Referência</span>
+          <Dropdown v-model="filtroTipoData" :options="opcoesTipoData" optionLabel="label" optionValue="value" class="custom-minimal-element w-full" />
+        </div>
+
+        <div class="md:col-span-2 flex flex-col gap-1 md:border-l border-slate-100 dark:border-slate-800 md:pl-4 pr-2">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-calendar text-[8px]"></i> A partir de</span>
+          <Calendar v-model="filtroDataInicio" dateFormat="dd/mm/yy" placeholder="Início..." class="custom-minimal-element w-full" :showIcon="false" />
+        </div>
+
+        <div class="md:col-span-2 flex flex-col gap-1 md:border-l border-slate-100 dark:border-slate-800 md:pl-4 pr-2">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-calendar text-[8px]"></i> Até</span>
+          <Calendar v-model="filtroDataFim" dateFormat="dd/mm/yy" placeholder="Fim..." class="custom-minimal-element w-full" :showIcon="false" />
+        </div>
+
+        <div class="md:col-span-1 flex justify-end">
+          <Button @click="limparFiltros" icon="pi pi-filter-slash" class="!bg-slate-50 dark:!bg-slate-800 hover:!bg-rose-50 dark:hover:!bg-rose-500/10 !text-slate-400 hover:!text-rose-500 !border-none transition-all w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer shadow-sm" v-tooltip.top="'Limpar todos os filtros'" />
+        </div>
       </div>
 
-      <div class="w-px h-8 bg-slate-100 dark:bg-slate-800 shrink-0"></div>
+      <div class="h-px w-full bg-slate-50 dark:bg-slate-800/60 my-1 ml-2"></div>
 
-      <div class="flex flex-col gap-1 shrink-0 w-[130px]">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-sitemap text-[8px]"></i> Companhia</span>
-        <Dropdown v-model="filtroCompanhia" :options="companhias" optionLabel="label" optionValue="value" placeholder="Todas" class="custom-dropdown-minimal w-full" />
-      </div>
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center pl-2 md:pl-3">
 
-      <div class="flex flex-col gap-1 shrink-0 w-[130px]">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-users text-[8px]"></i> Gestor</span>
-        <Dropdown v-model="filtroGestor" :options="gestores" optionLabel="label" optionValue="value" placeholder="Todos" class="custom-dropdown-minimal w-full" />
-      </div>
+        <div class="md:col-span-3 flex flex-col gap-1 pr-2">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-sitemap text-[8px]"></i> Companhia</span>
+          <Dropdown v-model="filtroCompanhia" :options="companhias" optionLabel="label" optionValue="value" placeholder="Todas" class="custom-minimal-element w-full" />
+        </div>
 
-      <div class="flex flex-col gap-1 shrink-0 w-[130px]">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-tag text-[8px]"></i> Status</span>
-        <Dropdown v-model="filtroStatus" :options="opcoesStatus" optionLabel="label" optionValue="value" placeholder="Todos" class="custom-dropdown-minimal w-full" />
-      </div>
+        <div class="md:col-span-3 flex flex-col gap-1 md:border-l border-slate-100 dark:border-slate-800 md:pl-4 pr-2">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-users text-[8px]"></i> Gestor</span>
+          <Dropdown v-model="filtroGestor" :options="gestores" optionLabel="label" optionValue="value" placeholder="Todos" filter class="custom-minimal-element w-full" />
+        </div>
 
-      <div class="flex flex-col gap-1 shrink-0 w-[140px]">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-clock text-[8px]"></i> Referência</span>
-        <Dropdown v-model="filtroTipoData" :options="opcoesTipoData" optionLabel="label" optionValue="value" class="custom-dropdown-minimal w-full" />
-      </div>
+        <div class="md:col-span-2 flex flex-col gap-1 md:border-l border-slate-100 dark:border-slate-800 md:pl-4 pr-2">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-tag text-[8px]"></i> Status</span>
+          <Dropdown v-model="filtroStatus" :options="opcoesStatus" optionLabel="label" optionValue="value" placeholder="Todos" class="custom-minimal-element w-full" />
+        </div>
 
-      <div class="w-px h-8 bg-slate-100 dark:bg-slate-800 shrink-0"></div>
-
-      <div class="flex flex-col gap-1 shrink-0 w-[110px]">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-calendar text-[8px]"></i> A partir</span>
-        <Calendar v-model="filtroDataInicio" dateFormat="dd/mm/yy" placeholder="Início" class="w-full custom-calendar-minimal" inputClass="custom-input-minimal !w-full" />
-      </div>
-
-      <div class="flex flex-col gap-1 shrink-0 w-[110px]">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-calendar text-[8px]"></i> Até</span>
-        <Calendar v-model="filtroDataFim" dateFormat="dd/mm/yy" placeholder="Fim" class="w-full custom-calendar-minimal" inputClass="custom-input-minimal !w-full" />
-      </div>
-
-      <div class="shrink-0">
-        <Button 
-          @click="mostrarApenasAmanha = !mostrarApenasAmanha"
-          :class="[
-            'transition-all duration-300 !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-4 !h-[42px] whitespace-nowrap',
-            mostrarApenasAmanha 
-              ? '!bg-sky-500 !text-white !border-sky-500 shadow-lg shadow-sky-500/20' 
-              : '!bg-white dark:!bg-slate-900 !text-slate-400 !border-slate-100 dark:!border-slate-800 hover:!border-sky-500 hover:!text-sky-500'
-          ]"
-          outlined
-        >
-          <div class="flex items-center gap-2">
-            <i class="pi pi-calendar-plus" :class="mostrarApenasAmanha ? 'animate-bounce' : ''"></i>
-            <span>Amanhã</span>
-            <span v-if="mostrarApenasAmanha" class="bg-white/20 px-1.5 rounded-md ml-1">{{ clientesFiltrados.length }}</span>
-          </div>
-        </Button>
-      </div>
-
-      <div class="flex items-center gap-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-            <InputSwitch v-model="mostrarApenasAmanha" />
-            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">Próximos 7 Dias</span>
+        <div class="md:col-span-4 flex flex-col sm:flex-row items-center justify-end gap-3 h-full mt-3 md:mt-0">
+          
+          <div class="flex items-center justify-between w-full sm:w-auto gap-3 bg-sky-50 dark:bg-sky-500/10 px-3.5 py-2.5 rounded-2xl border border-sky-100 dark:border-sky-500/20 cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors shadow-sm" @click="mostrarApenasAmanha = !mostrarApenasAmanha">
+            <div class="flex items-center gap-2">
+              <i class="pi pi-calendar-plus text-sky-500 text-xs" :class="{'animate-bounce': mostrarApenasAmanha}"></i>
+              <span class="text-[10px] font-black uppercase tracking-widest" :class="mostrarApenasAmanha ? 'text-sky-600 dark:text-sky-400' : 'text-slate-500 dark:text-slate-400'">Disparos Iminentes</span>
+            </div>
+            <InputSwitch v-model="mostrarApenasAmanha" class="scale-75 pointer-events-none" />
           </div>
 
-          <div class="flex items-center gap-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-            <InputSwitch v-model="mostrarInativos" />
-            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">Mostrar Inativos</span>
-      </div>
+          <div class="flex items-center justify-between w-full sm:w-auto gap-3 bg-slate-50 dark:bg-slate-800/50 px-3.5 py-2.5 rounded-2xl border border-slate-100 dark:border-slate-700/50 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-sm" @click="mostrarInativos = !mostrarInativos">
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Ver Inativos</span>
+            <InputSwitch v-model="mostrarInativos" class="scale-75 pointer-events-none" />
+          </div>
 
-      <div class="shrink-0 ml-auto pr-2">
-        <Button 
-          @click="limparFiltros" 
-          icon="pi pi-filter-slash" 
-          class="!bg-slate-50 dark:!bg-slate-800 hover:!bg-rose-50 dark:hover:!bg-rose-500/10 !text-slate-400 hover:!text-rose-500 !border-none transition-all w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer" 
-          v-tooltip.top="'Limpar todos os filtros'" 
-        />
+        </div>
       </div>
-
     </div>
 
     <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-6 pt-2">

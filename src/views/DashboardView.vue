@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import api from '../services/api';
 import { useToast } from 'primevue/usetoast';
 import { useRouter } from 'vue-router';
+import { formatarDataLocal } from '../utils/formatters';
 
 import Chart from 'primevue/chart';
 import Button from 'primevue/button';
@@ -19,8 +20,18 @@ const vTooltip = Tooltip;
 const toast = useToast();
 const loading = ref(true);
 const nomeUsuario = ref('');
-const datasFiltro = ref(null);
 const ajudaVisivel = ref(false);
+
+// 1. Calcula a data de hoje
+const dataFinal = new Date();
+
+// 2. Calcula a data de 90 dias atrás
+const dataInicial = new Date();
+dataInicial.setDate(dataFinal.getDate() - 90);
+
+// 3. Inicializa o filtro com o intervalo de 90 dias
+const datasFiltro = ref([dataInicial, dataFinal]);
+
 
 // --- ESTADOS DE DADOS ---
 const kpis = ref({
@@ -72,17 +83,15 @@ const alertasPrioritarios = computed(() => {
 
   return [...ranking.value]
     .filter(item => {
-      // 1. Tem de estar ativo
       const isAtivo = item.ativo !== 0 && item.ativo !== false;
-      
-      // 2. 💡 CORREÇÃO RIGOROSA: Tem de ter um status (não é null) E não pode estar 'Concluído'
       const temAcaoEmAndamento = item.acao_status && item.acao_status !== 'Concluído';
-
       return isAtivo && temAcaoEmAndamento;
     }) 
     .sort((a, b) => {
-      if (a.nps !== b.nps) return a.nps - b.nps;
-      return new Date(a.data_ultima_resposta) - new Date(b.data_ultima_resposta);
+      const dataA = a.acao_criada_em ? new Date(a.acao_criada_em).getTime() : 0;
+      const dataB = b.acao_criada_em ? new Date(b.acao_criada_em).getTime() : 0;
+      
+      return dataB - dataA;
     })
     .slice(0, 5);
 });
@@ -659,8 +668,8 @@ onMounted(() => {
                     </div>
                     <div class="flex flex-col overflow-hidden pr-2 w-full">
                       <span class="text-[12px] font-black text-slate-800 dark:text-white truncate">{{ item.nome }}</span>
-                      <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 truncate flex items-center gap-1.5">
-                        <i class="pi pi-clock text-[8px]"></i> {{ formatarData(item.data_ultima_resposta) }}
+                      <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 truncate flex items-center gap-1.5" v-tooltip.top="'Data de abertura da pendência'">
+                        <i class="pi pi-calendar-plus text-[8px]"></i> {{ formatarDataLocal(item.acao_criada_em) }}
                       </span>
                     </div>
                   </div>

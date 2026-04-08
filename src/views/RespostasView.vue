@@ -2,9 +2,10 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import api from '../services/api';
 import { useRouter } from 'vue-router';
+import { formatarDataLocal } from '../utils/formatters';
 
 import { useToast } from 'primevue/usetoast';
-
+import Calendar from 'primevue/calendar';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
@@ -19,7 +20,6 @@ import Skeleton from 'primevue/skeleton';
 const toast = useToast();
 const respostas = ref([]);
 const loading = ref(true);
-
 const router = useRouter();
 
 // Função que encaminha o utilizador para o Kanban com o ID da ação
@@ -30,10 +30,84 @@ const irParaAcao = (acaoId) => {
 };
 
 // ==========================================
-// 🏢 DADOS PARA OS COMBOS DE FILTRO
+// 1. DECLARAÇÃO DOS FILTROS (Variáveis primeiro)
+// ==========================================
+const dataFinal = new Date();
+const dataInicial = new Date();
+dataInicial.setDate(dataFinal.getDate() - 90);
+
+const datasFiltro = ref(null); 
+
+const filtros = ref({
+  q: '',
+  companhia: 'Todas',
+  empresa: 'Todas',
+  categoria: 'Todas',
+  perfil: 'Todos',
+  incluir_excluidas: false,
+  tipo_data: 'data_resposta'
+});
+
+const opcoesTipoData = [
+  { label: 'Data da Resposta (Real)', value: 'data_resposta' },
+  { label: 'Data de Cadastro (Sistema)', value: 'created_at' }
+];
+
+const opcoesCategoria = ['Todas', 'Promotor', 'Neutro', 'Detrator'];
+const opcoesPerfil = ['Todos', 'Decisor', 'Influenciador', 'Outro'];
+
+const formatarDataSegura = (valor) => {
+  if (!valor || String(valor).trim() === '' || valor === 'NaT' || valor === 'None' || valor === 'null') {
+    return null;
+  }
+  
+  try {
+    const d = new Date(valor);
+    if (isNaN(d.getTime())) return null;
+    
+    return formatarDataLocal(valor);
+  } catch (e) {
+    return null;
+  }
+};
+
+const tratarData = (dataOriginal) => {
+  if (!dataOriginal || dataOriginal === 'NaT' || dataOriginal === 'None' || dataOriginal === '') {
+    return null; // O HTML vai mostrar "Sem data"
+  }
+  
+  try {
+    let dataCorrigida = String(dataOriginal).trim();
+    
+    // Se vier apenas "YYYY-MM-DD" (10 caracteres), adicionamos uma hora para o JS não se perder com fusos horários
+    if (dataCorrigida.length === 10) {
+      dataCorrigida += 'T12:00:00';
+    }
+    
+    // Verifica se a data é válida antes de tentar formatar
+    const d = new Date(dataCorrigida);
+    if (isNaN(d.getTime())) return null;
+    
+    // Passa a data corrigida para o seu formatador global
+    return formatarDataLocal(dataCorrigida);
+  } catch (error) {
+    return null;
+  }
+};
+
+// ==========================================
+// 2. COMBOS (Companhias e Empresas)
 // ==========================================
 const empresasData = ref([]);
 const opcoesCompanhia = ref(['Todas']);
+
+const opcoesEmpresa = computed(() => {
+  let filtradas = empresasData.value;
+  if (filtros.value.companhia && filtros.value.companhia !== 'Todas') {
+    filtradas = empresasData.value.filter(e => e.companhia === filtros.value.companhia);
+  }
+  return ['Todas', ...filtradas.map(e => e.nome).sort()];
+});
 
 const carregarCombos = async () => {
   try {
@@ -59,35 +133,11 @@ const carregarCombos = async () => {
   }
 };
 
-// 🌟 COMBOBOX INTELIGENTE: Filtra as empresas com base na companhia escolhida
-const opcoesEmpresa = computed(() => {
-  let filtradas = empresasData.value;
-  if (filtros.value.companhia && filtros.value.companhia !== 'Todas') {
-    filtradas = empresasData.value.filter(e => e.companhia === filtros.value.companhia);
-  }
-  return ['Todas', ...filtradas.map(e => e.nome).sort()];
-});
-
-
 // ==========================================
-// 🔍 FILTROS COM MEMÓRIA DE SESSÃO
+// 3. WATCHERS (Memória e pesquisa)
 // ==========================================
-const filtros = ref({
-  q: '', 
-  companhia: 'Todas', 
-  empresa: 'Todas',   
-  categoria: 'Todas', 
-  perfil: 'Todos', 
-  incluir_excluidas: localStorage.getItem('nps_ver_arquivados') === 'true' 
-});
-
-const opcoesCategoria = ['Todas', 'Promotor', 'Neutro', 'Detrator'];
-const opcoesPerfil = ['Todos', 'Decisor', 'Influenciador', 'Outro'];
-
-// 🚀 O SEGREDO DA UX: Watcher Inteligente com "Debounce"
 let timeoutPesquisa = null;
 
-// Quando muda a companhia, limpa a empresa selecionada
 watch(() => filtros.value.companhia, (nova, antiga) => {
   if (nova !== antiga) {
     filtros.value.empresa = 'Todas';
@@ -103,7 +153,6 @@ watch(filtros, (novosFiltros) => {
   }, 500);
 }, { deep: true }); 
 
-
 // ==========================================
 // 📡 COMUNICAÇÃO COM A API E FILTROS LOCAIS
 // ==========================================
@@ -114,10 +163,26 @@ const carregarRespostas = async () => {
       q: filtros.value.q,
       companhia: filtros.value.companhia === 'Todas' ? '' : filtros.value.companhia,
       empresa: filtros.value.empresa === 'Todas' ? '' : filtros.value.empresa,
-      categoria: filtros.value.categoria,
-      perfil: filtros.value.perfil,
-      incluir_excluidas: filtros.value.incluir_excluidas
+      categoria: filtros.value.categoria === 'Todas' ? '' : filtros.value.categoria,
+      perfil: filtros.value.perfil === 'Todos' ? '' : filtros.value.perfil,
+      incluir_excluidas: filtros.value.incluir_excluidas,
+      tipo_data: filtros.value.tipo_data // 🎯 Adicionado
     };
+
+    if (datasFiltro.value && datasFiltro.value[0] && datasFiltro.value[1]) {
+      params.data_inicio = new Date(datasFiltro.value[0]).toISOString().split('T')[0];
+      params.data_fim = new Date(datasFiltro.value[1]).toISOString().split('T')[0];
+    }
+
+    if (datasFiltro.value && datasFiltro.value[0] && datasFiltro.value[1]) {
+      const formatarDate = (data) => {
+        const d = new Date(data);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+      };
+      params.data_inicio = formatarDate(datasFiltro.value[0]);
+      params.data_fim = formatarDate(datasFiltro.value[1]);
+    }
     
     const response = await api.get('/respostas', { params });
     
@@ -273,10 +338,6 @@ const criarPlanoAcao = async () => {
 // ==========================================
 // 🎨 UTILITÁRIOS DE UI
 // ==========================================
-const formatarData = (dataStr) => {
-  if (!dataStr) return '-';
-  return new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(dataStr));
-};
 
 const obterCorNPS = (nota) => {
   if (nota >= 9) return 'bg-emerald-500 shadow-emerald-500/30';
@@ -387,9 +448,10 @@ onMounted(async () => {
         />
         
       </div>
-      </div> ```
+    </div>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 animate-fadein">
+
       <div class="bg-white dark:bg-slate-900 p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
         <div>
           <span class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Total Filtrado</span>
@@ -423,43 +485,81 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 no-print relative overflow-hidden mb-6 items-center">
+    <div class="bg-white dark:bg-slate-900 p-4 md:p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden mb-6 flex flex-col gap-4 no-print">
+          
+      <div class="absolute left-0 top-0 w-1.5 h-full bg-orange-500"></div>
       
-      <div class="absolute left-0 top-0 w-1 h-full bg-orange-500"></div>
-      
-      <div class="flex flex-col gap-1 px-2 md:px-3">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-search text-[8px]"></i> Pesquisa</span>
-        <InputText v-model="filtros.q" placeholder="Buscar..." class="custom-minimal-element w-full" />
-      </div>
-
-      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-sitemap text-[8px]"></i> Companhia</span>
-        <Dropdown v-model="filtros.companhia" :options="opcoesCompanhia" class="custom-minimal-element w-full" />
-      </div>
-      
-      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-building text-[8px]"></i> Empresa</span>
-        <Dropdown v-model="filtros.empresa" :options="opcoesEmpresa" filter placeholder="Todas" class="custom-minimal-element w-full" />
-      </div>
-
-      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-tag text-[8px]"></i> Categoria</span>
-        <Dropdown v-model="filtros.categoria" :options="opcoesCategoria" class="custom-minimal-element w-full" />
-      </div>
-
-      <div class="flex flex-col gap-1 px-2 md:px-3 border-l border-slate-100 dark:border-slate-800">
-        <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5"><i class="pi pi-user text-[8px]"></i> Perfil</span>
-        <Dropdown v-model="filtros.perfil" :options="opcoesPerfil" class="custom-minimal-element w-full" />
-      </div>
-
-      <div class="flex items-center justify-center px-2 md:px-3 border-l border-slate-100 dark:border-slate-800 h-full">
-        <div class="flex items-center gap-3">
-            <InputSwitch v-model="filtros.incluir_excluidas" />
-            <label class="text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer" @click="filtros.incluir_excluidas = !filtros.incluir_excluidas">
-            Arquivados
-            </label>
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end pl-2 md:pl-3">
+        
+        <div class="md:col-span-4 flex flex-col gap-1">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
+            <i class="pi pi-search text-[8px]"></i> Pesquisa
+          </span>
+          <InputText v-model="filtros.q" placeholder="Buscar por nome, e-mail ou comentário..." class="custom-minimal-element w-full" />
         </div>
+
+        <div class="md:col-span-3 flex flex-col gap-1 md:border-l border-slate-100 dark:border-slate-800 md:pl-4">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
+            <i class="pi pi-clock text-[8px]"></i> Referência
+          </span>
+          <Dropdown v-model="filtros.tipo_data" :options="opcoesTipoData" optionLabel="label" optionValue="value" class="custom-minimal-element w-full" @change="carregarRespostas" />
+        </div>
+
+        <div class="md:col-span-3 flex flex-col gap-1 md:border-l border-slate-100 dark:border-slate-800 md:pl-4 group">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center justify-between w-full">
+            <span class="flex items-center gap-1.5">
+              <i class="pi pi-calendar text-[8px]"></i> Período
+            </span>
+            <i v-if="datasFiltro && datasFiltro[1]" class="pi pi-times text-slate-300 hover:text-rose-500 cursor-pointer transition-colors" @click="datasFiltro = null" v-tooltip.top="'Limpar Filtro'"></i>
+          </span>
+          <Calendar v-model="datasFiltro" selectionMode="range" :manualInput="false" placeholder="Selecione o período..." dateFormat="dd/mm/yy" class="custom-minimal-element w-full" :showIcon="false" @hide="carregarRespostas" />
+        </div>
+
+        <div class="md:col-span-2 flex items-center md:justify-end md:border-l border-slate-100 dark:border-slate-800 md:pl-4 h-[38px]">
+          <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 rounded-xl w-full md:w-auto justify-center border border-slate-100 dark:border-slate-700/50 hover:border-orange-500/30 transition-colors">
+            <InputSwitch v-model="filtros.incluir_excluidas" inputId="toggle_arquivados" />
+            <label for="toggle_arquivados" class="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 cursor-pointer select-none">
+              Arquivados
+            </label>
+          </div>
+        </div>
+
       </div>
+
+      <div class="h-px w-full bg-slate-50 dark:bg-slate-800/60 my-1 ml-2"></div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center pl-2 md:pl-3">
+        
+        <div class="flex flex-col gap-1 pr-2">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
+            <i class="pi pi-sitemap text-[8px]"></i> Companhia
+          </span>
+          <Dropdown v-model="filtros.companhia" :options="opcoesCompanhia" class="custom-minimal-element w-full" @change="carregarRespostas" />
+        </div>
+        
+        <div class="flex flex-col gap-1 sm:border-l border-slate-100 dark:border-slate-800 sm:pl-4">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
+            <i class="pi pi-building text-[8px]"></i> Empresa
+          </span>
+          <Dropdown v-model="filtros.empresa" :options="opcoesEmpresa" filter placeholder="Todas" class="custom-minimal-element w-full" @change="carregarRespostas" />
+        </div>
+
+        <div class="flex flex-col gap-1 lg:border-l border-slate-100 dark:border-slate-800 lg:pl-4 pt-2 sm:pt-0">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
+            <i class="pi pi-tag text-[8px]"></i> Categoria
+          </span>
+          <Dropdown v-model="filtros.categoria" :options="opcoesCategoria" class="custom-minimal-element w-full" @change="carregarRespostas" />
+        </div>
+
+        <div class="flex flex-col gap-1 sm:border-l border-slate-100 dark:border-slate-800 sm:pl-4 pt-2 sm:pt-0">
+          <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
+            <i class="pi pi-user text-[8px]"></i> Perfil
+          </span>
+          <Dropdown v-model="filtros.perfil" :options="opcoesPerfil" class="custom-minimal-element w-full" @change="carregarRespostas" />
+        </div>
+
+      </div>
+
     </div>
 
     <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-6">
@@ -575,9 +675,25 @@ onMounted(async () => {
           </template>
         </Column>
 
-        <Column field="created_at" header="Registro" style="width: 140px">
-          <template #body="s">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{{ formatarData(s.data.created_at) }}</span>
+        <Column header="Cronologia" class="min-w-[160px]">
+          <template #body="{ data }">
+            <div class="flex flex-col gap-1.5 py-1">
+              
+              <div class="flex items-center gap-2">
+                <i class="pi pi-comment text-[10px] text-orange-500"></i>
+                <span class="text-[11px] font-bold text-slate-700 dark:text-white">
+                  {{ tratarData(data.data_resposta) || 'Sem data' }}
+                </span>
+              </div>
+
+              <div class="flex items-center gap-2 opacity-50 ml-0.5">
+                <i class="pi pi-database text-[9px]"></i>
+                <span class="text-[9px] uppercase tracking-widest font-medium">
+                  {{ tratarData(data.created_at) || '-' }}
+                </span>
+              </div>
+              
+            </div>
           </template>
         </Column>
 
@@ -879,5 +995,21 @@ onMounted(async () => {
 :deep(.custom-dialog-no-header .p-dialog-content) {
   padding: 0 !important;
   @apply dark:bg-slate-900;
+}
+
+/* ==========================================
+   🌙 MENU DO CALENDÁRIO (DATEPICKER)
+   ========================================== */
+:deep(.p-datepicker) {
+  @apply dark:bg-slate-800 dark:border-slate-700 shadow-2xl !important;
+}
+:deep(.p-datepicker table td > span) {
+  @apply text-xs font-medium dark:text-slate-300 !important;
+}
+:deep(.p-datepicker table td > span.p-highlight) {
+  @apply bg-orange-500/10 text-orange-600 dark:text-orange-400 !important;
+}
+:deep(.p-datepicker table td > span:not(.p-highlight):not(.p-disabled):hover) {
+  @apply bg-slate-100 dark:bg-slate-700/50 !important;
 }
 </style>
