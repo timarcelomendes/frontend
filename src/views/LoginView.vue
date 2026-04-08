@@ -158,15 +158,16 @@
             <small v-if="erros.nome" class="text-xs font-bold text-rose-500 pl-2 mt-0.5 animate-fadein">{{ erros.nome }}</small>
           </div>
 
-          <div class="flex flex-col gap-1.5">
-            <label for="email" class="text-sm font-bold text-slate-700 dark:text-slate-300">E-mail Corporativo</label>
-            <span class="p-input-icon-left">
-              <i class="pi pi-envelope text-slate-400" :class="{'!text-rose-500': erros.email}" />
-              <InputText v-if="isLoginMode" id="email" v-model="credenciais.email" type="email" placeholder="seu.nome@stefanini.com" class="w-full custom-input" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.email || erros.geral}" @input="limparErroDe('email')" />
-              <InputText v-else id="email_reg" v-model="registro.email" type="email" placeholder="seu.nome@stefanini.com" class="w-full custom-input" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.email}" @input="limparErroDe('email')" />
-            </span>
-            <small v-if="erros.email" class="text-xs font-bold text-rose-500 pl-2 mt-0.5 animate-fadein">{{ erros.email }}</small>
-          </div>
+          <InputText v-if="isLoginMode" 
+           id="email" 
+           v-model="credenciais.email" 
+           type="email" 
+           placeholder="seu.nome@stefanini.com" 
+           class="w-full custom-input" 
+           :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.email || erros.geral}" 
+           @input="() => { limparErroDe('email'); checarEmailSalvo(); }"
+           @change="checarEmailSalvo"
+           @blur="checarEmailSalvo" />
 
           <div class="flex flex-col gap-1.5 relative">
             <div class="flex justify-between items-center">
@@ -180,8 +181,8 @@
 
           <div v-if="isLoginMode" class="flex items-center justify-between gap-2 mt-1">
             <div class="flex items-center gap-2">
-              <Checkbox id="remember" v-model="lembrarDeMim" :binary="true" class="custom-checkbox" />
-              <label for="remember" class="text-xs font-semibold text-slate-600 dark:text-slate-400 cursor-pointer">Lembrar meu e-mail</label>
+              <Checkbox v-model="lembrarDeMim" :binary="true" inputId="lembrar" />
+              <label for="lembrar" class="ml-2 cursor-pointer select-none text-slate-700 dark:text-slate-300 font-medium">Lembrar meu e-mail</label>
             </div>
           </div>
 
@@ -245,6 +246,7 @@ import { useToast } from 'primevue/usetoast';
 import { PublicClientApplication } from '@azure/msal-browser';
 import api from '../services/api';
 
+// 🚨 IMPORTAÇÕES RESTAURADAS - O QUE HAVIA QUEBRADO A TELA
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
@@ -265,23 +267,13 @@ const isDarkMode = ref(true);
 const ssoAtivo = ref(false);
 const loadingMicrosoft = ref(false);
 const loadingReenvio = ref(false);
-const ajudaVisivel = ref(false);
+const ajudaVisivel = ref(false); // 🚨 VARIÁVEL RESTAURADA
 let msalInstance = null;
 
 // --- DADOS DO FORMULÁRIO E ERROS ---
 const credenciais = ref({ email: '', password: '' });
 const registro = ref({ nome: '', email: '', password: '' });
 const lembrarDeMim = ref(false);
-
-watch(() => credenciais.value.email, (novoEmail) => {
-  const emailSalvo = localStorage.getItem('nps_remember_email');
-  
-  if (emailSalvo && novoEmail.trim().toLowerCase() === emailSalvo.toLowerCase()) {
-    lembrarDeMim.value = true;
-  } else {
-    lembrarDeMim.value = false;
-  }
-});
 
 const erros = ref({
   geral: '',
@@ -327,19 +319,31 @@ const armazenarSessao = (data) => {
   }
 };
 
+// 🎯 A SOLUÇÃO LIMPA E NATIVA DO CHECKBOX
+const checarEmailSalvo = () => {
+  const emailSalvo = localStorage.getItem('nps_remember_email');
+  
+  if (emailSalvo && credenciais.value.email) {
+    if (credenciais.value.email.trim().toLowerCase() === emailSalvo.trim().toLowerCase()) {
+      lembrarDeMim.value = true;
+    } else {
+      lembrarDeMim.value = false;
+    }
+  }
+};
+
+watch(() => credenciais.value.email, checarEmailSalvo);
+
 // --- CICLO DE VIDA (INIT) ---
 onMounted(async () => {
-  // --- 1. GESTÃO DE TEMA (Otimizada) ---
   const savedTheme = localStorage.getItem('darkMode');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   
-  // Se houver algo salvo, usa o salvo. Se não, usa a preferência do sistema.
   const isDark = savedTheme === 'true' || (savedTheme === null && prefersDark);
   
   isDarkMode.value = isDark;
   document.documentElement.classList.toggle('dark', isDark);
 
-  // --- 2. TRATAMENTO DE URL E TOASTS ---
   if (window.location.hash.includes('code=') || window.location.hash.includes('state=')) {
       processandoRetorno.value = true;
   }
@@ -352,14 +356,12 @@ onMounted(async () => {
       router.replace({ query: null });
   }
 
-  // --- 3. REMEMBER ME (E-mail salvo) ---
   const emailSalvo = localStorage.getItem('nps_remember_email');
   if (emailSalvo) {
     credenciais.value.email = emailSalvo;
     lembrarDeMim.value = true;
   }
   
-  // --- 4. CONFIGURAÇÃO SSO MICROSOFT (Async) ---
   try {
     const res = await api.get('/auth/sso-config'); 
     
@@ -378,12 +380,11 @@ onMounted(async () => {
         msalInstance = new PublicClientApplication(msalConfig);
         await msalInstance.initialize();
 
-        // Verifica se o usuário está voltando do redirecionamento da Microsoft
         const responseMSAL = await msalInstance.handleRedirectPromise();
         
         if (responseMSAL) {
             loadingMicrosoft.value = true;
-            processandoRetorno.value = true; // Ativa o overlay de animação
+            processandoRetorno.value = true;
             
             const authRes = await api.post('/auth/microsoft', { 
                 access_token: responseMSAL.accessToken 
@@ -391,7 +392,6 @@ onMounted(async () => {
 
             if (authRes.data.access_token) {
                 armazenarSessao(authRes.data);
-                // Pequeno delay para a animação do "caminho do NPS" ser vista
                 setTimeout(() => { router.push('/'); }, 1500);
             }
         }
@@ -401,11 +401,22 @@ onMounted(async () => {
       processandoRetorno.value = false;
       
       let msgErro = "Falha ao autenticar com a Microsoft.";
-      if (error.response?.data?.detail) {
-        msgErro = error.response.data.detail; 
-      } else if (error.message) {
-        msgErro = error.message; 
+      
+      // 🎯 TRATAMENTO DO ERRO AADSTS65004 E CANCELAMENTOS
+      const strErro = error.error_description || error.message || String(error);
+      
+      if (strErro.includes('AADSTS65004') || strErro.includes('access_denied') || strErro.includes('User declined')) {
+          msgErro = "O login seguro foi cancelado ou as permissões foram recusadas. Tente novamente se desejar entrar.";
+      } 
+      // Tratamento de erros do nosso próprio backend
+      else if (error.response && error.response.data && error.response.data.detail) {
+          msgErro = error.response.data.detail; 
+      } 
+      // Outros erros desconhecidos
+      else if (strErro) {
+          msgErro = strErro; 
       }
+      
       erros.value.geral = msgErro; 
   }
 });
@@ -419,11 +430,17 @@ const fazerLogin = async () => {
   if (loading.value) return; 
   limparErros();
   
+  // Blindagem do PrimeVue
+  const isMarcado = 
+    lembrarDeMim.value === true || 
+    lembrarDeMim.value === 'true' || 
+    (Array.isArray(lembrarDeMim.value) && lembrarDeMim.value.length > 0);
+
   if (!credenciais.value.email || !credenciais.value.password) {
     erros.value.geral = "Preencha todos os campos.";
     return;
   }
-
+  
   loading.value = true;
   processandoRetorno.value = true;
   
@@ -431,16 +448,20 @@ const fazerLogin = async () => {
     const response = await api.post('/login', {
       email: credenciais.value.email,
       password: credenciais.value.password,
-      remember: lembrarDeMim.value
+      remember: isMarcado 
     }); 
 
-    if (response.data && response.data.access_token && response.data.nome) {
-      armazenarSessao(response.data);
+    if (response.data && response.data.access_token) {
       
-      if (lembrarDeMim.value) localStorage.setItem('nps_remember_email', credenciais.value.email);
-      else localStorage.removeItem('nps_remember_email'); 
+      if (isMarcado) {
+        localStorage.setItem('nps_remember_email', credenciais.value.email.trim());
+      } else {
+        localStorage.removeItem('nps_remember_email'); 
+      }
 
+      armazenarSessao(response.data);
       setTimeout(() => { router.push('/'); }, 2200); 
+
     } else {
       throw new Error("Dados de perfil incompletos no servidor.");
     }
