@@ -645,14 +645,19 @@ onMounted(async () => {
               <p class="text-[12px] text-slate-600 dark:text-slate-300 font-medium italic leading-relaxed mb-2" :class="{'opacity-50 line-through': s.data.excluido}">
                 "{{ s.data.motivo || 'Nenhum comentário textual deixado.' }}"
               </p>
+              
               <div class="flex flex-wrap gap-2 items-center">
-                <Tag v-if="s.data.categoria" :value="s.data.categoria" severity="secondary" class="!bg-slate-100 dark:!bg-slate-800 !text-slate-500 !text-[8px] !font-black !px-2 uppercase tracking-widest border border-slate-200 dark:border-slate-700" />
+                <Tag v-if="s.data.categoria" :value="s.data.categoria" severity="secondary" 
+                    class="!bg-slate-100 dark:!bg-slate-800 !text-slate-500 !text-[8px] !font-black !px-2 uppercase tracking-widest border border-slate-200 dark:border-slate-700" />
                 
-                <a v-if="s.data.jira_issue_url" :href="s.data.jira_issue_url" target="_blank" rel="noopener noreferrer" class="no-underline">
-                  <Tag value="Abrir Ticket Jira" icon="pi pi-external-link" class="!bg-[#0052CC] hover:!bg-[#003B99] cursor-pointer !text-white !text-[8px] !font-black !px-2 uppercase tracking-widest shadow-md transition-colors" />
-                </a>
+                <Tag v-if="s.data.perfil_cliente" :value="s.data.perfil_cliente" 
+                    icon="pi pi-user"
+                    class="!bg-blue-50 dark:!bg-blue-900/20 !text-blue-600 dark:!text-blue-400 !text-[8px] !font-black !px-2 uppercase tracking-widest border border-blue-100 dark:border-blue-800/50" />
 
-                <span v-if="s.data.excluido" class="text-[9px] font-black uppercase text-rose-500 tracking-widest flex items-center gap-1 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-md"><i class="pi pi-folder"></i> Arquivado</span>
+                <span v-if="s.data.excluido" 
+                      class="text-[9px] font-black uppercase text-rose-500 tracking-widest flex items-center gap-1 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-md">
+                  <i class="pi pi-folder"></i> Arquivado
+                </span>
               </div>
             </div>
           </template>
