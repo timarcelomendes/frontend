@@ -239,7 +239,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'; 
+import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { PublicClientApplication } from '@azure/msal-browser';
@@ -272,6 +272,16 @@ let msalInstance = null;
 const credenciais = ref({ email: '', password: '' });
 const registro = ref({ nome: '', email: '', password: '' });
 const lembrarDeMim = ref(false);
+
+watch(() => credenciais.value.email, (novoEmail) => {
+  const emailSalvo = localStorage.getItem('nps_remember_email');
+  
+  if (emailSalvo && novoEmail.trim().toLowerCase() === emailSalvo.toLowerCase()) {
+    lembrarDeMim.value = true;
+  } else {
+    lembrarDeMim.value = false;
+  }
+});
 
 const erros = ref({
   geral: '',
