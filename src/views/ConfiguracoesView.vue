@@ -289,7 +289,10 @@ const processarCallbackMicrosoft = async () => {
   if (code) {
     verificandoConexao.value = true;
     try {
-      await api.post('/config/email/autorizar', { code });
+      await api.post('/config/email/autorizar', { 
+          code: code,
+          redirect_uri: `${window.location.origin}/configuracoes`
+      });
       toast.add({ severity: 'success', summary: 'API Conectada', detail: 'Autorização Microsoft concluída.', life: 5000 });
       window.history.replaceState({}, document.title, window.location.pathname);
       carregarDadosConfig(); 
