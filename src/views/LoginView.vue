@@ -184,14 +184,33 @@
             <small v-if="erros.email" class="text-xs font-bold text-rose-500 pl-2 mt-0.5 animate-fadein">{{ erros.email }}</small>
           </div>
 
-          <div class="flex flex-col gap-1.5 relative">
-            <div class="flex justify-between items-center">
-              <label for="password" class="text-sm font-bold text-slate-700 dark:text-slate-300 tracking-tight">Senha</label>
-              <a v-if="isLoginMode" @click.prevent="router.push({ name: 'ForgotPassword' })" href="#" class="text-xs font-semibold text-orange-600 dark:text-orange-500 hover:underline">Esqueceu a senha?</a>
-            </div>
-            <Password v-if="isLoginMode" id="password" v-model="credenciais.password" :feedback="false" placeholder="••••••••" class="w-full custom-password" inputClass="w-full" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.password || erros.geral}" toggleMask @input="limparErroDe('password')" />
-            <Password v-else id="password_reg" v-model="registro.password" placeholder="Crie uma senha forte" class="w-full custom-password" inputClass="w-full" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.password}" toggleMask @input="limparErroDe('password')" />
-            <small v-if="erros.password" class="text-xs font-bold text-rose-500 pl-2 mt-0.5 animate-fadein">{{ erros.password }}</small>
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Senha</label>
+            <Password 
+              v-model="registro.password" 
+              placeholder="••••••••" 
+              :feedback="true" 
+              toggleMask 
+              class="w-full"
+              inputClass="custom-input w-full"
+              promptLabel="Escolha uma senha forte"
+              weakLabel="Fraca"
+              mediumLabel="Média"
+              strongLabel="Forte"
+            >
+              <template #header>
+                <h6 class="text-xs font-bold mb-2">Requisitos:</h6>
+              </template>
+              <template #footer>
+                <Divider />
+                <ul class="pl-2 ml-2 mt-0 text-xs list-disc leading-relaxed">
+                  <li>Mínimo 8 caracteres</li>
+                  <li>Pelo menos uma letra maiúscula</li>
+                  <li>Pelo menos um número</li>
+                  <li>Pelo menos um caractere especial</li>
+                </ul>
+              </template>
+            </Password>
           </div>
 
           <div v-if="isLoginMode" class="flex items-center justify-between gap-2 mt-1">
