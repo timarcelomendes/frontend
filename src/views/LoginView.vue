@@ -186,7 +186,18 @@
 
           <div class="space-y-1.5">
             <label class="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Senha</label>
-            <Password 
+            
+            <Password v-if="isLoginMode"
+              v-model="credenciais.password" 
+              placeholder="••••••••" 
+              :feedback="false" 
+              toggleMask 
+              class="w-full"
+              inputClass="custom-input w-full"
+              @keyup.enter="handleSubmit"
+            />
+
+            <Password v-else
               v-model="registro.password" 
               placeholder="••••••••" 
               :feedback="true" 
@@ -207,7 +218,7 @@
                   <li>Mínimo 8 caracteres</li>
                   <li>Pelo menos uma letra maiúscula</li>
                   <li>Pelo menos um número</li>
-                  <li>Pelo menos um caractere especial</li>
+                  <li>Pelo menos um caractere especial (@$!%*?&)</li>
                 </ul>
               </template>
             </Password>
@@ -218,6 +229,10 @@
               <Checkbox v-model="lembrarDeMim" :binary="true" inputId="lembrar" />
               <label for="lembrar" class="ml-2 cursor-pointer select-none text-slate-700 dark:text-slate-300 font-medium">Lembrar meu e-mail</label>
             </div>
+            
+            <a @click.prevent="router.push('/forgot-password')" href="#" class="text-xs font-bold text-slate-500 hover:text-orange-600 dark:hover:text-orange-500 transition-colors duration-200">
+              Esqueceu a senha?
+            </a>
           </div>
 
           <Button type="submit" :loading="loading" class="w-full custom-submit-btn group mt-2 transition-all duration-300">
