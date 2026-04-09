@@ -374,12 +374,17 @@ onMounted(async () => {
       processandoRetorno.value = true;
   }
 
-  if (route.query.verificado === 'true') {
-      toast.add({ severity: 'success', summary: 'E-mail Confirmado!', detail: 'Acesso liberado.', life: 5000 });
-      router.replace({ query: null }); 
-  } else if (route.query.erro) {
+  if (route.query.status === 'confirmado') {
+      toast.add({ 
+        severity: 'success', 
+        summary: 'E-mail Confirmado!', 
+        detail: 'A sua conta foi verificada com sucesso. Agora pode fazer login (sujeito a aprovação do administrador).', 
+        life: 8000 
+      });
+      router.replace({ query: {} }); // Limpa a URL
+  } else if (route.query.status === 'erro' || route.query.erro) {
       erros.value.geral = 'O link de verificação expirou ou é inválido.';
-      router.replace({ query: null });
+      router.replace({ query: {} });
   }
 
   const emailSalvo = localStorage.getItem('nps_remember_email');
