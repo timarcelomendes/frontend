@@ -542,14 +542,15 @@ const fazerRegistro = async () => {
     return;
   }
 
-  loading.value = true;
+loading.value = true;
   try {
     console.log("🚀 Enviando registro:", registro.value);
     
+    // 🎯 CORREÇÃO AQUI: Trocado 'dados' por 'registro.value'
     const response = await api.post('/register', {
-        nome: dados.nome,
-        email: dados.email,
-        password: dados.password,
+        nome: registro.value.nome,
+        email: registro.value.email,
+        password: registro.value.password,
         url_plataforma: window.location.origin 
     });
 
