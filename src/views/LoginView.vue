@@ -547,10 +547,11 @@ const fazerRegistro = async () => {
     console.log("🚀 Enviando registro:", registro.value);
     
     const response = await api.post('/register', {
-      nome: registro.value.nome,
-      email: registro.value.email,
-      password: registro.value.password
-    }); 
+        nome: dados.nome,
+        email: dados.email,
+        password: dados.password,
+        url_plataforma: window.location.origin 
+    });
 
     toast.add({ 
       severity: 'success', 

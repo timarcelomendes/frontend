@@ -286,12 +286,14 @@ const autorizarMicrosoft = () => {
 const processarCallbackMicrosoft = async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
+  
   if (code) {
     verificandoConexao.value = true;
     try {
+      // 🎯 Aqui está a mágica: enviamos o code E a URL dinâmica exata!
       await api.post('/config/email/autorizar', { 
-          code: code,
-          redirect_uri: `${window.location.origin}/configuracoes`
+        code: code,
+        redirect_uri: window.location.origin + '/configuracoes' 
       });
       toast.add({ severity: 'success', summary: 'API Conectada', detail: 'Autorização Microsoft concluída.', life: 5000 });
       window.history.replaceState({}, document.title, window.location.pathname);
