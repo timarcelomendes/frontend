@@ -1,183 +1,237 @@
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2 min-h-screen bg-white dark:bg-slate-900 font-sans overflow-hidden">
+  <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 transition-colors duration-300 relative overflow-hidden font-sans">
     <Toast />
     
-    <div class="flex flex-col justify-center items-center px-6 py-12 md:px-20 bg-slate-50/50 dark:bg-slate-950/20 relative">
-      <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 to-sky-500 md:hidden"></div>
-      
-      <div class="w-full max-w-sm animate-fadein">
-        <div class="flex flex-col items-center mb-10 text-center">
-          <div class="relative flex items-center justify-center w-16 h-16 mb-4 rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 shadow-xl border border-slate-700/50">
-            <i class="pi pi-lock-open text-transparent bg-clip-text bg-gradient-to-br from-indigo-400 to-sky-400 text-3xl"></i>
-          </div>
-          <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tighter leading-none mb-2">Nova Senha</h1>
-          <p class="text-[11px] font-black uppercase tracking-[0.2em] text-sky-500 mt-1">
-            NPS Intelligence
-          </p>
-        </div>
-
-        <form @submit.prevent="salvarNovaSenha" class="space-y-6">
-          <div class="space-y-1.5">
-            <label class="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Nova Senha de Acesso</label>
-            <span class="p-input-icon-left w-full relative">
-              <i class="pi pi-lock !text-slate-400 z-20" />
-              <Password 
-                v-model="novaSenha" 
-                toggleMask 
-                placeholder="No mínimo 6 caracteres" 
-                class="w-full"
-                inputClass="custom-input w-full"
-                promptLabel="Escolha uma senha forte"
-                weakLabel="Fraca" 
-                mediumLabel="Média" 
-                strongLabel="Forte"
-                required 
-              />
-            </span>
-          </div>
-
-          <Button type="submit" :loading="loading" class="w-full !bg-gradient-to-r !from-indigo-500 !to-indigo-600 !text-white !py-4 !rounded-2xl !font-bold !text-[12px] uppercase tracking-[0.2em] !shadow-lg !shadow-indigo-500/20 !border-none hover:scale-[1.02] transition-transform">
-            <span>{{ loading ? 'Salvando...' : 'Confirmar Nova Senha' }}</span>
-          </Button>
-        </form>
-
-        <div class="mt-8 text-center">
-          <button @click="router.push('/login')" type="button" class="text-xs font-black uppercase tracking-widest text-slate-500 hover:text-indigo-500 transition-colors bg-transparent border-none cursor-pointer">
-            Cancelar e voltar ao Login
-          </button>
-        </div>
+    <div class="fixed inset-0 z-0 opacity-40 dark:opacity-100 pointer-events-none">
+      <div v-for="n in 50" :key="n" 
+           class="absolute bg-slate-300 dark:bg-white rounded-full animate-twinkle"
+           :style="{
+             width: Math.random() * 3 + 'px',
+             height: Math.random() * 3 + 'px',
+             top: Math.random() * 100 + '%',
+             left: Math.random() * 100 + '%',
+             animationDelay: Math.random() * 5 + 's',
+             animationDuration: Math.random() * 3 + 2 + 's'
+           }">
       </div>
     </div>
 
-    <div class="hidden md:flex flex-col justify-between p-20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white relative overflow-hidden group">
-      <div class="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-1000 scale-125 group-hover:scale-110 transition-transform duration-1000">
-        <svg width="100%" h="100%" viewBox="0 0 100 100" preserveAspectRatio="none"><defs><pattern id="g" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" stroke-width="0.1"/></pattern></defs><rect width="100" h="100" fill="url(#g)" /></svg>
+    <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 transition-all duration-300 relative z-10 p-10 animate-fadein">
+      
+      <div class="flex flex-col items-center text-center mb-8">
+        <div class="w-16 h-16 bg-slate-950 dark:bg-white rounded-3xl flex items-center justify-center mb-6 shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
+          <i class="pi pi-lock text-white dark:text-slate-900 text-2xl"></i>
+        </div>
+        <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-tight">
+          Criar Nova Senha
+        </h1>
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mt-3">
+          A sua nova senha deve ser diferente das senhas utilizadas anteriormente.
+        </p>
       </div>
-      <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-sky-500/20 to-indigo-500/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
 
-       <div class="z-10 mt-10">
-         <div class="flex items-center gap-4 mb-8">
-            <img src="/nps.png" alt="Logo NPS Intelligence" class="w-14 h-14 object-contain drop-shadow-[0_10px_15px_rgba(56,189,248,0.2)]" />
-            <span class="text-4xl font-black uppercase tracking-tighter italic text-white leading-none">
-              NPS <br><span class="text-2xl text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-sky-400">Intelligence</span>
-            </span>
-         </div>
-         <h2 class="text-5xl font-extrabold leading-[1.05] tracking-tighter max-w-md">Controle o seu <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-sky-400 font-black italic">acesso.</span></h2>
-         <div class="w-20 h-1.5 bg-gradient-to-r from-indigo-500 to-sky-500 rounded-full mt-6 mb-8"></div>
-         <p class="text-lg text-slate-300 leading-relaxed font-normal max-w-sm">Mantenha a sua conta protegida para garantir a integridade e confidencialidade dos dados dos seus clientes.</p>
-       </div>
-       <div class="absolute bottom-10 right-10 text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] z-10">NPS Intelligence © 2026</div>
+      <form @submit.prevent="submeterNovaSenha" class="flex flex-col gap-5">
+        
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold text-slate-700 dark:text-slate-300 tracking-tight">Nova Senha</label>
+          <span class="p-input-icon-left w-full">
+            <i class="pi pi-key text-slate-400"></i>
+            <Password 
+              v-model="novaSenha" 
+              :feedback="true"
+              promptLabel="Digite uma senha"
+              weakLabel="Fraca"
+              mediumLabel="Média"
+              strongLabel="Forte"
+              toggleMask
+              class="w-full"
+              inputClass="custom-input"
+              placeholder="Digite a nova senha" 
+            />
+          </span>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold text-slate-700 dark:text-slate-300 tracking-tight">Confirmar Senha</label>
+          <span class="p-input-icon-left w-full">
+            <i class="pi pi-check-circle text-slate-400"></i>
+            <Password 
+              v-model="confirmarSenha" 
+              :feedback="false"
+              toggleMask
+              class="w-full"
+              inputClass="custom-input"
+              placeholder="Repita a nova senha" 
+              @keyup.enter="submeterNovaSenha"
+            />
+          </span>
+          <small v-if="senhasNaoCoincidem" class="text-red-500 font-semibold mt-1 flex items-center gap-1">
+            <i class="pi pi-exclamation-circle text-xs"></i> As senhas não coincidem.
+          </small>
+        </div>
+
+        <button 
+          type="submit" 
+          :disabled="loading || senhasNaoCoincidem || !novaSenha || !confirmarSenha"
+          class="mt-4 w-full h-14 bg-slate-800 hover:bg-slate-700 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-2xl font-bold text-sm tracking-wide transition-all duration-300 transform active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 shadow-xl shadow-slate-900/10"
+        >
+          <i v-if="loading" class="pi pi-spinner pi-spin"></i>
+          <span v-else>Redefinir Senha</span>
+          <i v-if="!loading" class="pi pi-arrow-right text-xs opacity-70"></i>
+        </button>
+      </form>
+
+      <div class="mt-8 text-center">
+        <a @click.prevent="router.push('/login')" href="#" class="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors duration-200 flex items-center justify-center gap-2">
+          <i class="pi pi-arrow-left text-xs"></i>
+          Voltar para o Login
+        </a>
+      </div>
+
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
-import api from '../services/api';
-
 import Password from 'primevue/password';
-import Button from 'primevue/button';
-import Toast from 'primevue/toast';
+import api from '@/services/api'; // Ajuste o caminho se o seu axios estiver noutro local
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 
-const token = route.query.token;
 const novaSenha = ref('');
+const confirmarSenha = ref('');
 const loading = ref(false);
+const tokenUrl = ref('');
 
-const salvarNovaSenha = async () => {
-  if (!novaSenha.value || novaSenha.value.length < 6) {
-    toast.add({ severity: 'warn', summary: 'Atenção', detail: 'A senha deve ter pelo menos 6 caracteres.', life: 3000 });
+// Configuração do Dark Mode Automático (Igual ao Login)
+onMounted(() => {
+  const savedTheme = localStorage.getItem('darkMode');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = savedTheme === 'true' || (savedTheme === null && prefersDark);
+  document.documentElement.classList.toggle('dark', isDark);
+
+  // Captura o token da URL (?token=...)
+  if (route.query.token) {
+    tokenUrl.value = route.query.token;
+  } else {
+    toast.add({ severity: 'error', summary: 'Link Inválido', detail: 'Nenhum token de recuperação encontrado na URL.', life: 5000 });
+  }
+});
+
+// Computed property para travar o botão se as senhas forem diferentes
+const senhasNaoCoincidem = computed(() => {
+  return novaSenha.value && confirmarSenha.value && novaSenha.value !== confirmarSenha.value;
+});
+
+async function submeterNovaSenha() {
+  if (!tokenUrl.value) {
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'O link de recuperação está incompleto ou é inválido.', life: 5000 });
+    return;
+  }
+
+  if (novaSenha.value.length < 6) {
+    toast.add({ severity: 'warn', summary: 'Senha muito curta', detail: 'A senha deve ter pelo menos 6 caracteres.', life: 4000 });
     return;
   }
 
   loading.value = true;
+
   try {
-    await api.post('/reset-password', { 
-      token: token, 
-      nova_senha: novaSenha.value 
+    const response = await api.post('/api/reset-password', {
+      token: tokenUrl.value,
+      nova_senha: novaSenha.value
     });
+
+    toast.add({ severity: 'success', summary: 'Sucesso!', detail: 'A sua senha foi redefinida. Pode fazer login agora.', life: 5000 });
     
-    toast.add({ 
-      severity: 'success', 
-      summary: 'Senha Atualizada', 
-      detail: 'Acesso recuperado! Enviámos um e-mail de segurança a confirmar a alteração.', 
-      life: 6000 
-    });
-    
+    // Aguarda um momento para o utilizador ler o toast antes de ir para o login
     setTimeout(() => {
       router.push('/login');
     }, 2000);
 
   } catch (error) {
-    const msg = error.response?.data?.detail || 'Ocorreu um erro ao alterar a senha. O link pode ter expirado.';
-    toast.add({ severity: 'error', summary: 'Erro', detail: msg, life: 5000 });
+    // 🛡️ TRATAMENTO DO NOSSO RATE LIMITER (ERRO 429) AQUI
+    if (error.response && error.response.status === 429) {
+      toast.add({
+        severity: 'warn', 
+        summary: 'Ação Bloqueada', 
+        detail: 'Demasiadas tentativas. Por favor, aguarde 1 minuto.', 
+        life: 5000 
+      });
+      return;
+    }
+
+    if (error.response && error.response.data && error.response.data.detail) {
+      toast.add({ severity: 'error', summary: 'Erro', detail: error.response.data.detail, life: 5000 });
+    } else {
+      toast.add({ severity: 'error', summary: 'Erro', detail: 'Ocorreu um problema ao redefinir a senha. O link pode ter expirado.', life: 5000 });
+    }
   } finally {
     loading.value = false;
   }
-};
+}
 </script>
 
-<style scoped lang="postcss">
-@reference "tailwindcss";
-
-.animate-fadein { animation: fadeIn 0.4s ease-out; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-.p-input-icon-left {
-  display: flex !important;
-  align-items: center !important;
-  position: relative !important;
-  width: 100%;
+<style scoped>
+/* Animação das estrelas */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+.animate-twinkle {
+  animation-name: twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
 }
 
-.p-input-icon-left > i {
-  position: absolute !important;
-  left: 1.1rem !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  z-index: 30 !important;
-  pointer-events: none;
-  font-size: 1rem !important;
+/* Animação de entrada suave */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadein {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-:deep(.custom-input),
-:deep(.p-password input) {
+/* Estilização profunda dos inputs do PrimeVue para combinarem com o teu design */
+:deep(.custom-input) {
   width: 100% !important;
-  border-radius: 1.2rem !important;
-  padding: 0.9rem 1rem 0.9rem 3.2rem !important;
-  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 1rem !important;
+  padding: 0.9rem 1rem 0.9rem 2.8rem !important;
+  border: 1px solid #e2e8f0 !important;
   background-color: #f8fafc !important;
-  color: #1e293b !important;
+  color: #0f172a !important;
   font-weight: 500 !important;
   font-size: 0.95rem !important;
   transition: all 0.3s ease !important;
   outline: none !important;
 }
 
-:deep(.custom-input:focus),
-:deep(.p-password input:focus) {
-  border-color: #6366f1 !important; 
-  background-color: #ffffff !important;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
-}
-
-:deep(.p-password) { width: 100% !important; }
-:deep(.p-password-reveal-icon) { right: 1.2rem !important; color: #94a3b8 !important; }
-
-:global(.dark) :deep(.custom-input),
-:global(.dark) :deep(.p-password input) {
-  background-color: #1e293b !important;
+.dark :deep(.custom-input) {
   border-color: #334155 !important;
+  background-color: #0f172a !important;
   color: #f8fafc !important;
 }
-:global(.dark) :deep(.custom-input:focus),
-:global(.dark) :deep(.p-password input:focus) {
-  background-color: #0f172a !important;
-  border-color: #6366f1 !important;
+
+:deep(.custom-input:focus) {
+  border-color: #94a3b8 !important; 
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.1) !important;
+}
+
+.dark :deep(.custom-input:focus) {
+  border-color: #475569 !important; 
+  background-color: #1e293b !important;
+  box-shadow: 0 0 0 4px rgba(71, 85, 105, 0.2) !important;
+}
+
+.p-input-icon-left > i {
+  z-index: 10;
+  margin-top: -0.5rem;
 }
 </style>

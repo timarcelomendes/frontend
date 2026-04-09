@@ -172,7 +172,7 @@
           <div class="flex flex-col gap-1.5 relative">
             <div class="flex justify-between items-center">
               <label for="password" class="text-sm font-bold text-slate-700 dark:text-slate-300 tracking-tight">Senha</label>
-              <a v-if="isLoginMode" href="#" class="text-xs font-semibold text-orange-600 dark:text-orange-500 hover:underline">Esqueceu a senha?</a>
+              <a v-if="isLoginMode" @click.prevent="router.push({ name: 'ForgotPassword' })" href="#" class="text-xs font-semibold text-orange-600 dark:text-orange-500 hover:underline">Esqueceu a senha?</a>
             </div>
             <Password v-if="isLoginMode" id="password" v-model="credenciais.password" :feedback="false" placeholder="••••••••" class="w-full custom-password" inputClass="w-full" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.password || erros.geral}" toggleMask @input="limparErroDe('password')" />
             <Password v-else id="password_reg" v-model="registro.password" placeholder="Crie uma senha forte" class="w-full custom-password" inputClass="w-full" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.password}" toggleMask @input="limparErroDe('password')" />
@@ -240,7 +240,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { PublicClientApplication } from '@azure/msal-browser';
@@ -334,8 +334,19 @@ const checarEmailSalvo = () => {
 
 watch(() => credenciais.value.email, checarEmailSalvo);
 
-// --- CICLO DE VIDA (INIT) ---
+const mostrarAvisoBloqueio = () => {
+    toast.add({
+        severity: 'warn', 
+        summary: 'Acesso Temporariamente Bloqueado', 
+        detail: 'Fez demasiadas tentativas. Por favor, aguarde 1 minuto antes de tentar novamente.', 
+        life: 6000 
+    });
+};
+
+// --- CICLO DE VIDA (INIT) --
+
 onMounted(async () => {
+  window.addEventListener('api-rate-limit', mostrarAvisoBloqueio);
   const savedTheme = localStorage.getItem('darkMode');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   
@@ -419,6 +430,10 @@ onMounted(async () => {
       
       erros.value.geral = msgErro; 
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('api-rate-limit', mostrarAvisoBloqueio);
 });
 
 // --- REQUISIÇÕES (API) ---

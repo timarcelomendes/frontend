@@ -18,6 +18,13 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response ? error.response.status : null;
 
+    // 🛡️ Se for erro 429, dispara um alarme global para o Vue.js escutar
+    if (status === 429) {
+      window.dispatchEvent(new CustomEvent('api-rate-limit'));
+      return Promise.reject(error);
+    }
+
+    // O seu código original...
     if (status === 401 || status === 403) {
       if (window.location.pathname === '/login' || (error.config && error.config.url.includes('/login'))) {
         return Promise.reject(error);
@@ -25,6 +32,7 @@ api.interceptors.response.use(
       localStorage.clear();
       window.location.href = '/login'; 
     }
+    
     return Promise.reject(error);
   }
 );
