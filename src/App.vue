@@ -671,4 +671,8 @@ watch(
 :deep(.p-toast-icon-close) {
   @apply text-white/50 hover:text-white dark:text-current hover:bg-white/10 rounded-full transition-colors w-6 h-6 outline-none ring-0;
 }
+
+:deep(.p-avatar img) {
+  object-fit: cover !important;
+}
 </style>

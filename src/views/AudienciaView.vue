@@ -287,6 +287,10 @@ const salvarCliente = async () => {
 // 🚀 5. DISPAROS E FORMATAÇÃO (NPS API)
 // ==========================================
 
+// 🎯 1. Adicione esta variável logo abaixo do idsEnviando. Ela protege as linhas recém alteradas.
+const idsRecemEnviados = ref([]);
+
+// 🎯 2. Substitua a função dispararIndividual
 const dispararIndividual = async (row_data) => {
   if (row_data.ativo === 0 || row_data.ativo === false) {
     return toast.add({ severity: 'warn', summary: 'Envio Bloqueado', detail: 'Não é possível enviar pesquisas para pessoas inativas.', life: 4000 });
@@ -296,18 +300,33 @@ const dispararIndividual = async (row_data) => {
   if (!id) return;
 
   idsEnviando.value.push(id); 
-  
+  idsRecemEnviados.value.push(id); // 🛡️ Protege esta linha do polling
+
+  // 🔥 ATUALIZAÇÃO OTIMISTA: Muda a interface antes mesmo da API responder!
+  row_data.status_envio = 'Processando...';
+
   try {
-    const response = await api.post(`/clientes/${id}/forcar-envio`);
-    toast.add({ severity: 'success', summary: 'Tudo pronto! 🚀', detail: `O convite para ${row_data.nome} já foi enviado para a fila de processamento.`, life: 5000 });
-    setTimeout(sincronizarStatusRealTime, 2000); 
+    await api.post(`/clientes/${id}/forcar-envio`);
+    toast.add({ severity: 'success', summary: 'Tudo pronto! 🚀', detail: `O convite para ${row_data.nome} já foi enviado para a fila.`, life: 5000 });
+    
+    // Confirma visualmente o envio
+    row_data.status_envio = 'Enviado';
+    row_data.ultimo_envio = new Date().toISOString();
+
+    // Remove a proteção após 15 segundos (Tempo suficiente para o Python acabar)
+    setTimeout(() => {
+       idsRecemEnviados.value = idsRecemEnviados.value.filter(i => i !== id);
+    }, 15000);
+
   } catch (error) { 
+    row_data.status_envio = 'Erro'; // Reverte em caso de erro
     toast.add({ severity: 'error', summary: 'Ops! Algo aconteceu', detail: 'Não conseguimos acionar o disparo nativo agora.', life: 5000 }); 
   } finally { 
     idsEnviando.value = idsEnviando.value.filter(i => i !== id); 
   }
 };
 
+// 🎯 3. Substitua a função dispararLote
 const dispararLote = async () => {
   const selecionadosAtivos = clientesSelecionados.value.filter(c => c.ativo !== 0 && c.ativo !== false);
 
@@ -317,19 +336,71 @@ const dispararLote = async () => {
   
   const total = selecionadosAtivos.length;
   enviandoEmail.value = true;
+  const idsParaEnvio = selecionadosAtivos.map(c => c.cliente_id);
+
+  idsRecemEnviados.value.push(...idsParaEnvio); // 🛡️ Protege o lote do polling
+
+  // 🔥 ATUALIZAÇÃO OTIMISTA NO LOTE
+  clientes.value.forEach(c => {
+    if (idsParaEnvio.includes(c.cliente_id)) c.status_envio = 'Processando...';
+  });
   
   try {
-    const idsParaEnvio = selecionadosAtivos.map(c => c.cliente_id);
     await api.post('/clientes/forcar-envio-lote', { cliente_ids: idsParaEnvio });
-    
     toast.add({ severity: 'info', summary: 'Trabalho em curso! 🛠️', detail: `Estamos a processar o envio para ${total} contatos ativos. Pode continuar a navegar.`, life: 8000 });
     
+    // Confirma visualmente
+    clientes.value.forEach(c => {
+      if (idsParaEnvio.includes(c.cliente_id)) {
+         c.status_envio = 'Enviado';
+         c.ultimo_envio = new Date().toISOString();
+      }
+    });
+
     clientesSelecionados.value = [];
-    setTimeout(sincronizarStatusRealTime, 3000);
+    
+    // Remove a proteção após 15 segundos
+    setTimeout(() => {
+        idsRecemEnviados.value = idsRecemEnviados.value.filter(id => !idsParaEnvio.includes(id));
+    }, 15000);
+
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Erro no Lote', detail: 'Houve um problema ao processar o lote de envios.', life: 5000 });
   } finally {
     enviandoEmail.value = false;
+  }
+};
+
+// 🎯 4. Substitua a função sincronizarStatusRealTime
+const sincronizarStatusRealTime = async () => {
+  try {
+    const [response, resAcoes] = await Promise.all([
+      api.get('/clientes', { params: { _t: new Date().getTime() }, headers: { 'Cache-Control': 'no-cache' } }),
+      api.get('/acoes')
+    ]);
+    
+    const idsSelecionados = clientesSelecionados.value.map(c => c.cliente_id);
+
+    // 🛡️ MERGE INTELIGENTE: Se o cliente foi disparado há menos de 15s, o Vue recusa a versão antiga do Banco!
+    const novosClientes = response.data.map(novo => {
+       if (idsRecemEnviados.value.includes(novo.cliente_id)) {
+          const antigo = clientes.value.find(c => c.cliente_id === novo.cliente_id);
+          return antigo ? { ...novo, status_envio: antigo.status_envio, ultimo_envio: antigo.ultimo_envio } : novo;
+       }
+       return novo;
+    });
+
+    clientes.value = [...novosClientes];
+
+    if (idsSelecionados.length > 0) {
+      clientesSelecionados.value = clientes.value.filter(c => idsSelecionados.includes(c.cliente_id));
+    }
+    
+    if (resAcoes.data) {
+      acoesAtivas.value = resAcoes.data.filter(a => a.status !== 'Concluído');
+    }
+  } catch (error) {
+    console.error("Falha ao sincronizar real-time:", error);
   }
 };
 
@@ -350,28 +421,6 @@ const gerarIniciais = (nome) => {
 };
 
 const acoesAtivas = ref([]);
-
-const sincronizarStatusRealTime = async () => {
-  try {
-    const [response, resAcoes] = await Promise.all([
-      api.get('/clientes', { params: { _t: new Date().getTime() }, headers: { 'Cache-Control': 'no-cache' } }),
-      api.get('/acoes')
-    ]);
-    
-    const idsSelecionados = clientesSelecionados.value.map(c => c.cliente_id);
-    clientes.value = [...response.data];
-
-    if (idsSelecionados.length > 0) {
-      clientesSelecionados.value = clientes.value.filter(c => idsSelecionados.includes(c.cliente_id));
-    }
-    
-    if (resAcoes.data) {
-      acoesAtivas.value = resAcoes.data.filter(a => a.status !== 'Concluído');
-    }
-  } catch (error) {
-    console.error("Falha ao sincronizar real-time:", error);
-  }
-};
 
 const calcularStatusLembrete = (data_disparo) => {
   if (!data_disparo) return null;
@@ -648,7 +697,9 @@ onUnmounted(() => {
               <Tag v-if="data.ativo === 0 || data.ativo === false" value="Pessoa Inativa" class="!bg-slate-200 dark:!bg-slate-800 !text-slate-400 !text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm line-through" />
               
               <template v-else>
-                <Tag v-if="data.status_envio === 'Respondido'" value="Respondido" severity="success" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm" />
+                <Tag v-if="data.status_envio === 'Processando...'" value="A Processar" icon="pi pi-spin pi-spinner" class="!bg-amber-100 dark:!bg-amber-900/30 !text-amber-600 dark:!text-amber-400 !text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm gap-1.5" />
+                
+                <Tag v-else-if="data.status_envio === 'Respondido'" value="Respondido" severity="success" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm" />
                 <Tag v-else-if="data.status_envio === 'Pendente'" value="Na Fila" class="!bg-slate-100 dark:!bg-slate-800 !text-slate-500 !text-[10px] !font-black uppercase tracking-widest !px-3" />
                 <Tag v-else-if="data.status_envio === 'Enviado'" value="Enviado" severity="info" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm" />
                 <Tag v-else-if="data.status_envio === 'Erro'" value="Falha" severity="danger" v-tooltip.top="data.erro_msg || 'Erro desconhecido'" class="!text-[10px] !font-black uppercase tracking-widest !px-3 shadow-sm cursor-help" />
