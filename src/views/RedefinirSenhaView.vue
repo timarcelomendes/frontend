@@ -97,7 +97,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Password from 'primevue/password';
-import api from '@/services/api'; // Ajuste o caminho se o seu axios estiver noutro local
+import api from '@/services/api';
 
 const route = useRoute();
 const router = useRouter();
