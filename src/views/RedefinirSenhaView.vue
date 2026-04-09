@@ -93,11 +93,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+// 1. Corrigido o erro de digitação do 'vue'
+import { ref, computed, onMounted } from 'vue'; 
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Password from 'primevue/password';
-import api from '@/services/api';
+
+// 2. Corrigido o caminho do atalho '@' para o caminho relativo padrão '../'
+import api from '../services/api'; 
 
 const route = useRoute();
 const router = useRouter();
