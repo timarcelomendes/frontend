@@ -512,64 +512,7 @@ const fazerLogin = async () => {
   }
 };
 
-const fazerRegistro = async () => {
-  limparErros();
-  let possuiErro = false;
-
-  // 1. Validar Nome
-  if (!registro.value.nome || registro.value.nome.trim() === '') { 
-    erros.value.nome = 'O nome completo é obrigatório.'; 
-    possuiErro = true; 
-  }
-  
-  // 2. Validar Email
-  if (!registro.value.email || registro.value.email.trim() === '') { 
-    erros.value.email = 'O e-mail é obrigatório.'; 
-    possuiErro = true; 
-  }
-
-  // 3. Validar Password (O ponto que costuma travar)
-  if (!registro.value.password) { 
-    erros.value.password = 'Crie uma senha de acesso.'; 
-    possuiErro = true; 
-  } else if (registro.value.password.length < 6) { 
-    erros.value.password = 'A senha deve conter no mínimo 6 caracteres.'; 
-    possuiErro = true; 
-  }
-  
-  if (possuiErro) {
-    console.log("❌ Erros de validação encontrados:", erros.value);
-    return;
-  }
-
-loading.value = true;
-  try {
-    console.log("🚀 Enviando registro:", registro.value);
-    
-    // 🎯 CORREÇÃO AQUI: Trocado 'dados' por 'registro.value'
-    const response = await api.post('/register', {
-        nome: registro.value.nome,
-        email: registro.value.email,
-        password: registro.value.password,
-        url_plataforma: window.location.origin 
-    });
-
-    toast.add({ 
-      severity: 'success', 
-      summary: 'Conta Solicitada!', 
-      detail: response.data.mensagem || 'Aguarde aprovação.', 
-      life: 5000 
-    });
-    
-    alternarModo(); // Volta para o login após sucesso
-    
-  } catch (error) {
-    console.error("❌ Erro no registro:", error);
-    erros.value.geral = error.response?.data?.detail || 'Erro ao solicitar acesso. Tente novamente.';
-  } finally {
-    loading.value = false;
-  }
-};
+no
 
 const loginComMicrosoft = async () => {
     limparErros(); 
