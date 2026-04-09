@@ -158,16 +158,31 @@
             <small v-if="erros.nome" class="text-xs font-bold text-rose-500 pl-2 mt-0.5 animate-fadein">{{ erros.nome }}</small>
           </div>
 
-          <InputText v-if="isLoginMode" 
-           id="email" 
-           v-model="credenciais.email" 
-           type="email" 
-           placeholder="seu.nome@stefanini.com" 
-           class="w-full custom-input" 
-           :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.email || erros.geral}" 
-           @input="() => { limparErroDe('email'); checarEmailSalvo(); }"
-           @change="checarEmailSalvo"
-           @blur="checarEmailSalvo" />
+          <div class="flex flex-col gap-1.5 animate-fadein">
+            <label for="email" class="text-sm font-bold text-slate-700 dark:text-slate-300">E-mail Corporativo</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-envelope text-slate-400" :class="{'!text-rose-500': erros.email}" />
+              
+              <InputText v-if="isLoginMode" 
+                id="email" 
+                v-model="credenciais.email" 
+                type="email" 
+                placeholder="seu.nome@stefanini.com" 
+                class="w-full custom-input" 
+                :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.email || erros.geral}" 
+                @input="() => { limparErroDe('email'); checarEmailSalvo(); }" />
+
+              <InputText v-else 
+                id="email_reg" 
+                v-model="registro.email" 
+                type="email" 
+                placeholder="seu.email@stefanini.com" 
+                class="w-full custom-input" 
+                :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.email}" 
+                @input="limparErroDe('email')" />
+            </span>
+            <small v-if="erros.email" class="text-xs font-bold text-rose-500 pl-2 mt-0.5 animate-fadein">{{ erros.email }}</small>
+          </div>
 
           <div class="flex flex-col gap-1.5 relative">
             <div class="flex justify-between items-center">
@@ -501,19 +516,53 @@ const fazerRegistro = async () => {
   limparErros();
   let possuiErro = false;
 
-  if (!registro.value.nome) { erros.value.nome = 'O nome completo é obrigatório.'; possuiErro = true; }
-  if (!registro.value.email) { erros.value.email = 'O e-mail é obrigatório.'; possuiErro = true; }
-  if (!registro.value.password) { erros.value.password = 'Crie uma senha de acesso.'; possuiErro = true; }
-  else if (registro.value.password.length < 8) { erros.value.password = 'A senha deve conter no mínimo 8 caracteres.'; possuiErro = true; }
+  // 1. Validar Nome
+  if (!registro.value.nome || registro.value.nome.trim() === '') { 
+    erros.value.nome = 'O nome completo é obrigatório.'; 
+    possuiErro = true; 
+  }
   
-  if (possuiErro) return;
+  // 2. Validar Email
+  if (!registro.value.email || registro.value.email.trim() === '') { 
+    erros.value.email = 'O e-mail é obrigatório.'; 
+    possuiErro = true; 
+  }
+
+  // 3. Validar Password (O ponto que costuma travar)
+  if (!registro.value.password) { 
+    erros.value.password = 'Crie uma senha de acesso.'; 
+    possuiErro = true; 
+  } else if (registro.value.password.length < 6) { 
+    erros.value.password = 'A senha deve conter no mínimo 6 caracteres.'; 
+    possuiErro = true; 
+  }
+  
+  if (possuiErro) {
+    console.log("❌ Erros de validação encontrados:", erros.value);
+    return;
+  }
 
   loading.value = true;
   try {
-    const response = await api.post('/register', registro.value); 
-    toast.add({ severity: 'success', summary: 'Conta Solicitada!', detail: response.data.mensagem || 'Aguarde aprovação.', life: 5000 });
-    alternarModo(); 
+    console.log("🚀 Enviando registro:", registro.value);
+    
+    const response = await api.post('/register', {
+      nome: registro.value.nome,
+      email: registro.value.email,
+      password: registro.value.password
+    }); 
+
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Conta Solicitada!', 
+      detail: response.data.mensagem || 'Aguarde aprovação.', 
+      life: 5000 
+    });
+    
+    alternarModo(); // Volta para o login após sucesso
+    
   } catch (error) {
+    console.error("❌ Erro no registro:", error);
     erros.value.geral = error.response?.data?.detail || 'Erro ao solicitar acesso. Tente novamente.';
   } finally {
     loading.value = false;
