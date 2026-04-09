@@ -374,14 +374,15 @@ onMounted(async () => {
       processandoRetorno.value = true;
   }
 
+// Mude de route.query.verificado para route.query.status
   if (route.query.status === 'confirmado') {
       toast.add({ 
         severity: 'success', 
         summary: 'E-mail Confirmado!', 
-        detail: 'A sua conta foi verificada com sucesso. Agora pode fazer login (sujeito a aprovação do administrador).', 
+        detail: 'Sua conta foi verificada. Aguarde a aprovação do administrador.', 
         life: 8000 
       });
-      router.replace({ query: {} }); // Limpa a URL
+      router.replace({ query: {} }); 
   } else if (route.query.status === 'erro' || route.query.erro) {
       erros.value.geral = 'O link de verificação expirou ou é inválido.';
       router.replace({ query: {} });
