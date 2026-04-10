@@ -202,6 +202,7 @@
               placeholder="••••••••" 
               :feedback="true" 
               toggleMask 
+              maxlength="70"
               class="w-full"
               inputClass="custom-input w-full"
               promptLabel="Escolha uma senha forte"

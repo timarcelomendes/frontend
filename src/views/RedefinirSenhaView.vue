@@ -44,6 +44,7 @@
               mediumLabel="Média"
               strongLabel="Forte"
               toggleMask
+              maxlength="70"
               class="w-full"
               inputClass="custom-input"
               placeholder="Digite a nova senha" 
@@ -98,8 +99,6 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Password from 'primevue/password';
-
-// 2. Corrigido o caminho do atalho '@' para o caminho relativo padrão '../'
 import api from '../services/api'; 
 
 const route = useRoute();
@@ -152,13 +151,11 @@ async function submeterNovaSenha() {
 
     toast.add({ severity: 'success', summary: 'Sucesso!', detail: 'A sua senha foi redefinida. Pode fazer login agora.', life: 5000 });
     
-    // Aguarda um momento para o utilizador ler o toast antes de ir para o login
     setTimeout(() => {
       router.push('/login');
     }, 2000);
 
   } catch (error) {
-    // 🛡️ TRATAMENTO DO NOSSO RATE LIMITER (ERRO 429) AQUI
     if (error.response && error.response.status === 429) {
       toast.add({
         severity: 'warn', 
@@ -181,7 +178,6 @@ async function submeterNovaSenha() {
 </script>
 
 <style scoped>
-/* Animação das estrelas */
 @keyframes twinkle {
   0%, 100% { opacity: 0.2; transform: scale(0.8); }
   50% { opacity: 1; transform: scale(1.2); }
