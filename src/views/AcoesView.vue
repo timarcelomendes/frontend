@@ -210,20 +210,45 @@ const onDragStart = (event, id) => {
 };
 
 const onDrop = async (event, novoStatus) => {
-  const idStr = event.dataTransfer.getData('acaoId');
-  if (!idStr) return;
-  const id = parseInt(idStr);
-  const acao = acoes.value.find(a => a.id === id);
+  const id = event.dataTransfer.getData('acaoId');
   
-  if (acao && acao.status !== novoStatus) {
-    const statusAntigo = acao.status;
-    acao.status = novoStatus;
-    try {
-      await api.put(`/acoes/${id}`, { status: novoStatus });
-    } catch (error) {
-      acao.status = statusAntigo;
-      toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao mover tarefa.', life: 4000 });
-    }
+  const acao = acoes.value.find(a => a.id == id);
+  if (!acao) return;
+
+  if (novoStatus === 'Concluído' && (!acao.resolucao || !acao.resolucao.trim())) {
+    toast.add({ 
+      severity: 'warn', 
+      summary: 'Resolução Obrigatória', 
+      detail: 'Você precisa descrever o que foi feito antes de concluir.', 
+      life: 5000 
+    });
+    
+    abrirEdicao(acao);
+    return;
+  }
+
+  try {
+    await api.put(`/acoes/${id}`, { 
+      ...acao, 
+      status: novoStatus 
+    });
+    
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Status Atualizado', 
+      detail: `Plano movido para ${novoStatus}`, 
+      life: 2000 
+    });
+    
+    await carregarAcoes();
+  } catch (error) {
+    console.error("Erro ao mover card:", error);
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Erro', 
+      detail: 'Não foi possível atualizar o status.', 
+      life: 3000 
+    });
   }
 };
 
@@ -251,28 +276,21 @@ const abrirNovaAcao = () => {
 };
 
 const abrirEdicao = (acao) => {
-  // 1. 🛡️ Reset do Modo Foco: Sempre abre no tamanho padrão
   isMaximizado.value = false;
 
-  // 2. 🧠 Cálculo automático do contexto baseado na nota
   let contextoCalculado = 'manual';
-  
-  if (acao.resposta_nota !== null && acao.resposta_nota !== undefined) {
+  if (acao.resposta_nota !== null) {
     const nota = Number(acao.resposta_nota);
     if (nota >= 9) contextoCalculado = 'promotor';
     else if (nota >= 7) contextoCalculado = 'neutro';
     else contextoCalculado = 'detrator';
   }
 
-  // 3. 📝 Montagem do objeto (Normalizando IDs e injetando o contexto)
   acaoAtual.value = { 
     ...acao,
-    gestor_id: acao.gestor_id ? Number(acao.gestor_id) : null,
-    empresa_id: acao.empresa_id ? Number(acao.empresa_id) : null,
-    contexto: contextoCalculado 
+    contexto: contextoCalculado,
+    resolucao: acao.resolucao || '' 
   };
-
-  // 4. 🔓 Exibição do Modal
   dialogAcao.value = true;
 };
 
@@ -288,46 +306,40 @@ const aoMudarEmpresa = () => {
 };
 
 const salvarAcao = async () => {
-  salvando.value = true;
-  
-  try {
-    
-    let prazoFormatado = null;
-    const prazoCru = acaoAtual.value.prazo_limite; 
-    
-    if (prazoCru) {
-      const d = new Date(prazoCru);
-      prazoFormatado = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
+  if (acaoAtual.value.status === 'Concluído' && !acaoAtual.value.resolucao?.trim()) {
+    toast.add({ 
+      severity: 'warn', 
+      summary: 'Atenção', 
+      detail: 'Para concluir, descreva o que foi feito na Resolução.', 
+      life: 5000 
+    });
+    return; 
+  }
 
+  salvando.value = true;
+  try {
     const payload = {
-      titulo: acaoAtual.value.titulo,
-      descricao: acaoAtual.value.descricao || "",
-      
-      empresa_id: acaoAtual.value.empresa_id ? parseInt(acaoAtual.value.empresa_id) : null,
-      gestor_id: acaoAtual.value.gestor_id ? parseInt(acaoAtual.value.gestor_id) : null,
-      
-      resposta_id: acaoAtual.value.resposta_id ? String(acaoAtual.value.resposta_id) : null,
-      
-      companhia: acaoAtual.value.companhia || null,
-      prioridade: acaoAtual.value.prioridade || "Média",
-      status: acaoAtual.value.status || "Pendente",
-      prazo_limite: prazoFormatado 
+      ...acaoAtual.value,
+      gestor_id: acaoAtual.value.gestor_id ? Number(acaoAtual.value.gestor_id) : null,
+      empresa_id: acaoAtual.value.empresa_id ? Number(acaoAtual.value.empresa_id) : null,
+      resolucao: acaoAtual.value.resolucao
     };
 
     if (acaoAtual.value.id) {
-      await api.put(`/acoes/${acaoAtual.value.id}`, payload); 
+      // Atualização
+      await api.put(`/acoes/${acaoAtual.value.id}`, payload);
+      toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Plano atualizado com sucesso!', life: 3000 });
     } else {
-      await api.post('/acoes', payload); 
+      // Criação
+      await api.post('/acoes', payload);
+      toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Nova ação registrada!', life: 3000 });
     }
-    
+
     dialogAcao.value = false;
-    await carregarAcoes(); 
-    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Ação guardada com sucesso.', life: 3000 });
-    
+    await carregarAcoes();
   } catch (error) {
-    console.error("Erro ao salvar:", error);
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao guardar a ação.', life: 5000 });
+    console.error("Erro ao salvar ação:", error);
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao persistir os dados no banco.', life: 3000 });
   } finally {
     salvando.value = false;
   }
@@ -622,6 +634,7 @@ onMounted(async () => {
     </div>
 
     <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800 opacity-70 hover:opacity-100 transition-opacity" @dragover="temPermissao('acoes:mover') ? $event.preventDefault() : null" @drop="temPermissao('acoes:mover') ? onDrop($event, 'Concluído') : null">
+  
       <div class="flex justify-between items-center px-2 pt-1 pb-2 border-b border-slate-200/50 dark:border-slate-800">
         <h3 class="text-[11px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500">Concluído <span class="text-slate-400 ml-1">{{ estatisticas.concluidas }}</span></h3>
         <i class="pi pi-check-circle text-emerald-500 text-xs"></i>
@@ -646,18 +659,22 @@ onMounted(async () => {
           </div>
           
           <div class="mb-2">
-            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug">
-                <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
+            <h4 class="text-sm font-bold text-slate-400 dark:text-slate-500 leading-snug line-through decoration-slate-300 dark:decoration-slate-700">
+                <span class="text-slate-300 dark:text-slate-600 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
                 {{ acao.titulo }}
             </h4>
-            <span class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mt-1">
+            <span class="text-[9px] font-bold text-slate-300 flex items-center gap-1 mt-1">
                 <i class="pi pi-clock text-[8px]"></i> {{ formatarDataLocal(acao.created_at) }}
             </span>
           </div>
+
+          <p v-if="acao.descricao || acao.resposta_comentario" class="text-[11px] text-slate-400 dark:text-slate-600 line-clamp-4 whitespace-pre-line leading-relaxed border-l-2 border-slate-200 dark:border-slate-800 pl-2 line-through">
+              {{ acao.descricao || acao.resposta_comentario }}
+          </p>
           
           <div class="flex items-center gap-3 pt-3 mt-auto">
-            <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm" v-tooltip.top="getGestor(acao.gestor_id)?.nome || acao.gestor_nome || 'Sem gestor'">
-              <img v-if="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" :src="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" class="w-full h-full object-cover opacity-60" @error="(e) => e.target.style.display = 'none'" />
+            <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm opacity-50" v-tooltip.top="getGestor(acao.gestor_id)?.nome || acao.gestor_nome || 'Sem gestor'">
+              <img v-if="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" :src="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" class="w-full h-full object-cover grayscale" @error="(e) => e.target.style.display = 'none'" />
               <span v-else class="text-[9px] font-black text-slate-400 dark:text-slate-500">{{ gerarIniciais(getGestor(acao.gestor_id)?.nome || acao.gestor_nome) }}</span>
             </div>
             <div class="ml-auto flex items-center gap-1.5 text-[9px] font-black text-emerald-500 uppercase tracking-widest">
@@ -769,6 +786,18 @@ onMounted(async () => {
             :rows="isMaximizado ? 18 : 3" 
             class="custom-input w-full resize-none transition-all duration-300" 
             placeholder="Descreva os próximos passos ou observações..." 
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5 transition-all">
+          <label class="text-[10px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-400 ml-1 flex items-center gap-1.5">
+            <i class="pi pi-check-square"></i> Resolução / O que foi feito?
+          </label>
+          <Textarea 
+            v-model="acaoAtual.resolucao" 
+            :rows="isMaximizado ? 10 : 3" 
+            class="custom-input-success w-full resize-none transition-all duration-300" 
+            placeholder="Descreva a solução aplicada e o desfecho com o cliente..." 
           />
         </div>
         
@@ -956,4 +985,19 @@ onMounted(async () => {
 :deep(.p-dropdown) { @apply overflow-hidden; }
 :deep(.p-menu) { @apply p-1 !important; }
 :deep(.p-menuitem-link) { @apply px-3 py-2 text-sm !important; }
+
+/* Estilo específico para o campo de Resolução */
+.custom-input-success {
+  @apply bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 
+         focus:border-emerald-500 dark:focus:border-emerald-500/50 
+         focus:ring-2 focus:ring-emerald-500/10 outline-none
+         rounded-xl p-3 text-sm transition-all duration-300;
+}
+
+/* Ajuste do Modo Maximizado para comportar dois Textareas grandes */
+:deep(.dialog-maximizado .p-dialog-content) {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* Espaçamento entre os blocos quando em tela cheia */
+}
 </style>
