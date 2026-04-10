@@ -153,7 +153,7 @@
             <label for="nome" class="text-sm font-bold text-slate-700 dark:text-slate-300">Nome Completo</label>
             <span class="p-input-icon-left">
               <i class="pi pi-user text-slate-400" :class="{'!text-rose-500': erros.nome}" />
-              <InputText id="nome" v-model="registro.nome" placeholder="Ex: João da Silva" class="w-full custom-input" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.nome}" @input="limparErroDe('nome')" />
+              <InputText id="nome" v-model="registro.nome" name="name" autocomplete="name" placeholder="Ex: João da Silva" class="w-full custom-input" :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.nome}" @input="limparErroDe('nome')" />
             </span>
             <small v-if="erros.nome" class="text-xs font-bold text-rose-500 pl-2 mt-0.5 animate-fadein">{{ erros.nome }}</small>
           </div>
@@ -167,15 +167,20 @@
                 id="email" 
                 v-model="credenciais.email" 
                 type="email" 
+                name="username"
+                autocomplete="username"
                 placeholder="seu.nome@stefanini.com" 
                 class="w-full custom-input" 
                 :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.email || erros.geral}" 
-                @input="() => { limparErroDe('email'); checarEmailSalvo(); }" />
+                @input="limparErroDe('email')" 
+              />
 
               <InputText v-else 
                 id="email_reg" 
                 v-model="registro.email" 
                 type="email" 
+                name="email"
+                autocomplete="email"
                 placeholder="seu.email@stefanini.com" 
                 class="w-full custom-input" 
                 :class="{'!border-rose-500 ring-2 ring-rose-500/20': erros.email}" 
@@ -189,6 +194,8 @@
             
             <Password v-if="isLoginMode"
               v-model="credenciais.password" 
+              name="password"
+              autocomplete="current-password"
               placeholder="••••••••" 
               :feedback="false" 
               toggleMask 
@@ -200,6 +207,8 @@
 
             <Password v-else
               v-model="registro.password" 
+              name="new-password"
+              autocomplete="new-password"
               placeholder="••••••••" 
               :feedback="true" 
               toggleMask 
@@ -357,34 +366,21 @@ const toggleDarkMode = () => {
 };
 
 const armazenarSessao = (data) => {
-  localStorage.setItem('token', data.access_token);
-  localStorage.setItem('access_token', data.access_token);
-  localStorage.setItem('usuario_id', data.usuario_id || '');
-  localStorage.setItem('usuario_nome', data.nome);
-  localStorage.setItem('usuario_email', data.email);
-  localStorage.setItem('usuario_tipo', data.tipo);
-  localStorage.setItem('usuario_cargo', data.cargo || 'Analista');
-  localStorage.setItem('usuario_avatar', data.avatar || '');
+  // 🛡️ DADOS TEMPORÁRIOS (SessionStorage)
+  sessionStorage.setItem('token', data.access_token);
+  sessionStorage.setItem('usuario_id', data.usuario_id || '');
+  sessionStorage.setItem('usuario_nome', data.nome);
+  sessionStorage.setItem('usuario_email', data.email);
+  sessionStorage.setItem('usuario_tipo', data.tipo);
+  sessionStorage.setItem('usuario_cargo', data.cargo || 'Analista');
+  sessionStorage.setItem('usuario_avatar', data.avatar_url || '');
+  
   if (data.permissoes) {
-    localStorage.setItem('usuario_permissoes', JSON.stringify(data.permissoes));
+    sessionStorage.setItem('usuario_permissoes', JSON.stringify(data.permissoes));
   }
 };
 
 // 🎯 A SOLUÇÃO LIMPA E NATIVA DO CHECKBOX
-const checarEmailSalvo = () => {
-  const emailSalvo = localStorage.getItem('nps_remember_email');
-  
-  if (emailSalvo && credenciais.value.email) {
-    if (credenciais.value.email.trim().toLowerCase() === emailSalvo.trim().toLowerCase()) {
-      lembrarDeMim.value = true;
-    } else {
-      lembrarDeMim.value = false;
-    }
-  }
-};
-
-watch(() => credenciais.value.email, checarEmailSalvo);
-
 const mostrarAvisoBloqueio = () => {
     toast.add({
         severity: 'warn', 
@@ -395,7 +391,6 @@ const mostrarAvisoBloqueio = () => {
 };
 
 // --- CICLO DE VIDA (INIT) --
-
 onMounted(async () => {
   window.addEventListener('api-rate-limit', mostrarAvisoBloqueio);
   const savedTheme = localStorage.getItem('darkMode');
@@ -425,10 +420,10 @@ onMounted(async () => {
   }
 
   const emailSalvo = localStorage.getItem('nps_remember_email');
-  if (emailSalvo) {
-    credenciais.value.email = emailSalvo;
-    lembrarDeMim.value = true;
-  }
+    if (emailSalvo) {
+      credenciais.value.email = emailSalvo;
+      lembrarDeMim.value = true; // 🎯 Se existe e-mail, começa marcado!
+    }
   
   try {
     const res = await api.get('/auth/sso-config'); 
@@ -502,11 +497,7 @@ const fazerLogin = async () => {
   if (loading.value) return; 
   limparErros();
   
-  // Blindagem do PrimeVue
-  const isMarcado = 
-    lembrarDeMim.value === true || 
-    lembrarDeMim.value === 'true' || 
-    (Array.isArray(lembrarDeMim.value) && lembrarDeMim.value.length > 0);
+  const deveLembrar = lembrarDeMim.value === true;
 
   if (!credenciais.value.email || !credenciais.value.password) {
     erros.value.geral = "Preencha todos os campos.";
@@ -519,13 +510,11 @@ const fazerLogin = async () => {
   try {
     const response = await api.post('/login', {
       email: credenciais.value.email,
-      password: credenciais.value.password,
-      remember: isMarcado 
+      password: credenciais.value.password
     }); 
 
     if (response.data && response.data.access_token) {
-      
-      if (isMarcado) {
+      if (deveLembrar) {
         localStorage.setItem('nps_remember_email', credenciais.value.email.trim());
       } else {
         localStorage.removeItem('nps_remember_email'); 
@@ -533,11 +522,7 @@ const fazerLogin = async () => {
 
       armazenarSessao(response.data);
       setTimeout(() => { router.push('/'); }, 2200); 
-
-    } else {
-      throw new Error("Dados de perfil incompletos no servidor.");
     }
-
   } catch (error) {
     processandoRetorno.value = false;
     loading.value = false;
@@ -558,19 +543,16 @@ const fazerRegistro = async () => {
   limparErros();
   let possuiErro = false;
 
-  // 1. Validar Nome
   if (!registro.value.nome || registro.value.nome.trim() === '') { 
     erros.value.nome = 'O nome completo é obrigatório.'; 
     possuiErro = true; 
   }
   
-  // 2. Validar Email
   if (!registro.value.email || registro.value.email.trim() === '') { 
     erros.value.email = 'O e-mail é obrigatório.'; 
     possuiErro = true; 
   }
 
-  // 3. Validar Password (O ponto que costuma travar)
   if (!registro.value.password) { 
     erros.value.password = 'Crie uma senha de acesso.'; 
     possuiErro = true; 

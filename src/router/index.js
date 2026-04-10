@@ -115,9 +115,9 @@ const router = createRouter({
 // 🛡️ GUARDIÃO DE NAVEGAÇÃO BLINDADO
 // ==========================================
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   const isAuthenticated = !!token;
-  const usuarioTipo = localStorage.getItem('usuario_tipo') || 'Usuário'; 
+  const usuarioTipo = sessionStorage.getItem('usuario_tipo') || 'Usuário'; 
 
   if (to.path === '/login' && isAuthenticated) {
     return next('/');

@@ -41,7 +41,7 @@ const nomeExibido = ref('');
 const cargoExibido = ref('');
 const iniciais = ref('');
 const userEmail = ref('');
-const usuarioAvatar = ref(''); // 👈 Guarda a URL da foto do cabeçalho
+const usuarioAvatar = ref('');
 
 // -- Modal de Perfil e Upload
 const dialogPerfil = ref(false);
@@ -65,15 +65,15 @@ const exibirLayout = computed(() => {
 
 // Atualiza todas as informações visuais baseadas no Storage
 const atualizarDadosUsuario = () => {
-  const nome = localStorage.getItem('usuario_nome');
-  const cargo = localStorage.getItem('usuario_cargo');
-  const perfil = localStorage.getItem('usuario_tipo'); 
-  const email = localStorage.getItem('usuario_email') || '';
-  const avatar = localStorage.getItem('usuario_avatar') || ''; // 👈 Puxa a foto salva
+  const nome = sessionStorage.getItem('usuario_nome');
+  const cargo = sessionStorage.getItem('usuario_cargo');
+  const perfil = sessionStorage.getItem('usuario_tipo'); 
+  const email = sessionStorage.getItem('usuario_email') || '';
+  const avatar = sessionStorage.getItem('usuario_avatar') || '';
   
   isAdmin.value = (perfil || '').toLowerCase() === 'admin';
-  userEmail.value = email || '';
-  usuarioAvatar.value = avatar; // 👈 Atualiza o avatar na tela
+  userEmail.value = email;
+  usuarioAvatar.value = avatar; 
 
   if (nome) {
     nomeExibido.value = nome;
@@ -102,13 +102,11 @@ const toggleTema = () => {
 };
 
 const logout = () => {
-  localStorage.clear();
+  sessionStorage.clear();
   router.push('/login');
 };
 
 // --- GESTÃO DO PERFIL E IMAGEM ---
-
-// Abre o modal e limpa seleções de fotos anteriores
 const abrirPerfil = () => {
   perfilForm.value = {
     nome: nomeExibido.value,
@@ -121,35 +119,30 @@ const abrirPerfil = () => {
   menuPerfilAberto.value = false;
 };
 
-// Acionado automaticamente quando o ficheiro é escolhido na janela do PC (Abordagem Nativa HTML)
 const onFileSelect = (event) => {
   const file = event.target.files[0];
   if (file && file.type.startsWith('image/')) {
     arquivoSelecionado.value = file;
-    // Mostra a imagem instantaneamente na tela antes de salvar
     previewImagem.value = URL.createObjectURL(file); 
   }
 };
 
-// Salva as alterações na API
 const salvarPerfil = async () => {
   salvandoPerfil.value = true;
   
   try {
-    // 1. Envia a nova foto se o utilizador tiver selecionado uma
     if (arquivoSelecionado.value) {
       const formData = new FormData();
       formData.append('file', arquivoSelecionado.value);
       
       const res = await api.post('/usuarios/me/avatar', formData);
-      localStorage.setItem('usuario_avatar', res.data.avatar_url);
+      sessionStorage.setItem('usuario_avatar', res.data.avatar_url);
     }
     
-    // 2. Guarda os outros dados
-    localStorage.setItem('usuario_nome', perfilForm.value.nome);
-    localStorage.setItem('usuario_cargo', perfilForm.value.cargo);
+    sessionStorage.setItem('usuario_nome', perfilForm.value.nome);
+    sessionStorage.setItem('usuario_cargo', perfilForm.value.cargo);
     
-    atualizarDadosUsuario(); // Sincroniza o cabeçalho
+    atualizarDadosUsuario();
     
     toast.add({ severity: 'success', summary: 'Sucesso!', detail: 'O seu perfil foi atualizado.', life: 3000 });
     dialogPerfil.value = false;

@@ -15,6 +15,7 @@ import Dropdown from 'primevue/dropdown';
 import InputSwitch from 'primevue/inputswitch';
 import Sidebar from 'primevue/sidebar';
 import Dialog from 'primevue/dialog';
+import Tag from 'primevue/tag';
 
 const router = useRouter();
 const vTooltip = Tooltip;
