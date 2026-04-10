@@ -192,6 +192,7 @@
               placeholder="••••••••" 
               :feedback="false" 
               toggleMask 
+              maxlength="70"
               class="w-full"
               inputClass="custom-input w-full"
               @keyup.enter="handleSubmit"
