@@ -117,25 +117,26 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const token = sessionStorage.getItem('token');
   const isAuthenticated = !!token;
-  const usuarioTipo = sessionStorage.getItem('usuario_tipo') || 'Usuário'; 
+  
+  // 🎯 NORMALIZAÇÃO TOTAL: Tudo em minúsculo e sem depender de acentos complexos
+  const rawTipo = (sessionStorage.getItem('usuario_tipo') || 'usuário').toLowerCase();
 
-  if (to.path === '/login' && isAuthenticated) {
-    return next('/');
-  }
+  if (to.path === '/login' && isAuthenticated) return next('/');
+  if (to.meta.requiresAuth && !isAuthenticated) return next('/login');
 
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    return next('/login');
-  }
-
-  if (to.meta.roles && !to.meta.roles.includes(usuarioTipo)) {
-    if (to.path === '/') {
-      localStorage.clear();
-      return next('/login');
-    } else {
+  if (to.meta.roles) {
+    // 🎯 COMPARAÇÃO BLINDADA: Transformamos as roles da rota em minúsculo também
+    const rolesPermitidas = to.meta.roles.map(r => r.toLowerCase());
+    
+    if (!rolesPermitidas.includes(rawTipo)) {
+      console.warn(`🚫 Bloqueado: ${rawTipo} não está em ${rolesPermitidas}`);
+      if (to.path === '/') {
+        sessionStorage.clear();
+        return next('/login');
+      }
       return next('/');
     }
   }
-
   next();
 });
 

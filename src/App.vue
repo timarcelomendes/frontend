@@ -65,28 +65,40 @@ const exibirLayout = computed(() => {
 
 // Atualiza todas as informações visuais baseadas no Storage
 const atualizarDadosUsuario = () => {
-  const nome = sessionStorage.getItem('usuario_nome');
-  const cargo = sessionStorage.getItem('usuario_cargo');
-  const perfil = sessionStorage.getItem('usuario_tipo'); 
+  // 1. Extração segura com fallback para evitar erros de 'undefined'
+  const nome = sessionStorage.getItem('usuario_nome') || '';
+  const cargo = sessionStorage.getItem('usuario_cargo') || 'Analista';
+  const perfil = sessionStorage.getItem('usuario_tipo') || 'Usuário'; 
   const email = sessionStorage.getItem('usuario_email') || '';
   const avatar = sessionStorage.getItem('usuario_avatar') || '';
   
-  isAdmin.value = (perfil || '').toLowerCase() === 'admin';
+  // 2. Lógica de Admin Blindada
+  // Comparamos em minúsculo para não importar se o banco mandou 'Admin' ou 'admin'
+  isAdmin.value = perfil.toLowerCase() === 'admin';
+  
+  // 3. Atribuição Reativa
   userEmail.value = email;
   usuarioAvatar.value = avatar; 
 
-  if (nome) {
+  if (nome.trim()) {
     nomeExibido.value = nome;
-    cargoExibido.value = cargo || 'Analista';
+    cargoExibido.value = cargo;
     
-    const partes = nome.trim().split(' ');
-    iniciais.value = partes.length > 1 
-      ? (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
-      : partes[0].substring(0, 2).toUpperCase();
+    // 4. Lógica de Iniciais Otimizada
+    // Resolve nomes com espaços extras ou nomes únicos (ex: 'Marcelo')
+    const partes = nome.trim().split(/\s+/); // Regex para múltiplos espaços
+    if (partes.length > 1) {
+      // Pega a primeira letra do primeiro e do último nome
+      iniciais.value = (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+    } else {
+      // Pega as duas primeiras letras do primeiro nome
+      iniciais.value = partes[0].substring(0, 2).toUpperCase();
+    }
   } else {
-    nomeExibido.value = '';
+    // 5. Estado de Limpeza (Logout ou Erro)
+    nomeExibido.value = 'Utilizador';
     cargoExibido.value = '';
-    iniciais.value = '';
+    iniciais.value = '??';
     usuarioAvatar.value = '';
   }
 };
@@ -260,7 +272,7 @@ watch(
           </div>
         </router-link>
 
-        <div v-if="temPermissao('admin')" class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800/80">
+        <div v-if="isAdmin" class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800/80">
           
           <span class="block px-4 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3">
             Ações Críticas
@@ -402,10 +414,10 @@ watch(
           </div>
         </router-link>
 
-        <div v-if="temPermissao('admin')" class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800/80">
-          <span v-show="sidebarExpandida" class="block px-4 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3 animate-fadein">
-            Ações Críticas
-          </span>
+          <div v-if="isAdmin" class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800/80">
+            <span v-show="sidebarExpandida" class="block px-4 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3 animate-fadein">
+              Ações Críticas
+            </span>
 
           <router-link to="/logs" :class="['group flex items-center rounded-xl transition-all duration-300 relative overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:bg-white dark:hover:bg-slate-800/80 shadow-sm mb-3', sidebarExpandida ? 'px-4 py-2 gap-3' : 'px-0 py-2 justify-center w-10 h-10 mx-auto']">
             <div :class="['shrink-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-110', sidebarExpandida ? 'w-6 h-6' : 'w-full h-full']">
@@ -432,7 +444,7 @@ watch(
       </nav>
 
       <div class="mt-auto p-3 border-t border-slate-100 dark:border-slate-800 space-y-1 bg-white dark:bg-slate-900 z-10 relative shrink-0">
-          <router-link v-if="temPermissao('admin')" to="/configuracoes" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors group" v-tooltip.right="!sidebarExpandida ? 'Configurações' : null">
+          <router-link v-if="isAdmin" to="/configuracoes" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors group" v-tooltip.right="!sidebarExpandida ? 'Configurações' : null">
               <i class="pi pi-cog text-[1.1rem] shrink-0 text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-white transition-colors"></i>
               <span v-show="sidebarExpandida" class="text-[13px] tracking-tight font-medium">Configurações</span>
           </router-link>

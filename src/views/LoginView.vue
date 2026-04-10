@@ -366,12 +366,10 @@ const toggleDarkMode = () => {
 };
 
 const armazenarSessao = (data) => {
-  // 🛡️ DADOS TEMPORÁRIOS (SessionStorage)
   sessionStorage.setItem('token', data.access_token);
-  sessionStorage.setItem('usuario_id', data.usuario_id || '');
+  sessionStorage.setItem('usuario_tipo', data.tipo || 'usuário'); 
   sessionStorage.setItem('usuario_nome', data.nome);
   sessionStorage.setItem('usuario_email', data.email);
-  sessionStorage.setItem('usuario_tipo', data.tipo);
   sessionStorage.setItem('usuario_cargo', data.cargo || 'Analista');
   sessionStorage.setItem('usuario_avatar', data.avatar_url || '');
   
@@ -380,7 +378,6 @@ const armazenarSessao = (data) => {
   }
 };
 
-// 🎯 A SOLUÇÃO LIMPA E NATIVA DO CHECKBOX
 const mostrarAvisoBloqueio = () => {
     toast.add({
         severity: 'warn', 

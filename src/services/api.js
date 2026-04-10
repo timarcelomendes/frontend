@@ -24,12 +24,12 @@ api.interceptors.response.use(
     }
 
     if (status === 401 || status === 403) {
-      if (window.location.pathname === '/login' || (error.config && error.config.url.includes('/login'))) {
-        return Promise.reject(error);
-      }
-      sessionStorage.clear();
-      window.location.href = '/login'; 
-    }
+          if (window.location.pathname === '/login' || (error.config && error.config.url.includes('/login'))) {
+            return Promise.reject(error);
+          }
+          sessionStorage.clear();
+          window.location.href = '/login'; 
+        }
     
     return Promise.reject(error);
   }
