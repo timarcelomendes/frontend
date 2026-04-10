@@ -22,6 +22,12 @@ const acoes = ref([]);
 const loading = ref(true);
 const ajudaVisivel = ref(false);
 
+const isMaximizado = ref(false);
+
+const toggleMaximizacao = () => {
+  isMaximizado.value = !isMaximizado.value;
+};
+
 const regrasSLA = ref({ 
   sla_detrator_dias: 2, 
   sla_neutro_dias: 5, 
@@ -245,7 +251,10 @@ const abrirNovaAcao = () => {
 };
 
 const abrirEdicao = (acao) => {
-  // 👇 Calcula automaticamente o contexto baseado na nota da resposta
+  // 1. 🛡️ Reset do Modo Foco: Sempre abre no tamanho padrão
+  isMaximizado.value = false;
+
+  // 2. 🧠 Cálculo automático do contexto baseado na nota
   let contextoCalculado = 'manual';
   
   if (acao.resposta_nota !== null && acao.resposta_nota !== undefined) {
@@ -255,12 +264,15 @@ const abrirEdicao = (acao) => {
     else contextoCalculado = 'detrator';
   }
 
+  // 3. 📝 Montagem do objeto (Normalizando IDs e injetando o contexto)
   acaoAtual.value = { 
     ...acao,
     gestor_id: acao.gestor_id ? Number(acao.gestor_id) : null,
     empresa_id: acao.empresa_id ? Number(acao.empresa_id) : null,
-    contexto: contextoCalculado // 👈 Preenche visualmente o dropdown "Tipo de SLA"
+    contexto: contextoCalculado 
   };
+
+  // 4. 🔓 Exibição do Modal
   dialogAcao.value = true;
 };
 
@@ -501,170 +513,171 @@ onMounted(async () => {
 
     </div>  
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+    
+    <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800" @dragover="temPermissao('acoes:mover') ? $event.preventDefault() : null" @drop="temPermissao('acoes:mover') ? onDrop($event, 'Pendente') : null">
+      <div class="flex justify-between items-center px-2 pt-1 pb-2 border-b border-slate-200/50 dark:border-slate-800">
+        <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Pendente <span class="text-slate-400 ml-1">{{ estatisticas.pendentes }}</span></h3>
+        <i class="pi pi-inbox text-slate-400 text-xs"></i>
+      </div>
       
-      <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800" @dragover="temPermissao('acoes:mover') ? $event.preventDefault() : null" @drop="temPermissao('acoes:mover') ? onDrop($event, 'Pendente') : null">
-        <div class="flex justify-between items-center px-2 pt-1 pb-2 border-b border-slate-200/50 dark:border-slate-800">
-          <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Pendente <span class="text-slate-400 ml-1">{{ estatisticas.pendentes }}</span></h3>
-          <i class="pi pi-inbox text-slate-400 text-xs"></i>
-        </div>
-        
-        <div class="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
-          <div v-for="acao in acoesPendentes" :key="acao.id" draggable="true" @dragstart="onDragStart($event, acao.id)" 
-               class="bg-white dark:bg-slate-800 p-4 rounded-[1.25rem] shadow-sm border border-slate-100 dark:border-slate-700 cursor-grab hover:shadow-md hover:border-slate-200 dark:hover:border-slate-600 transition-all group">
-            
-            <div class="flex justify-between items-start mb-3">
-              <div class="flex items-center gap-2 mt-1">
-                <i class="pi pi-circle-fill text-[8px] rounded-full shrink-0" :class="getNpsDot(acao.resposta_nota)" v-tooltip.top="acao.resposta_nota ? `Nota NPS: ${acao.resposta_nota}` : 'Origem Manual'"></i>
-                <div class="flex flex-col leading-tight overflow-hidden">
-                  <span v-if="getCompanhiaDaAcao(acao)" class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate max-w-[140px]">{{ getCompanhiaDaAcao(acao) }}</span>
-                  <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[140px]">{{ acao.empresa_nome }}</span>
-                </div>
+      <div class="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
+        <div v-for="acao in acoesPendentes" :key="acao.id" 
+            draggable="true" 
+            @dragstart="onDragStart($event, acao.id)" 
+            @click="abrirEdicao(acao)"
+            class="bg-white dark:bg-slate-800 p-4 rounded-[1.25rem] shadow-sm border border-slate-100 dark:border-slate-700 cursor-pointer hover:shadow-md hover:border-slate-200 dark:hover:border-slate-600 transition-all group">
+          
+          <div class="flex justify-between items-start mb-3">
+            <div class="flex items-center gap-2 mt-1">
+              <i class="pi pi-circle-fill text-[8px] rounded-full shrink-0" :class="getNpsDot(acao.resposta_nota)" v-tooltip.top="acao.resposta_nota ? `Nota NPS: ${acao.resposta_nota}` : 'Origem Manual'"></i>
+              <div class="flex flex-col leading-tight overflow-hidden">
+                <span v-if="getCompanhiaDaAcao(acao)" class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate max-w-[140px]">{{ getCompanhiaDaAcao(acao) }}</span>
+                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[140px]">{{ acao.empresa_nome }}</span>
               </div>
-              <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
             </div>
-            
-            <div class="mb-2">
-              <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug">
-                  <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
-                  {{ acao.titulo }}
-              </h4>
-              <span class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mt-1">
-                  <i class="pi pi-clock text-[8px]"></i> {{ formatarDataLocal(acao.created_at) }}
-              </span>
+            <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
+          </div>
+          
+          <div class="mb-2">
+            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug">
+                <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
+                {{ acao.titulo }}
+            </h4>
+            <span class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mt-1">
+                <i class="pi pi-clock text-[8px]"></i> {{ formatarDataLocal(acao.created_at) }}
+            </span>
+          </div>
+          <p v-if="acao.descricao || acao.resposta_comentario" class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-4 whitespace-pre-line leading-relaxed border-l-2 border-orange-500/50 pl-2">
+              {{ acao.descricao || acao.resposta_comentario }}
+          </p>
+          
+          <div class="flex items-center gap-3 pt-3 border-t border-slate-50 dark:border-slate-700/50 mt-auto">
+            <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm" v-tooltip.top="getGestor(acao.gestor_id)?.nome || acao.gestor_nome || 'Sem gestor'">
+              <img v-if="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" :src="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
+              <span v-else class="text-[9px] font-black text-slate-500 dark:text-slate-300">{{ gerarIniciais(getGestor(acao.gestor_id)?.nome || acao.gestor_nome) }}</span>
             </div>
-            <p v-if="acao.descricao || acao.resposta_comentario" class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-4 whitespace-pre-line leading-relaxed border-l-2 border-orange-500/50 pl-2">
-                {{ acao.descricao || acao.resposta_comentario }}
-            </p>
-            
-            <div class="flex items-center gap-3 pt-3 border-t border-slate-50 dark:border-slate-700/50 mt-auto">
-              
-              <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm" v-tooltip.top="getGestor(acao.gestor_id)?.nome || acao.gestor_nome || 'Sem gestor'">
-                <img v-if="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" :src="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
-                <span v-else class="text-[9px] font-black text-slate-500 dark:text-slate-300">{{ gerarIniciais(getGestor(acao.gestor_id)?.nome || acao.gestor_nome) }}</span>
-              </div>
-              
-              <div v-if="obterSLA(acao)" class="px-2 py-1 rounded-md text-[9px] uppercase tracking-widest" :class="obterSLA(acao).cor">
-                {{ obterSLA(acao).texto }}
-              </div>
-
-              <div class="ml-auto flex items-center gap-1.5 text-[10px] font-bold text-slate-500" v-tooltip.top="'Prioridade'">
-                <i class="pi pi-circle-fill text-[8px]" :class="getPrioDot(acao.prioridade)"></i> {{ acao.prioridade }}
-              </div>
+            <div v-if="obterSLA(acao)" class="px-2 py-1 rounded-md text-[9px] uppercase tracking-widest" :class="obterSLA(acao).cor">
+              {{ obterSLA(acao).texto }}
+            </div>
+            <div class="ml-auto flex items-center gap-1.5 text-[10px] font-bold text-slate-500" v-tooltip.top="'Prioridade'">
+              <i class="pi pi-circle-fill text-[8px]" :class="getPrioDot(acao.prioridade)"></i> {{ acao.prioridade }}
             </div>
           </div>
         </div>
       </div>
-
-      <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800" @dragover="temPermissao('acoes:mover') ? $event.preventDefault() : null" @drop="temPermissao('acoes:mover') ? onDrop($event, 'Em Andamento') : null">
-        <div class="flex justify-between items-center px-2 pt-1 pb-2 border-b border-slate-200/50 dark:border-slate-800">
-          <h3 class="text-[11px] font-black uppercase tracking-widest text-sky-600 dark:text-sky-500">Em Andamento <span class="text-slate-400 ml-1">{{ estatisticas.emAndamento }}</span></h3>
-          <i class="pi pi-spinner text-sky-500 text-xs animate-spin-slow"></i>
-        </div>
-        
-        <div class="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
-          <div v-for="acao in acoesAndamento" :key="acao.id" draggable="true" @dragstart="onDragStart($event, acao.id)" 
-               class="bg-white dark:bg-slate-800 p-4 rounded-[1.25rem] shadow-sm border border-slate-100 dark:border-slate-700 cursor-grab hover:shadow-md hover:border-sky-200 dark:hover:border-sky-800 transition-all group">
-            
-            <div class="flex justify-between items-start mb-3">
-              <div class="flex items-center gap-2 mt-1">
-                <i class="pi pi-circle-fill text-[8px] rounded-full shrink-0" :class="getNpsDot(acao.resposta_nota)" v-tooltip.top="acao.resposta_nota ? `Nota NPS: ${acao.resposta_nota}` : 'Origem Manual'"></i>
-                <div class="flex flex-col leading-tight overflow-hidden">
-                  <span v-if="getCompanhiaDaAcao(acao)" class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate max-w-[140px]">{{ getCompanhiaDaAcao(acao) }}</span>
-                  <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[140px]">{{ acao.empresa_nome }}</span>
-                </div>
-              </div>
-              <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-sky-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
-            </div>
-            
-            <div class="mb-2">
-              <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug">
-                  <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
-                  {{ acao.titulo }}
-              </h4>
-              <span class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mt-1">
-                  <i class="pi pi-clock text-[8px]"></i> {{ formatarDataLocal(acao.created_at) }}
-              </span>
-            </div>
-            <p v-if="acao.descricao || acao.resposta_comentario" class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-4 whitespace-pre-line leading-relaxed border-l-2 border-orange-500/50 pl-2">
-                {{ acao.descricao || acao.resposta_comentario }}
-            </p>
-            
-            <div class="flex items-center gap-3 pt-3 border-t border-slate-50 dark:border-slate-700/50 mt-auto">
-              
-              <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm" v-tooltip.top="getGestor(acao.gestor_id)?.nome || acao.gestor_nome || 'Sem gestor'">
-                <img v-if="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" :src="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
-                <span v-else class="text-[9px] font-black text-slate-500 dark:text-slate-300">{{ gerarIniciais(getGestor(acao.gestor_id)?.nome || acao.gestor_nome) }}</span>
-              </div>
-              
-              <div v-if="obterSLA(acao)" class="px-2 py-1 rounded-md text-[9px] uppercase tracking-widest" :class="obterSLA(acao).cor">
-                {{ obterSLA(acao).texto }}
-              </div>
-
-              <div class="ml-auto flex items-center gap-1.5 text-[10px] font-bold text-slate-500" v-tooltip.top="'Prioridade'">
-                <i class="pi pi-circle-fill text-[8px]" :class="getPrioDot(acao.prioridade)"></i> {{ acao.prioridade }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800 opacity-70 hover:opacity-100 transition-opacity" @dragover="temPermissao('acoes:mover') ? $event.preventDefault() : null" @drop="temPermissao('acoes:mover') ? onDrop($event, 'Concluído') : null">
-        <div class="flex justify-between items-center px-2 pt-1 pb-2 border-b border-slate-200/50 dark:border-slate-800">
-          <h3 class="text-[11px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500">Concluído <span class="text-slate-400 ml-1">{{ estatisticas.concluidas }}</span></h3>
-          <i class="pi pi-check-circle text-emerald-500 text-xs"></i>
-        </div>
-        
-        <div class="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
-          <div v-for="acao in acoesConcluidas" :key="acao.id" :draggable="temPermissao('acoes:mover')" @dragstart="temPermissao('acoes:mover') ? onDragStart($event, acao.id) : null" 
-               class="bg-white/60 dark:bg-slate-800/40 p-4 rounded-[1.25rem] border border-slate-200/50 dark:border-slate-700 cursor-grab hover:shadow-sm transition-all group">
-            
-            <div class="flex justify-between items-start mb-3">
-              <div class="flex items-center gap-2 mt-1 opacity-70">
-                <i class="pi pi-circle-fill text-[8px] rounded-full shrink-0" :class="getNpsDot(acao.resposta_nota)"></i>
-                <div class="flex flex-col leading-tight overflow-hidden">
-                  <span v-if="getCompanhiaDaAcao(acao)" class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate max-w-[140px]">{{ getCompanhiaDaAcao(acao) }}</span>
-                  <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[140px]">{{ acao.empresa_nome }}</span>
-                </div>
-              </div>
-              <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-emerald-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
-            </div>
-            
-            <div class="mb-2">
-              <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug">
-                  <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
-                  {{ acao.titulo }}
-              </h4>
-              <span class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mt-1">
-                  <i class="pi pi-clock text-[8px]"></i> {{ formatarDataLocal(acao.created_at) }}
-              </span>
-            </div>
-            
-            <div class="flex items-center gap-3 pt-3 mt-auto">
-              
-              <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm" v-tooltip.top="getGestor(acao.gestor_id)?.nome || acao.gestor_nome || 'Sem gestor'">
-                <img v-if="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" :src="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" class="w-full h-full object-cover opacity-60" @error="(e) => e.target.style.display = 'none'" />
-                <span v-else class="text-[9px] font-black text-slate-400 dark:text-slate-500">{{ gerarIniciais(getGestor(acao.gestor_id)?.nome || acao.gestor_nome) }}</span>
-              </div>
-
-              <div class="ml-auto flex items-center gap-1.5 text-[9px] font-black text-emerald-500 uppercase tracking-widest">
-                <i class="pi pi-check"></i> Fechado
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </div>
+
+    <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800" @dragover="temPermissao('acoes:mover') ? $event.preventDefault() : null" @drop="temPermissao('acoes:mover') ? onDrop($event, 'Em Andamento') : null">
+      <div class="flex justify-between items-center px-2 pt-1 pb-2 border-b border-slate-200/50 dark:border-slate-800">
+        <h3 class="text-[11px] font-black uppercase tracking-widest text-sky-600 dark:text-sky-500">Em Andamento <span class="text-slate-400 ml-1">{{ estatisticas.emAndamento }}</span></h3>
+        <i class="pi pi-spinner text-sky-500 text-xs animate-spin-slow"></i>
+      </div>
+      
+      <div class="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
+        <div v-for="acao in acoesAndamento" :key="acao.id" 
+            draggable="true" 
+            @dragstart="onDragStart($event, acao.id)" 
+            @click="abrirEdicao(acao)"
+            class="bg-white dark:bg-slate-800 p-4 rounded-[1.25rem] shadow-sm border border-slate-100 dark:border-slate-700 cursor-pointer hover:shadow-md hover:border-sky-200 dark:hover:border-sky-800 transition-all group">
+          
+          <div class="flex justify-between items-start mb-3">
+            <div class="flex items-center gap-2 mt-1">
+              <i class="pi pi-circle-fill text-[8px] rounded-full shrink-0" :class="getNpsDot(acao.resposta_nota)" v-tooltip.top="acao.resposta_nota ? `Nota NPS: ${acao.resposta_nota}` : 'Origem Manual'"></i>
+              <div class="flex flex-col leading-tight overflow-hidden">
+                <span v-if="getCompanhiaDaAcao(acao)" class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate max-w-[140px]">{{ getCompanhiaDaAcao(acao) }}</span>
+                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[140px]">{{ acao.empresa_nome }}</span>
+              </div>
+            </div>
+            <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-sky-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
+          </div>
+          
+          <div class="mb-2">
+            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug">
+                <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
+                {{ acao.titulo }}
+            </h4>
+            <span class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mt-1">
+                <i class="pi pi-clock text-[8px]"></i> {{ formatarDataLocal(acao.created_at) }}
+            </span>
+          </div>
+          <p v-if="acao.descricao || acao.resposta_comentario" class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-4 whitespace-pre-line leading-relaxed border-l-2 border-orange-500/50 pl-2">
+              {{ acao.descricao || acao.resposta_comentario }}
+          </p>
+          
+          <div class="flex items-center gap-3 pt-3 border-t border-slate-50 dark:border-slate-700/50 mt-auto">
+            <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm" v-tooltip.top="getGestor(acao.gestor_id)?.nome || acao.gestor_nome || 'Sem gestor'">
+              <img v-if="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" :src="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
+              <span v-else class="text-[9px] font-black text-slate-500 dark:text-slate-300">{{ gerarIniciais(getGestor(acao.gestor_id)?.nome || acao.gestor_nome) }}</span>
+            </div>
+            <div v-if="obterSLA(acao)" class="px-2 py-1 rounded-md text-[9px] uppercase tracking-widest" :class="obterSLA(acao).cor">
+              {{ obterSLA(acao).texto }}
+            </div>
+            <div class="ml-auto flex items-center gap-1.5 text-[10px] font-bold text-slate-500" v-tooltip.top="'Prioridade'">
+              <i class="pi pi-circle-fill text-[8px]" :class="getPrioDot(acao.prioridade)"></i> {{ acao.prioridade }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-[2rem] p-4 min-h-[60vh] border border-slate-100/80 dark:border-slate-800 opacity-70 hover:opacity-100 transition-opacity" @dragover="temPermissao('acoes:mover') ? $event.preventDefault() : null" @drop="temPermissao('acoes:mover') ? onDrop($event, 'Concluído') : null">
+      <div class="flex justify-between items-center px-2 pt-1 pb-2 border-b border-slate-200/50 dark:border-slate-800">
+        <h3 class="text-[11px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500">Concluído <span class="text-slate-400 ml-1">{{ estatisticas.concluidas }}</span></h3>
+        <i class="pi pi-check-circle text-emerald-500 text-xs"></i>
+      </div>
+      
+      <div class="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
+        <div v-for="acao in acoesConcluidas" :key="acao.id" 
+            :draggable="temPermissao('acoes:mover')" 
+            @dragstart="temPermissao('acoes:mover') ? onDragStart($event, acao.id) : null" 
+            @click="abrirEdicao(acao)"
+            class="bg-white/60 dark:bg-slate-800/40 p-4 rounded-[1.25rem] border border-slate-200/50 dark:border-slate-700 cursor-pointer hover:shadow-sm transition-all group">
+          
+          <div class="flex justify-between items-start mb-3">
+            <div class="flex items-center gap-2 mt-1 opacity-70">
+              <i class="pi pi-circle-fill text-[8px] rounded-full shrink-0" :class="getNpsDot(acao.resposta_nota)"></i>
+              <div class="flex flex-col leading-tight overflow-hidden">
+                <span v-if="getCompanhiaDaAcao(acao)" class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate max-w-[140px]">{{ getCompanhiaDaAcao(acao) }}</span>
+                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[140px]">{{ acao.empresa_nome }}</span>
+              </div>
+            </div>
+            <button v-if="temPermissao('acoes:editar') || temPermissao('acoes:excluir')" @click.stop="toggleMenu($event, acao)" class="text-slate-400 hover:text-emerald-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"><i class="pi pi-ellipsis-h text-sm"></i></button>
+          </div>
+          
+          <div class="mb-2">
+            <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-snug">
+                <span class="text-orange-500 mr-1 font-black">{{ formatarId(acao.id) }}</span> 
+                {{ acao.titulo }}
+            </h4>
+            <span class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mt-1">
+                <i class="pi pi-clock text-[8px]"></i> {{ formatarDataLocal(acao.created_at) }}
+            </span>
+          </div>
+          
+          <div class="flex items-center gap-3 pt-3 mt-auto">
+            <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm" v-tooltip.top="getGestor(acao.gestor_id)?.nome || acao.gestor_nome || 'Sem gestor'">
+              <img v-if="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" :src="getGestor(acao.gestor_id)?.avatar || acao.gestor_avatar" class="w-full h-full object-cover opacity-60" @error="(e) => e.target.style.display = 'none'" />
+              <span v-else class="text-[9px] font-black text-slate-400 dark:text-slate-500">{{ gerarIniciais(getGestor(acao.gestor_id)?.nome || acao.gestor_nome) }}</span>
+            </div>
+            <div class="ml-auto flex items-center gap-1.5 text-[9px] font-black text-emerald-500 uppercase tracking-widest">
+              <i class="pi pi-check"></i> Fechado
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 
     <Menu ref="menuOpcoes" :model="menuItens" :popup="true" class="!rounded-xl !border-slate-200 dark:!border-slate-700 text-xs w-40" />
 
     <Dialog 
       v-model:visible="dialogAcao" 
       :modal="true" 
-      :style="{width: '550px'}" 
+      :style="{ width: isMaximizado ? '98vw' : '550px' }" 
       :closable="false" 
-      class="custom-dialog-no-header"
+      :class="['custom-dialog-no-header transition-all duration-300', { 'dialog-maximizado': isMaximizado }]"
     >
       <div class="bg-slate-900 p-6 flex justify-between items-center rounded-t-[2rem]">
         <div class="flex items-center gap-3">
@@ -678,12 +691,24 @@ onMounted(async () => {
             <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Gestão de Close-the-Loop</p>
           </div>
         </div>
-        <button @click="dialogAcao = false" class="text-slate-500 hover:text-white p-2 transition-all hover:bg-white/10 rounded-full">
-          <i class="pi pi-times"></i>
-        </button>
+        
+        <div class="flex items-center gap-2">
+          <button 
+            type="button"
+            @click="toggleMaximizacao" 
+            class="text-slate-500 hover:text-white p-2 transition-all hover:bg-white/10 rounded-full"
+            v-tooltip.top="isMaximizado ? 'Recolher' : 'Expandir Leitura'"
+          >
+            <i :class="isMaximizado ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"></i>
+          </button>
+
+          <button @click="dialogAcao = false" class="text-slate-500 hover:text-white p-2 transition-all hover:bg-white/10 rounded-full">
+            <i class="pi pi-times"></i>
+          </button>
+        </div>
       </div>
       
-      <div class="p-8 space-y-6 bg-white dark:bg-slate-900 rounded-b-[2rem] border-x border-b border-slate-100 dark:border-slate-800">
+      <div :class="['p-8 space-y-6 bg-white dark:bg-slate-900 rounded-b-[2rem] border-x border-b border-slate-100 dark:border-slate-800 transition-all duration-300', isMaximizado ? 'h-[85vh] overflow-y-auto' : '']">
         
         <div class="flex flex-col gap-1.5">
           <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Título do Plano de Ação *</label>
@@ -737,9 +762,14 @@ onMounted(async () => {
           </div>
         </div>
         
-        <div class="flex flex-col gap-1.5">
+        <div class="flex flex-col gap-1.5 transition-all">
           <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Detalhamento e Notas Internas</label>
-          <Textarea v-model="acaoAtual.descricao" rows="3" class="custom-input w-full resize-none" placeholder="Descreva os próximos passos ou observações..." />
+          <Textarea 
+            v-model="acaoAtual.descricao" 
+            :rows="isMaximizado ? 18 : 3" 
+            class="custom-input w-full resize-none transition-all duration-300" 
+            placeholder="Descreva os próximos passos ou observações..." 
+          />
         </div>
         
         <div class="pt-6 flex gap-4 w-full border-t border-slate-50 dark:border-slate-800">
