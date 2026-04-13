@@ -211,44 +211,34 @@ const onDragStart = (event, id) => {
 
 const onDrop = async (event, novoStatus) => {
   const id = event.dataTransfer.getData('acaoId');
-  
   const acao = acoes.value.find(a => a.id == id);
   if (!acao) return;
 
-  if (novoStatus === 'Concluído' && (!acao.resolucao || !acao.resolucao.trim())) {
-    toast.add({ 
-      severity: 'warn', 
-      summary: 'Resolução Obrigatória', 
-      detail: 'Você precisa descrever o que foi feito antes de concluir.', 
-      life: 5000 
-    });
-    
-    abrirEdicao(acao);
-    return;
+  // 🛡️ NOVA TRAVA: Responsável e Resolução são obrigatórios para concluir
+  if (novoStatus === 'Concluído') {
+    const semGestor = !acao.gestor_id || acao.gestor_id === null;
+    const semResolucao = !acao.resolucao || !acao.resolucao.trim();
+
+    if (semGestor || semResolucao) {
+      const mensagem = semGestor 
+        ? 'Este item precisa de um Responsável atribuído para ser finalizado.' 
+        : 'Descreva o que foi feito na Resolução antes de concluir.';
+
+      toast.add({ severity: 'warn', summary: 'Ação Bloqueada', detail: mensagem, life: 5000 });
+      
+      // Abre o modal para o usuário corrigir o erro na hora
+      abrirEdicao(acao);
+      return; 
+    }
   }
 
+  // Segue com o PUT (usando a URL correta sem duplicar /api)
   try {
-    await api.put(`/acoes/${id}`, { 
-      ...acao, 
-      status: novoStatus 
-    });
-    
-    toast.add({ 
-      severity: 'success', 
-      summary: 'Status Atualizado', 
-      detail: `Plano movido para ${novoStatus}`, 
-      life: 2000 
-    });
-    
+    await api.put(`/acoes/${id}`, { ...acao, status: novoStatus });
+    toast.add({ severity: 'success', summary: 'Status Atualizado', detail: `Movido para ${novoStatus}`, life: 2000 });
     await carregarAcoes();
   } catch (error) {
-    console.error("Erro ao mover card:", error);
-    toast.add({ 
-      severity: 'error', 
-      summary: 'Erro', 
-      detail: 'Não foi possível atualizar o status.', 
-      life: 3000 
-    });
+    console.error(error);
   }
 };
 
@@ -306,14 +296,16 @@ const aoMudarEmpresa = () => {
 };
 
 const salvarAcao = async () => {
-  if (acaoAtual.value.status === 'Concluído' && !acaoAtual.value.resolucao?.trim()) {
-    toast.add({ 
-      severity: 'warn', 
-      summary: 'Atenção', 
-      detail: 'Para concluir, descreva o que foi feito na Resolução.', 
-      life: 5000 
-    });
-    return; 
+  // 🛡️ VALIDAÇÃO DE INTEGRIDADE
+  if (acaoAtual.value.status === 'Concluído') {
+    if (!acaoAtual.value.gestor_id) {
+      toast.add({ severity: 'warn', summary: 'Campo Obrigatório', detail: 'Selecione um responsável para finalizar esta ação.', life: 5000 });
+      return;
+    }
+    if (!acaoAtual.value.resolucao?.trim()) {
+      toast.add({ severity: 'warn', summary: 'Falta Resolução', detail: 'Descreva o desfecho do caso antes de salvar.', life: 5000 });
+      return;
+    }
   }
 
   salvando.value = true;
@@ -321,25 +313,20 @@ const salvarAcao = async () => {
     const payload = {
       ...acaoAtual.value,
       gestor_id: acaoAtual.value.gestor_id ? Number(acaoAtual.value.gestor_id) : null,
-      empresa_id: acaoAtual.value.empresa_id ? Number(acaoAtual.value.empresa_id) : null,
-      resolucao: acaoAtual.value.resolucao
+      empresa_id: acaoAtual.value.empresa_id ? Number(acaoAtual.value.empresa_id) : null
     };
 
-    if (acaoAtual.value.id) {
-      // Atualização
-      await api.put(`/acoes/${acaoAtual.value.id}`, payload);
-      toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Plano atualizado com sucesso!', life: 3000 });
-    } else {
-      // Criação
-      await api.post('/acoes', payload);
-      toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Nova ação registrada!', life: 3000 });
-    }
+    const url = acaoAtual.value.id ? `/acoes/${acaoAtual.value.id}` : '/acoes';
+    const metodo = acaoAtual.value.id ? 'put' : 'post';
 
+    await api[metodo](url, payload);
+    
+    toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Registro atualizado com sucesso!', life: 3000 });
     dialogAcao.value = false;
     await carregarAcoes();
   } catch (error) {
-    console.error("Erro ao salvar ação:", error);
-    toast.add({ severity: 'error', summary: 'Erro', detail: 'Falha ao persistir os dados no banco.', life: 3000 });
+    console.error(error);
+    toast.add({ severity: 'error', summary: 'Erro', detail: 'Erro ao persistir no banco.', life: 3000 });
   } finally {
     salvando.value = false;
   }

@@ -2,10 +2,11 @@
 // ==========================================
 // 1. IMPORTS
 // ==========================================
-import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { temPermissao } from './utils/permissoes';
 import api from './services/api'; 
+import { ref, nextTick, onMounted, computed, watch } from 'vue'; 
+import { marked } from 'marked';
 
 // PrimeVue Components
 import { useToast } from 'primevue/usetoast';
@@ -65,37 +66,35 @@ const exibirLayout = computed(() => {
 
 // Atualiza todas as informações visuais baseadas no Storage
 const atualizarDadosUsuario = () => {
-  // 1. Extração segura com fallback para evitar erros de 'undefined'
   const nome = sessionStorage.getItem('usuario_nome') || '';
   const cargo = sessionStorage.getItem('usuario_cargo') || 'Analista';
   const perfil = sessionStorage.getItem('usuario_tipo') || 'Usuário'; 
   const email = sessionStorage.getItem('usuario_email') || '';
-  const avatar = sessionStorage.getItem('usuario_avatar') || '';
+  let avatar = sessionStorage.getItem('usuario_avatar') || '';
   
-  // 2. Lógica de Admin Blindada
-  // Comparamos em minúsculo para não importar se o banco mandou 'Admin' ou 'admin'
   isAdmin.value = perfil.toLowerCase() === 'admin';
-  
-  // 3. Atribuição Reativa
   userEmail.value = email;
-  usuarioAvatar.value = avatar; 
+
+  if (avatar.startsWith('http')) {
+      usuarioAvatar.value = avatar;
+    } else if (avatar) {
+      const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      usuarioAvatar.value = `${backendUrl.replace(/\/api$/, '')}${avatar}`;
+    } else {
+      usuarioAvatar.value = '';
+    }
 
   if (nome.trim()) {
     nomeExibido.value = nome;
     cargoExibido.value = cargo;
     
-    // 4. Lógica de Iniciais Otimizada
-    // Resolve nomes com espaços extras ou nomes únicos (ex: 'Marcelo')
-    const partes = nome.trim().split(/\s+/); // Regex para múltiplos espaços
+    const partes = nome.trim().split(/\s+/);
     if (partes.length > 1) {
-      // Pega a primeira letra do primeiro e do último nome
       iniciais.value = (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
     } else {
-      // Pega as duas primeiras letras do primeiro nome
       iniciais.value = partes[0].substring(0, 2).toUpperCase();
     }
   } else {
-    // 5. Estado de Limpeza (Logout ou Erro)
     nomeExibido.value = 'Utilizador';
     cargoExibido.value = '';
     iniciais.value = '??';
@@ -190,6 +189,127 @@ watch(
     }
   }
 );
+
+const renderMarkdown = (textoCru) => {
+  if (!textoCru) return '';
+  
+  marked.setOptions({
+    breaks: true,
+    gfm: true
+  });
+
+  return marked(textoCru);
+};
+
+const chatAberto = ref(false);
+const novaMensagem = ref('');
+const chatCarregando = ref(false);
+const historicoChat = ref([]);
+const sugestoesAtivas = ref([]);
+const chatContainer = ref(null);
+
+const enviarMensagem = async () => {
+  if (!novaMensagem.value.trim() || chatCarregando.value) return;
+
+  const userText = novaMensagem.value;
+  historicoChat.value.push({ role: 'user', content: userText });
+  
+  const iaIndex = historicoChat.value.push({ role: 'assistant', content: '' }) - 1;
+  novaMensagem.value = '';
+  chatCarregando.value = true;
+  sugestoesAtivas.value = []; // Reseta sugestões ao perguntar algo novo
+
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/chat/perguntar`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ 
+        mensagem: userText,
+        historico: historicoChat.value.slice(-6) 
+      })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = JSON.parse(line.replace('data: ', ''));
+          
+          if (data.texto) {
+            historicoChat.value[iaIndex].content += data.texto;
+            scrollToBottom();
+          }
+          
+          if (data.sugestoes) {
+            sugestoesAtivas.value = data.sugestoes;
+          }
+
+          else if (data.erro) {
+            historicoChat.value[iaIndex].content = `⚠️ Erro interno do servidor: ${data.erro}`;
+            scrollToBottom();
+          }
+        }
+      }
+    }
+  } catch (error) {Intelligence
+    historicoChat.value[iaIndex].content = "⚠️ Erro de conexão com o Gauge AI.";
+  } finally {
+    chatCarregando.value = false;
+    scrollToBottom();
+  }
+};
+
+const perguntar = (texto) => {
+  novaMensagem.value = texto;
+  enviarMensagem();
+};
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatContainer.value) {
+      chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+    }
+  });
+};
+
+
+// 🎯 1. Defina as variáveis de estado
+const clientesRecentes = ref([]);
+const tagsCarregando = ref(true); // Começa bloqueado
+
+// 🎯 2. Defina a função com nome único e robusto
+const carregarAtalhosChat = async () => {
+  tagsCarregando.value = true;
+  try {
+    const response = await api.get('/chat/clientes-recentes');
+    clientesRecentes.value = response.data;
+  } catch (error) {
+    console.error("Erro ao carregar atalhos dinâmicos:", error);
+    clientesRecentes.value = []; // Retorno limpo em caso de erro
+  } finally {
+    // 🎯 Só libera os botões quando a resposta (mesmo vazia) chegar
+    tagsCarregando.value = false;
+  }
+};
+
+// 🎯 3. Garanta que o Hook use o nome EXATO da função acima
+onMounted(() => {
+  carregarAtalhosChat(); 
+});
+
 </script>
 
 <template>
@@ -519,6 +639,129 @@ watch(
 
   <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="onFileSelect" />
 
+    <button 
+    @click="chatAberto = true"
+    class="fixed bottom-6 right-6 z-50 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-full p-4 shadow-2xl shadow-fuchsia-900/50 transition-transform hover:scale-110 flex items-center gap-2">
+    <i class="pi pi-sparkles text-xl"></i>
+    <span class="font-bold hidden md:inline">NPS AI</span>
+  </button>
+
+  <Sidebar v-model:visible="chatAberto" position="right" class="w-full md:w-[450px] !bg-slate-900 !text-slate-100">
+    <template #header>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-fuchsia-600 to-orange-500 flex items-center justify-center shadow-lg shadow-fuchsia-500/20">
+          <i class="pi pi-sparkles text-white"></i>
+        </div>
+        <div>
+          <h2 class="font-bold text-lg leading-tight">Gauge Intelligence</h2>
+          <span class="text-xs text-emerald-400 font-medium animate-pulse">● Online</span>
+        </div>
+      </div>
+    </template>
+
+    <div class="flex flex-col h-full overflow-hidden">
+      <div ref="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+        
+        <div class="flex flex-col gap-1 items-start">
+          <div class="bg-slate-800 p-4 rounded-2xl rounded-tl-sm text-sm border border-slate-700 max-w-[90%] shadow-sm">
+            Olá, Marcelo. Como posso ajudar a analisar os dados de produto hoje?
+          </div>
+        </div>
+
+        <div v-for="(msg, index) in historicoChat" :key="index" class="flex gap-4 p-4 rounded-xl" :class="msg.role === 'user' ? 'bg-slate-800/50 ml-12' : 'bg-transparent mr-12 border border-slate-800/50'">
+          
+          <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" :class="msg.role === 'user' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30'">
+            <i :class="msg.role === 'user' ? 'pi pi-user' : 'pi pi-sparkles'" class="text-sm"></i>
+          </div>
+
+          <div class="flex-1 overflow-hidden">
+            <div class="text-xs font-bold mb-1" :class="msg.role === 'user' ? 'text-indigo-400' : 'text-fuchsia-400'">
+              {{ msg.role === 'user' ? 'Você' : 'Gauge Intelligence' }}
+            </div>
+            
+            <div 
+              v-if="msg.content" 
+              class="text-sm text-slate-300 leading-relaxed overflow-x-auto prose prose-invert max-w-none prose-p:my-1 prose-headings:mt-3 prose-headings:mb-2 prose-table:my-2 prose-td:py-1"
+            >
+              <span v-html="renderMarkdown(msg.content)"></span>
+            </div>
+
+            <div v-else-if="msg.role === 'ai' && chatCarregando" class="flex items-center gap-3 py-2">
+              <div class="flex gap-1.5 items-center">
+                <div class="w-2 h-2 rounded-full bg-fuchsia-500 animate-bounce" style="animation-delay: 0ms"></div>
+                <div class="w-2 h-2 rounded-full bg-fuchsia-500 animate-bounce" style="animation-delay: 150ms"></div>
+                <div class="w-2 h-2 rounded-full bg-fuchsia-500 animate-bounce" style="animation-delay: 300ms"></div>
+              </div>
+              <span class="text-xs text-slate-400/80 font-medium italic tracking-wide animate-pulse">
+                A consultar a base de dados...
+              </span>
+            </div>
+
+          </div>
+        </div>
+        
+        <div v-if="chatCarregando" class="flex gap-2 p-3 items-center text-slate-400 italic text-xs">
+          <i class="pi pi-spin pi-spinner text-fuchsia-500"></i> Analisando base de dados da Gauge...
+        </div>
+
+        <div v-if="sugestoesAtivas.length > 0 && !chatCarregando" class="flex flex-wrap gap-2 pt-2 animate-fade-in">
+          <button 
+            v-for="tag in sugestoesAtivas" 
+            :key="tag"
+            @click="perguntar(tag)"
+            class="px-3 py-1.5 bg-slate-800/50 hover:bg-fuchsia-600/20 hover:border-fuchsia-500 border border-slate-700 rounded-full text-[11px] text-slate-300 transition-all flex items-center gap-2"
+          >
+            <i class="pi pi-bolt text-fuchsia-400 text-[10px]"></i>
+            {{ tag }}
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-auto p-4 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md">
+        <div class="flex gap-2 overflow-x-auto mb-3 pb-1 scrollbar-hide">
+          
+          <button 
+            v-for="cliente in clientesRecentes" 
+            :key="cliente"
+            @click="perguntar(`Resumo da ${cliente} nos últimos 30 dias`)" 
+            :disabled="tagsCarregando || chatCarregando"
+            class="text-[10px] uppercase font-bold tracking-wider whitespace-nowrap px-3 py-1.5 rounded-md border transition-all flex items-center gap-2"
+            :class="[
+              (tagsCarregando || chatCarregando) 
+                ? 'bg-slate-800/50 text-slate-600 border-slate-800 cursor-not-allowed opacity-50' 
+                : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-white'
+            ]"
+          >
+            <i v-if="tagsCarregando" class="pi pi-spin pi-spinner text-[8px]"></i>
+            Resumo {{ cliente }}
+          </button>
+
+          <button 
+            @click="perguntar('Gere uma análise de NPS de todos os clientes do Portfólio')" 
+            :disabled="chatCarregando"
+            class="text-[10px] uppercase font-bold tracking-wider text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 whitespace-nowrap px-3 py-1.5 rounded-md border border-indigo-500/30 transition-colors"
+          >
+            <i class="pi pi-briefcase mr-1 text-[8px]"></i> Visão Portfólio
+          </button>
+        </div>
+
+        <form @submit.prevent="enviarMensagem" class="relative">
+          <InputText 
+            v-model="novaMensagem" 
+            placeholder="Pergunte algo sobre os produtos..." 
+            class="w-full !bg-slate-950 !border-slate-700 !rounded-xl !pl-4 !pr-12 !py-4 focus:!ring-fuchsia-500 !text-sm"
+            :disabled="chatCarregando"
+          />
+          <button type="submit" :disabled="!novaMensagem.trim() || chatCarregando" 
+                  class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 text-white disabled:opacity-50 disabled:bg-slate-800 transition-all shadow-lg">
+            <i class="pi pi-send text-sm"></i>
+          </button>
+        </form>
+        <p class="text-[10px] text-slate-500 mt-2 text-center">Gauge AI pode processar dados históricos de NPS e Kanban.</p>
+      </div>
+    </div>
+  </Sidebar>
+
   <Dialog 
       v-model:visible="dialogPerfil" 
       header="Os Meus Dados" 
@@ -679,5 +922,43 @@ watch(
 
 :deep(.p-avatar img) {
   object-fit: cover !important;
+}
+
+/* No seu style.css ou App.vue */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+.prose th, .prose td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Estilização para as tabelas Markdown dentro do chat */
+.prose table {
+  @apply w-full border-collapse my-3 text-[12px] bg-slate-900/50 rounded-lg overflow-hidden;
+}
+.prose th {
+  @apply bg-slate-700/50 p-2 text-fuchsia-400 font-bold border-b border-slate-600 text-left;
+}
+.prose td {
+  @apply p-2 border-b border-slate-800 text-slate-300;
+}
+.prose h1, .prose h2 {
+  @apply text-fuchsia-400 font-bold mb-2 mt-4 text-sm uppercase tracking-tight;
+}
+.prose blockquote {
+  @apply border-l-4 border-fuchsia-500 bg-fuchsia-500/10 p-3 my-3 italic rounded-r-lg text-slate-300;
+}
+
+/* Scrollbar fina e elegante */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-700 rounded-full;
 }
 </style>

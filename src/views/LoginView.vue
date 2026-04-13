@@ -365,16 +365,22 @@ const toggleDarkMode = () => {
   localStorage.setItem('darkMode', isDarkMode.value.toString());
 };
 
-const armazenarSessao = (data) => {
-  sessionStorage.setItem('token', data.access_token);
-  sessionStorage.setItem('usuario_tipo', data.tipo || 'usuário'); 
-  sessionStorage.setItem('usuario_nome', data.nome);
-  sessionStorage.setItem('usuario_email', data.email);
-  sessionStorage.setItem('usuario_cargo', data.cargo || 'Analista');
-  sessionStorage.setItem('usuario_avatar', data.avatar_url || '');
-  
-  if (data.permissoes) {
-    sessionStorage.setItem('usuario_permissoes', JSON.stringify(data.permissoes));
+const armazenarSessao = (dados) => {
+  try {
+    sessionStorage.setItem('token', dados.access_token || ''); // 🎯 Use 'token' para bater com o Router
+    sessionStorage.setItem('usuario_nome', dados.nome || 'Utilizador');
+    sessionStorage.setItem('usuario_tipo', dados.tipo || 'Usuário');
+    sessionStorage.setItem('usuario_cargo', dados.cargo || 'Analista');
+    sessionStorage.setItem('usuario_email', dados.email || '');
+    sessionStorage.setItem('usuario_avatar', dados.avatar_url || '');
+
+    const listaPermissoes = Array.isArray(dados.permissoes) ? dados.permissoes : [];
+    sessionStorage.setItem('usuario_permissoes', JSON.stringify(listaPermissoes));
+
+    console.log("✅ Dados guardados no Storage.");
+  } catch (error) {
+    console.error("❌ Erro ao processar dados:", error);
+    throw error;
   }
 };
 
@@ -491,48 +497,44 @@ const handleSubmit = () => {
 };
 
 const fazerLogin = async () => {
-  if (loading.value) return; 
+  if (loading.value) return;
   limparErros();
-  
-  const deveLembrar = lembrarDeMim.value === true;
 
-  if (!credenciais.value.email || !credenciais.value.password) {
-    erros.value.geral = "Preencha todos os campos.";
-    return;
-  }
-  
   loading.value = true;
   processandoRetorno.value = true;
-  
+
   try {
     const response = await api.post('/login', {
       email: credenciais.value.email,
-      password: credenciais.value.password
-    }); 
+      password: credenciais.value.password,
+      remember: lembrarDeMim.value
+    });
 
-    if (response.data && response.data.access_token) {
-      if (deveLembrar) {
-        localStorage.setItem('nps_remember_email', credenciais.value.email.trim());
-      } else {
-        localStorage.removeItem('nps_remember_email'); 
-      }
-
-      armazenarSessao(response.data);
-      setTimeout(() => { router.push('/'); }, 2200); 
+    armazenarSessao(response.data);
+    
+    if (lembrarDeMim.value) {
+      localStorage.setItem('nps_remember_email', credenciais.value.email);
+    } else {
+      localStorage.removeItem('nps_remember_email');
     }
+
+    console.log("🚀 Iniciando transição...");
+
+    setTimeout(() => {
+
+      processandoRetorno.value = false; 
+      loading.value = false;
+
+      router.push('/').catch(err => {
+        console.error("Erro no Router:", err);
+        window.location.href = '/'; 
+      });
+    }, 2500);
+
   } catch (error) {
     processandoRetorno.value = false;
     loading.value = false;
-    
-    let msg = "E-mail ou senha incorretos.";
-    
-    if (error.response && error.response.data && error.response.data.detail) {
-      msg = error.response.data.detail;
-    } else if (error.message) {
-      msg = error.message;
-    }
-
-    erros.value.geral = msg;
+    erros.value.geral = error.response?.data?.detail || "Erro ao autenticar.";
   }
 };
 
@@ -581,7 +583,7 @@ loading.value = true;
       life: 5000 
     });
     
-    alternarModo(); // Volta para o login após sucesso
+    alternarModo();
     
   } catch (error) {
     console.error("❌ Erro no registro:", error);

@@ -30,13 +30,16 @@ const routes = [
   // ==========================================
   // 🔒 ROTAS PRIVADAS (Core da Aplicação)
   // ==========================================
-  {
-    path: '/',
-    name: 'Dashboard',
-    component: () => import('../views/DashboardView.vue'),
-    // 🎯 CORREÇÃO: Adicionado 'Usuário' (que é o que a sua API envia)
-    meta: { requiresAuth: true, roles: ['Admin', 'Manager', 'Viewer', 'Usuário'] }
-  },
+{
+  path: '/',
+  name: 'Dashboard',
+  component: () => import('../views/DashboardView.vue'),
+  meta: { 
+    requiresAuth: true, 
+    // Aceita as variações para evitar bloqueio por acentuação
+    roles: ['Admin', 'Manager', 'Viewer', 'Usuário', 'Usuario', 'usuario'] 
+  }
+},
   {
     path: '/respostas',
     name: 'Respostas',
