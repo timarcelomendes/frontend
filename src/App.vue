@@ -117,6 +117,11 @@ const logout = () => {
   router.push('/login');
 };
 
+const exibirBotaoChat = computed(() => {
+  const rotasPublicas = ['Login', 'ResetPassword', 'RecuperarSenha'];
+  return !rotasPublicas.includes(route.name);
+});
+
 // --- GESTÃO DO PERFIL E IMAGEM ---
 const abrirPerfil = () => {
   perfilForm.value = {
@@ -285,12 +290,9 @@ const scrollToBottom = () => {
   });
 };
 
-
-// 🎯 1. Defina as variáveis de estado
 const clientesRecentes = ref([]);
-const tagsCarregando = ref(true); // Começa bloqueado
+const tagsCarregando = ref(true);
 
-// 🎯 2. Defina a função com nome único e robusto
 const carregarAtalhosChat = async () => {
   tagsCarregando.value = true;
   try {
@@ -298,14 +300,12 @@ const carregarAtalhosChat = async () => {
     clientesRecentes.value = response.data;
   } catch (error) {
     console.error("Erro ao carregar atalhos dinâmicos:", error);
-    clientesRecentes.value = []; // Retorno limpo em caso de erro
+    clientesRecentes.value = []; 
   } finally {
-    // 🎯 Só libera os botões quando a resposta (mesmo vazia) chegar
     tagsCarregando.value = false;
   }
 };
 
-// 🎯 3. Garanta que o Hook use o nome EXATO da função acima
 onMounted(() => {
   carregarAtalhosChat(); 
 });
@@ -639,18 +639,22 @@ onMounted(() => {
 
   <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="onFileSelect" />
 
-    <button 
+  <button 
+    v-if="exibirBotaoChat"
     @click="chatAberto = true"
-    class="fixed bottom-6 right-6 z-50 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-full p-4 shadow-2xl shadow-fuchsia-900/50 transition-transform hover:scale-110 flex items-center gap-2">
-    <i class="pi pi-sparkles text-xl"></i>
+    class="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-400 hover:via-purple-400 hover:to-pink-400 text-white rounded-full p-4 shadow-2xl shadow-purple-900/40 transition-all hover:scale-110 flex items-center gap-2"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 animate-pulse text-white">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+    </svg>
     <span class="font-bold hidden md:inline">NPS AI</span>
   </button>
 
-  <Sidebar v-model:visible="chatAberto" position="right" class="w-full md:w-[450px] !bg-slate-900 !text-slate-100">
+  <Sidebar v-if="exibirBotaoChat" v-model:visible="chatAberto" position="right" class="w-full md:w-[450px] !bg-slate-900 !text-slate-100">
     <template #header>
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-fuchsia-600 to-orange-500 flex items-center justify-center shadow-lg shadow-fuchsia-500/20">
-          <i class="pi pi-sparkles text-white"></i>
+        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <i class="pi pi-sparkles text-white text-lg"></i>
         </div>
         <div>
           <h2 class="font-bold text-lg leading-tight">Gauge Intelligence</h2>
@@ -670,7 +674,10 @@ onMounted(() => {
 
         <div v-for="(msg, index) in historicoChat" :key="index" class="flex gap-4 p-4 rounded-xl" :class="msg.role === 'user' ? 'bg-slate-800/50 ml-12' : 'bg-transparent mr-12 border border-slate-800/50'">
           
-          <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" :class="msg.role === 'user' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30'">
+          <div 
+            class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" 
+            :class="msg.role === 'user' ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md'"
+          >
             <i :class="msg.role === 'user' ? 'pi pi-user' : 'pi pi-sparkles'" class="text-sm"></i>
           </div>
 
@@ -698,10 +705,6 @@ onMounted(() => {
             </div>
 
           </div>
-        </div>
-        
-        <div v-if="chatCarregando" class="flex gap-2 p-3 items-center text-slate-400 italic text-xs">
-          <i class="pi pi-spin pi-spinner text-fuchsia-500"></i> Analisando base de dados da Gauge...
         </div>
 
         <div v-if="sugestoesAtivas.length > 0 && !chatCarregando" class="flex flex-wrap gap-2 pt-2 animate-fade-in">
@@ -737,11 +740,11 @@ onMounted(() => {
           </button>
 
           <button 
-            @click="perguntar('Gere uma análise de NPS de todos os clientes do Portfólio')" 
+            @click="perguntar('Gere um comparativo Trimestral de todo o portfólio')" 
             :disabled="chatCarregando"
             class="text-[10px] uppercase font-bold tracking-wider text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 whitespace-nowrap px-3 py-1.5 rounded-md border border-indigo-500/30 transition-colors"
           >
-            <i class="pi pi-briefcase mr-1 text-[8px]"></i> Visão Portfólio
+            <i class="pi pi-chart-line mr-1 text-[8px]"></i> Visão Trimestral
           </button>
         </div>
 
