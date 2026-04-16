@@ -118,7 +118,15 @@ const logout = () => {
 };
 
 const exibirBotaoChat = computed(() => {
-  const rotasPublicas = ['Login', 'ResetPassword', 'RecuperarSenha'];
+  const rotasPublicas = [
+    'Login', 
+    'ForgotPassword', 
+    'redefinir-senha', 
+    'ResetPassword', 
+    'RecuperarSenha',
+    'Registo', 
+    'VerificarEmail'
+  ];
   return !rotasPublicas.includes(route.name);
 });
 
@@ -294,6 +302,9 @@ const clientesRecentes = ref([]);
 const tagsCarregando = ref(true);
 
 const carregarAtalhosChat = async () => {
+  const token = sessionStorage.getItem('token');
+  if (!token) return; 
+
   tagsCarregando.value = true;
   try {
     const response = await api.get('/chat/clientes-recentes');
