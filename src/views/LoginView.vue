@@ -628,6 +628,7 @@ const reenviarEmail = async () => {
     loadingReenvio.value = false;
   }
 };
+
 </script>
 
 <style scoped lang="postcss">
