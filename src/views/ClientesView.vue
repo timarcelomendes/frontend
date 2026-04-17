@@ -64,9 +64,12 @@ const companhiaForm = ref({ id: null, nome: '' });
 
 // 👇 VARIÁVEIS PARA A PESQUISA GLOBAL 👇
 const pesquisa = ref('');
+
 const filtrosTabela = ref({
-  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  gestor: { value: null, matchMode: FilterMatchMode.EQUALS }
 });
+
 const atualizarFiltro = () => {
   filtrosTabela.value.global.value = pesquisa.value;
 };
@@ -374,6 +377,13 @@ const getGestorPorEmpresa = (nomeEmpresa) => {
   return 'Não definido';
 };
 
+const clientesComGestor = computed(() => {
+  return clientes.value.map(cliente => ({
+    ...cliente,
+    gestor: getGestorPorEmpresa(cliente.empresa)
+  }));
+});
+
 // ==========================================
 // 🛑 FUNÇÕES DE ATIVAR / INATIVAR
 // ==========================================
@@ -445,64 +455,76 @@ onMounted(carregarTudo);
         <TabView class="custom-tabview">
           
           <TabPanel>
-            <template #header><div class="flex items-center gap-2 px-2"><i class="pi pi-users text-indigo-500"></i><span class="font-black tracking-widest uppercase text-[10px]">Pessoas</span></div></template>
+            <template #header>
+              <div class="flex items-center gap-2 px-2">
+                <i class="pi pi-users text-indigo-500"></i>
+                <span class="font-black tracking-widest uppercase text-[10px]">Pessoas</span>
+              </div>
+            </template>
+
             <div class="pt-4">
-              <div class="flex justify-end mb-4"><Button v-if="temPermissao('clientes:criar')" label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" /></div>
+              <div class="flex justify-end mb-4">
+                <Button v-if="temPermissao('clientes:criar')" label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" />
+              </div>
               
-              <DataTable :value="clientesFiltrados" v-model:filters="filtrosTabela" :globalFilterFields="['nome', 'email', 'empresa', 'cargo', 'perfil_decisor']" :paginator="true" :rows="10" dataKey="cliente_id" :loading="loading" class="p-datatable-sm custom-table" rowHover>
-                
+              <DataTable 
+                :value="clientesComGestor" 
+                v-model:filters="filtrosTabela" 
+                :paginator="true" :rows="10" dataKey="cliente_id" :loading="loading" 
+                class="p-datatable-sm custom-table" rowHover
+              >
+                <template #header>
+                  <div class="flex flex-wrap items-center justify-between gap-4 p-2">
+                    <div class="flex flex-col gap-1">
+                      <h3 class="text-lg font-black italic tracking-tight text-slate-800 dark:text-white uppercase">Gestão de Pessoas</h3>
+                      <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Contatos e Decisores</span>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                      <Dropdown 
+                        v-model="filtrosTabela['gestor'].value" 
+                        :options="gestores" 
+                        optionLabel="nome" 
+                        optionValue="nome" 
+                        placeholder="Filtrar por Gestor" 
+                        showClear 
+                        class="custom-input w-full md:w-56"
+                      />
+                    </div>
+                  </div>
+                </template>
+
                 <Column header="Pessoa" sortable field="nome" style="min-width: 250px">
                   <template #body="{ data }">
                     <div class="flex items-center gap-4 py-2">
                       <div class="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[11px] font-black text-slate-500 border border-slate-100 dark:border-slate-700 shrink-0">{{ getIniciais(data.nome) }}</div>
-                      <div class="flex flex-col"><span class="text-[13px] font-black text-slate-800 dark:text-white">{{ data.nome }}</span><span class="text-[10px] text-slate-400 font-medium">{{ data.email }}</span></div>
+                      <div class="flex flex-col">
+                        <span class="text-[13px] font-black text-slate-800 dark:text-white">{{ data.nome }}</span>
+                        <span class="text-[10px] text-slate-400 font-medium">{{ data.email }}</span>
+                      </div>
                     </div>
                   </template>
                 </Column>
                 
                 <Column header="Conta (Empresa)" sortable field="empresa">
                   <template #body="{ data }">
-                    <div class="flex flex-col">
-                      <span class="text-[12px] font-bold text-slate-600 dark:text-slate-300">{{ data.empresa || '-' }}</span>
-                      <span v-if="data.cargo" class="text-[9px] text-slate-400 uppercase tracking-tighter mt-0.5">{{ data.cargo }}</span>
+                    <span class="text-[12px] font-bold text-slate-600 dark:text-slate-300">{{ data.empresa || '-' }}</span>
+                  </template>
+                </Column>
+
+                <Column field="gestor" header="Gestor" sortable>
+                  <template #body="{ data }">
+                    <div class="flex items-center gap-2">
+                      <i class="pi pi-shield text-slate-300 text-[10px]"></i>
+                      <span class="text-[12px] font-medium text-slate-700 dark:text-slate-200">{{ data.gestor }}</span>
                     </div>
                   </template>
                 </Column>
 
-                <Column header="Gestor (Responsável)">
-                  <template #body="slotProps">
-                    <div class="flex flex-col">
-                      <div class="flex items-center gap-2">
-                        <i class="pi pi-shield text-slate-400 text-[10px]"></i>
-                        <span class="text-[12px] font-bold text-slate-700 dark:text-slate-200">
-                          {{ getGestorPorEmpresa(slotProps.data.empresa) }}
-                        </span>
-                      </div>
-                      <span class="text-[9px] text-slate-400 uppercase font-black tracking-tighter mt-1">
-                        Vinculado via Empresa
-                      </span>
-                    </div>
-                  </template>
-                </Column>
-
-                <Column header="Perfil">
-                  <template #body="{ data }"><div v-if="data.perfil_decisor" class="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-tight"><i :class="data.perfil_decisor === 'Decisor' ? 'pi pi-star-fill text-orange-500' : 'pi pi-user'"></i> {{ data.perfil_decisor }}</div></template>
-                </Column>
-
-                <Column header="Ações" alignFrozen="right" style="width: 100px">
-                  <template #body="slotProps">
-                    <div class="flex gap-2 justify-end">
-                      <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" v-tooltip.top="'Editar'" @click="editarCliente(slotProps.data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none hover:!text-slate-700 rounded-lg transition-colors !text-[10px]" />
-                      <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" v-tooltip.top="'Excluir'" @click="confirmarExclusao(slotProps.data.cliente_id || slotProps.data.id)" class="w-8 h-8 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-400 !border-none hover:!bg-rose-100 rounded-lg transition-colors !text-[10px]" />
-                    </div>
-                  </template>
-                </Column>
-
-                <Column field="ativo" header="Status" style="width: 120px">
+                <Column field="ativo" header="Status" style="width: 100px">
                   <template #body="{ data }">
                     <div class="flex flex-col items-center gap-1">
                       <InputSwitch v-model="data.ativo" @change="alternarStatusCliente(data)" />
-                      
                       <span class="text-[9px] font-black uppercase tracking-widest" :class="data.ativo ? 'text-emerald-500' : 'text-slate-400'">
                         {{ data.ativo ? 'Ativo' : 'Inativo' }}
                       </span>
@@ -510,6 +532,14 @@ onMounted(carregarTudo);
                   </template>
                 </Column>
 
+                <Column header="Ações" alignFrozen="right" style="width: 100px">
+                  <template #body="slotProps">
+                    <div class="flex gap-2 justify-end">
+                      <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" @click="editarCliente(slotProps.data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none rounded-lg" />
+                      <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" @click="confirmarExclusao(slotProps.data.cliente_id)" class="w-8 h-8 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-400 !border-none rounded-lg" />
+                    </div>
+                  </template>
+                </Column>
               </DataTable>
             </div>
           </TabPanel>

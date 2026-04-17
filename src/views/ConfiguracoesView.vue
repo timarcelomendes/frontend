@@ -338,7 +338,6 @@ const carregarUtilizadores = async () => {
 };
 
 const salvarUtilizador = async () => {
-  // 🎯 TRAVA 1: Impede guardar o formulário se estiver a ativar sem um perfil válido
   if (usuario.value.ativo && !opcoesTipo.includes(usuario.value.tipo)) {
     toast.add({ 
       severity: 'warn', 
