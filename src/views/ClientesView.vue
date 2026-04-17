@@ -16,6 +16,8 @@ import Tag from 'primevue/tag';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
 import InputSwitch from 'primevue/inputswitch';
+// 🎯 IMPORT ESSENCIAL ADICIONADO PARA NÃO QUEBRAR A ABA EMPRESAS:
+import Avatar from 'primevue/avatar'; 
 
 const toast = useToast();
 const saving = ref(false);
@@ -33,15 +35,19 @@ const dialogVisivel = ref(false);
 const editando = ref(false);
 const dialogExclusao = ref(false);
 const idParaExcluir = ref(null);
-const tipoExclusao = ref(''); // Vai guardar a rota (ex: 'cadastros/empresas')
-const nomeExclusao = ref(''); // Vai guardar o texto (ex: 'esta empresa')
+const tipoExclusao = ref(''); 
+const nomeExclusao = ref(''); 
 const excluindo = ref(false);
 
 const dialogEmpresa = ref(false);
 const editandoEmpresa = ref(false);
 const empresaForm = ref({
-  id: null, nome: '', segmento: null, valor_contrato: 0, gestor: null, companhia: null // 👈 COMPANHIA NO FORMULÁRIO DA EMPRESA
+  id: null, nome: '', segmento: null, valor_contrato: 0, gestor: null, companhia: null
 });
+
+const dialogGestor = ref(false);
+const editandoGestor = ref(false);
+const gestorForm = ref({ id: null, nome: '', papel: '', email: '', teams_webhook: '', avatar: '' });
 
 const dialogSegmento = ref(false);
 const editandoSegmento = ref(false);
@@ -54,9 +60,6 @@ const perfilForm = ref({ id: null, nome: '' });
 const dialogCargo = ref(false);
 const editandoCargo = ref(false);
 const cargoForm = ref({ id: null, nome: '' });
-
-const dialogGestor = ref(false);
-const editandoGestor = ref(false);
 
 const dialogCompanhia = ref(false);
 const editandoCompanhia = ref(false);
@@ -317,7 +320,6 @@ const abrirNovoGestor = () => {
   dialogGestor.value = true; 
 };
 
-const gestorForm = ref({ id: null, nome: '', papel: '', email: '', teams_webhook: '', avatar: '' });
 const editarFichaGestor = (dados) => { 
   gestorForm.value = { ...dados, avatar: dados.avatar || '' }; 
   editandoGestor.value = true; 
@@ -750,7 +752,10 @@ onMounted(carregarTudo);
 
       <Dialog v-model:visible="dialogEmpresa" :header="editandoEmpresa ? 'Editar Conta' : 'Nova Conta'" modal :style="{width: '450px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">
         <div class="p-6 md:p-8 space-y-4 bg-slate-50/50 dark:bg-slate-900">
-          <div class="flex flex-col gap-1.5"><label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome da Empresa *</label><InputText v-model="empresaForm.nome" class="custom-input w-full" /></div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Nome da Empresa *</label>
+            <InputText v-model="empresaForm.nome" class="custom-input w-full" />
+          </div>
           
           <div class="flex flex-col gap-1.5 pt-2">
             <label class="text-[10px] font-black uppercase text-indigo-500 ml-1">
@@ -770,7 +775,7 @@ onMounted(carregarTudo);
           <div class="flex flex-col gap-1.5">
             <label class="text-[10px] font-black uppercase text-slate-500 ml-1">Segmento</label>
             <Dropdown 
-              v-model="empresa.segmento_id" 
+              v-model="empresaForm.segmento" 
               :options="segmentos" 
               optionLabel="nome" 
               optionValue="id" 
@@ -814,7 +819,7 @@ onMounted(carregarTudo);
           </div>
           
         </div>
-        <template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900"><Button :label="editandoEmpresa ? 'Atualizar Conta' : 'Criar Conta'" @click="salvarEmpresa" :loading="saving" class="w-full !bg-orange-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl" /></div></template>
+        <template #footer><div class="px-8 pb-8 pt-4 bg-slate-50/50 dark:bg-slate-900"><Button :label="editandoEmpresa ? 'Atualizar Conta' : 'Criar Conta'" @click="salvarEmpresa" :loading="saving" class="w-full !bg-orange-500 !text-white py-4 !rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl hover:scale-105 transition-transform" /></div></template>
       </Dialog>
 
       <Dialog v-model:visible="dialogCompanhia" :header="editandoCompanhia ? 'Editar Companhia' : 'Nova Companhia'" modal :style="{width: '400px'}" class="rounded-[2.5rem] overflow-hidden p-0 custom-dialog">

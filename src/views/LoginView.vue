@@ -210,26 +210,26 @@
               name="new-password"
               autocomplete="new-password"
               placeholder="••••••••" 
-              :feedback="true" 
-              toggleMask 
-              maxlength="70"
-              class="w-full"
-              inputClass="custom-input w-full"
-              promptLabel="Escolha uma senha forte"
+              promptLabel="Escolha uma senha segura"
               weakLabel="Fraca"
               mediumLabel="Média"
               strongLabel="Forte"
+              :feedback="true" 
+              toggleMask 
+              maxlength="50"
+              class="w-full"
+              inputClass="custom-input w-full"
             >
               <template #header>
-                <h6 class="text-xs font-bold mb-2">Requisitos:</h6>
+                <h6 class="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 mt-1">Requisitos de Segurança:</h6>
               </template>
               <template #footer>
-                <Divider />
-                <ul class="pl-2 ml-2 mt-0 text-xs list-disc leading-relaxed">
-                  <li>Mínimo 8 caracteres</li>
-                  <li>Pelo menos uma letra maiúscula</li>
-                  <li>Pelo menos um número</li>
-                  <li>Pelo menos um caractere especial (@$!%*?&)</li>
+                <div class="h-px bg-slate-200 dark:bg-slate-700 my-2 w-full"></div>
+                <ul class="pl-4 mt-2 text-xs list-disc leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
+                  <li>Entre <strong>8 e 50</strong> caracteres</li>
+                  <li>Pelo menos uma letra <strong>maiúscula</strong></li>
+                  <li>Pelo menos um <strong>número</strong></li>
+                  <li>Pelo menos um <strong>caractere especial</strong> (!@#$%)</li>
                 </ul>
               </template>
             </Password>
@@ -552,11 +552,13 @@ const fazerRegistro = async () => {
     possuiErro = true; 
   }
 
+  const regexSenha = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,50}$/;
+  
   if (!registro.value.password) { 
     erros.value.password = 'Crie uma senha de acesso.'; 
     possuiErro = true; 
-  } else if (registro.value.password.length < 6) { 
-    erros.value.password = 'A senha deve conter no mínimo 6 caracteres.'; 
+  } else if (!regexSenha.test(registro.value.password)) { 
+    erros.value.password = 'A senha não atende aos requisitos mínimos de segurança.'; 
     possuiErro = true; 
   }
   

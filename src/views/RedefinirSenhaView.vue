@@ -38,38 +38,31 @@
             <i class="pi pi-key text-slate-400"></i>
             <Password 
               v-model="novaSenha" 
-              :feedback="true"
-              promptLabel="Digite uma senha"
+              promptLabel="Escolha uma senha segura"
               weakLabel="Fraca"
               mediumLabel="Média"
               strongLabel="Forte"
-              toggleMask
-              maxlength="50" 
+              :feedback="true" 
+              toggleMask 
+              maxlength="50"
               class="w-full"
-              inputClass="custom-input"
+              inputClass="custom-input w-full"
               placeholder="Digite a nova senha" 
-            />
+            >
+              <template #header>
+                <h6 class="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 mt-1">Requisitos de Segurança:</h6>
+              </template>
+              <template #footer>
+                <div class="h-px bg-slate-200 dark:bg-slate-700 my-2 w-full"></div>
+                <ul class="pl-4 mt-2 text-xs list-disc leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
+                  <li>Entre <strong>8 e 50</strong> caracteres</li>
+                  <li>Pelo menos uma letra <strong>maiúscula</strong></li>
+                  <li>Pelo menos um <strong>número</strong></li>
+                  <li>Pelo menos um <strong>caractere especial</strong> (!@#$%)</li>
+                </ul>
+              </template>
+            </Password>
           </span>
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label class="text-sm font-bold text-slate-700 dark:text-slate-300 tracking-tight">Confirmar Senha</label>
-          <span class="p-input-icon-left w-full">
-            <i class="pi pi-check-circle text-slate-400"></i>
-            <Password 
-              v-model="confirmarSenha" 
-              :feedback="false"
-              toggleMask
-              maxlength="50" 
-              class="w-full"
-              inputClass="custom-input"
-              placeholder="Repita a nova senha" 
-              @keyup.enter="submeterNovaSenha"
-            />
-          </span>
-          <small v-if="senhasNaoCoincidem" class="text-red-500 font-semibold mt-1 flex items-center gap-1">
-            <i class="pi pi-exclamation-circle text-xs"></i> As senhas não coincidem.
-          </small>
         </div>
 
         <button 
@@ -137,12 +130,14 @@ async function submeterNovaSenha() {
     return;
   }
 
-  if (novaSenha.value.length < 6 || novaSenha.value.length > 50) {
+  const regexSenha = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,50}$/;
+
+  if (!regexSenha.test(novaSenha.value)) {
     toast.add({ 
       severity: 'warn', 
-      summary: 'Tamanho Inválido', 
-      detail: 'A senha deve ter entre 6 e 50 caracteres.', 
-      life: 4000 
+      summary: 'Senha Fraca', 
+      detail: 'A senha deve ter entre 8 e 50 caracteres, uma maiúscula, um número e um caractere especial.', 
+      life: 6000 
     });
     return;
   }

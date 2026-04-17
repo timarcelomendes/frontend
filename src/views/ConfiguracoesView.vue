@@ -83,17 +83,25 @@ const formatarDataHora = (dataString) => {
 };
 
 const gerarSenhaAleatoria = () => {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
+  const letrasMaiusculas = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const letrasMinusculas = "abcdefghijkmnopqrstuvwxyz";
+  const numeros = "23456789";
+  const especiais = "!@#$%&*";
+  const todos = letrasMaiusculas + letrasMinusculas + numeros + especiais;
+  
   const randomValues = new Uint32Array(12);
   window.crypto.getRandomValues(randomValues);
   
-  let pass = "";
-  for (let i = 0; i < 12; i++) {
-    pass += chars[randomValues[i] % chars.length];
+  let pass = letrasMaiusculas[randomValues[0] % letrasMaiusculas.length] +
+             numeros[randomValues[1] % numeros.length] +
+             especiais[randomValues[2] % especiais.length];
+             
+  for (let i = 3; i < 12; i++) {
+    pass += todos[randomValues[i] % todos.length];
   }
   
   usuario.value.password = pass;
-  toast.add({ severity: 'info', summary: 'Senha Gerada', detail: 'Uma nova senha foi gerada. Copie antes de salvar.', life: 3000 });
+  toast.add({ severity: 'info', summary: 'Senha Segura Gerada', detail: 'Uma nova senha que cumpre os requisitos foi gerada.', life: 3000 });
 };
 
 // --- ESTADOS DE SEGURANÇA ---
@@ -103,6 +111,12 @@ const formSenha = ref({ atual: '', nova: '', confirmacao: '' });
 const alterarMinhaSenha = async () => {
   if (formSenha.value.nova !== formSenha.value.confirmacao) {
     toast.add({ severity: 'error', summary: 'Erro', detail: 'As senhas não coincidem.', life: 3000 });
+    return;
+  }
+  const regexSenha = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,50}$/;
+
+  if (!regexSenha.test(formSenha.value.nova)) {
+    toast.add({ severity: 'error', summary: 'Erro de Segurança', detail: 'A nova senha não cumpre os requisitos mínimos.', life: 5000 });
     return;
   }
   loadingSenha.value = true;
@@ -338,6 +352,18 @@ const carregarUtilizadores = async () => {
 };
 
 const salvarUtilizador = async () => {
+  if (usuario.value.password) {
+    const regexSenha = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,50}$/;
+
+    if (!regexSenha.test(usuario.value.password)) {
+      toast.add({ severity: 'warn', summary: 'Senha Fraca', detail: 'A senha do utilizador não atende aos requisitos de segurança.', life: 5000 });
+      return;
+    }
+  } else if (!editandoUser.value) {
+    toast.add({ severity: 'warn', summary: 'Obrigatório', detail: 'É necessário definir uma senha para o novo utilizador.', life: 3000 });
+    return;
+  }
+
   if (usuario.value.ativo && !opcoesTipo.includes(usuario.value.tipo)) {
     toast.add({ 
       severity: 'warn', 
@@ -1649,7 +1675,32 @@ onMounted(() => {
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nova Senha</label>
-                    <Password v-model="formSenha.nova" toggleMask inputClass="custom-input !text-[12px] w-full" class="w-full" />
+                    <Password 
+                      v-model="usuario.password" 
+                      promptLabel="Escolha uma senha segura"
+                      weakLabel="Fraca"
+                      mediumLabel="Média"
+                      strongLabel="Forte"
+                      :feedback="true" 
+                      toggleMask 
+                      maxlength="50"
+                      class="w-full"
+                      inputClass="custom-input w-full"
+                      placeholder="••••••••"
+                    >
+                      <template #header>
+                        <h6 class="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 mt-1">Requisitos de Segurança:</h6>
+                      </template>
+                      <template #footer>
+                        <div class="h-px bg-slate-200 dark:bg-slate-700 my-2 w-full"></div>
+                        <ul class="pl-4 mt-2 text-xs list-disc leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
+                          <li>Entre <strong>8 e 50</strong> caracteres</li>
+                          <li>Pelo menos uma letra <strong>maiúscula</strong></li>
+                          <li>Pelo menos um <strong>número</strong></li>
+                          <li>Pelo menos um <strong>caractere especial</strong> (!@#$%)</li>
+                        </ul>
+                      </template>
+                    </Password>
                   </div>
                   <div class="flex flex-col gap-1.5 pb-4">
                     <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirmar Nova Senha</label>
@@ -2385,7 +2436,32 @@ onMounted(() => {
               {{ editandoUser ? 'Nova Palavra-passe' : 'Palavra-passe Inicial' }}
             </label>
             <div class="flex gap-2">
-              <Password v-model="usuario.password" toggleMask :feedback="false" class="flex-1" inputClass="custom-input !py-3 w-full" placeholder="Mínimo 8 caracteres" />
+              <Password 
+                v-model="usuario.password" 
+                promptLabel="Escolha uma senha segura"
+                weakLabel="Fraca"
+                mediumLabel="Média"
+                strongLabel="Forte"
+                :feedback="true" 
+                toggleMask 
+                maxlength="50"
+                class="w-full"
+                inputClass="custom-input w-full"
+                placeholder="••••••••"
+              >
+                <template #header>
+                  <h6 class="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 mt-1">Requisitos de Segurança:</h6>
+                </template>
+                <template #footer>
+                  <div class="h-px bg-slate-200 dark:bg-slate-700 my-2 w-full"></div>
+                  <ul class="pl-4 mt-2 text-xs list-disc leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
+                    <li>Entre <strong>8 e 50</strong> caracteres</li>
+                    <li>Pelo menos uma letra <strong>maiúscula</strong></li>
+                    <li>Pelo menos um <strong>número</strong></li>
+                    <li>Pelo menos um <strong>caractere especial</strong> (!@#$%)</li>
+                  </ul>
+                </template>
+              </Password>
               <Button icon="pi pi-refresh" @click="gerarSenhaAleatoria" v-tooltip.top="'Gerar Senha Segura'" class="!bg-slate-800 hover:!bg-slate-700 !border-none !rounded-xl !w-[48px] text-white transition-colors shadow-sm" />
             </div>
           </div>
