@@ -378,7 +378,7 @@ const getGestorPorEmpresa = (nomeEmpresa) => {
 };
 
 const clientesComGestor = computed(() => {
-  return clientes.value.map(cliente => ({
+  return clientesFiltrados.value.map(cliente => ({
     ...cliente,
     gestor: getGestorPorEmpresa(cliente.empresa)
   }));
