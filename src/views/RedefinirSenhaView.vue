@@ -44,7 +44,7 @@
               mediumLabel="Média"
               strongLabel="Forte"
               toggleMask
-              maxlength="70"
+              maxlength="50" 
               class="w-full"
               inputClass="custom-input"
               placeholder="Digite a nova senha" 
@@ -60,6 +60,7 @@
               v-model="confirmarSenha" 
               :feedback="false"
               toggleMask
+              maxlength="50" 
               class="w-full"
               inputClass="custom-input"
               placeholder="Repita a nova senha" 
@@ -136,13 +137,18 @@ async function submeterNovaSenha() {
     return;
   }
 
-  if (novaSenha.value.length < 6) {
-    toast.add({ severity: 'warn', summary: 'Senha muito curta', detail: 'A senha deve ter pelo menos 6 caracteres.', life: 4000 });
+  if (novaSenha.value.length < 6 || novaSenha.value.length > 50) {
+    toast.add({ 
+      severity: 'warn', 
+      summary: 'Tamanho Inválido', 
+      detail: 'A senha deve ter entre 6 e 50 caracteres.', 
+      life: 4000 
+    });
     return;
   }
 
   loading.value = true;
-
+  
   try {
     const response = await api.post('/reset-password', {
       token: tokenUrl.value,
