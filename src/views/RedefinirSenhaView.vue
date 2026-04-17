@@ -65,6 +65,26 @@
           </span>
         </div>
 
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold text-slate-700 dark:text-slate-300 tracking-tight">Confirmar Senha</label>
+          <span class="p-input-icon-left w-full">
+            <i class="pi pi-check-circle text-slate-400"></i>
+            <Password 
+              v-model="confirmarSenha" 
+              :feedback="false"
+              toggleMask
+              maxlength="50" 
+              class="w-full"
+              inputClass="custom-input w-full"
+              placeholder="Repita a nova senha" 
+              @keyup.enter="submeterNovaSenha"
+            />
+          </span>
+          <small v-if="senhasNaoCoincidem" class="text-rose-500 font-bold mt-1 flex items-center gap-1">
+            <i class="pi pi-exclamation-circle text-xs"></i> As senhas não coincidem.
+          </small>
+        </div>
+
         <button 
           type="submit" 
           :disabled="loading || senhasNaoCoincidem || !novaSenha || !confirmarSenha"
