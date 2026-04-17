@@ -474,7 +474,7 @@ onMounted(carregarTudo);
                 class="p-datatable-sm custom-table" rowHover
               >
                 <template #header>
-                  <div class="flex flex-wrap items-center justify-between gap-4 p-2">
+                  <div class="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 rounded-t-xl border-b border-slate-100 dark:border-slate-800">
                     <div class="flex flex-col gap-1">
                       <h3 class="text-lg font-black italic tracking-tight text-slate-800 dark:text-white uppercase">Gestão de Pessoas</h3>
                       <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Contatos e Decisores</span>
@@ -488,7 +488,7 @@ onMounted(carregarTudo);
                         optionValue="nome" 
                         placeholder="Filtrar por Gestor" 
                         showClear 
-                        class="custom-input w-full md:w-56"
+                        class="custom-input w-full md:w-56 shadow-sm"
                       />
                     </div>
                   </div>
@@ -535,8 +535,8 @@ onMounted(carregarTudo);
                 <Column header="Ações" alignFrozen="right" style="width: 100px">
                   <template #body="slotProps">
                     <div class="flex gap-2 justify-end">
-                      <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" @click="editarCliente(slotProps.data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none rounded-lg" />
-                      <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" @click="confirmarExclusao(slotProps.data.cliente_id)" class="w-8 h-8 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-400 !border-none rounded-lg" />
+                      <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" @click="editarCliente(slotProps.data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none rounded-lg transition-colors" />
+                      <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" @click="confirmarExclusao(slotProps.data.cliente_id)" class="w-8 h-8 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-400 !border-none rounded-lg transition-colors" />
                     </div>
                   </template>
                 </Column>
@@ -980,5 +980,18 @@ onMounted(carregarTudo);
 
 :deep(.p-tabview .p-tabview-nav) {
     border-bottom: none !important;
+}
+
+:deep(.p-datatable .p-datatable-thead > tr > th) { 
+    @apply bg-slate-50 dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 py-6 px-4 !important; 
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr) { 
+    @apply bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800/50 text-slate-700 dark:text-slate-300 !important; 
+}
+
+/* Ajuste para o header da tabela ficar branco */
+:deep(.p-datatable .p-datatable-header) {
+    @apply bg-transparent border-none p-0 !important;
 }
 </style>
