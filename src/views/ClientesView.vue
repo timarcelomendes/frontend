@@ -462,86 +462,86 @@ onMounted(carregarTudo);
               </div>
             </template>
 
-            <div class="pt-4">
-              <div class="flex justify-end mb-4">
-                <Button v-if="temPermissao('clientes:criar')" label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" />
-              </div>
-              
-              <DataTable 
-                :value="clientesComGestor" 
-                v-model:filters="filtrosTabela" 
-                :paginator="true" :rows="10" dataKey="cliente_id" :loading="loading" 
-                class="p-datatable-sm custom-table" rowHover
-              >
-                <template #header>
-                  <div class="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 rounded-t-xl border-b border-slate-100 dark:border-slate-800">
-                    <div class="flex flex-col gap-1">
-                      <h3 class="text-lg font-black italic tracking-tight text-slate-800 dark:text-white uppercase">Gestão de Pessoas</h3>
-                      <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Contatos e Decisores</span>
-                    </div>
+            <div class="flex justify-end my-4">
+              <Button v-if="temPermissao('clientes:criar')" label="Nova Pessoa" icon="pi pi-plus" @click="abrirNovo" class="!bg-indigo-500 !text-white !border-none !rounded-xl !text-[10px] !font-black !uppercase !tracking-widest !px-6 shadow-xl hover:scale-105" />
+            </div>
+            
+            <DataTable 
+              :value="clientesComGestor" 
+              v-model:filters="filtrosTabela" 
+              dataKey="cliente_id" 
+              :paginator="true" :rows="10" :loading="loading" 
+              class="p-datatable-sm custom-table-audiencia" 
+              rowHover
+            >
+              <template #header>
+                <div class="flex flex-wrap items-center justify-between gap-4 p-6 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
+                  <div class="flex flex-col gap-1">
+                    <h3 class="text-lg font-black italic tracking-tight text-slate-800 dark:text-white uppercase">Gestão de Pessoas</h3>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Contatos e Decisores</span>
+                  </div>
 
-                    <div class="flex items-center gap-3">
-                      <Dropdown 
-                        v-model="filtrosTabela['gestor'].value" 
-                        :options="gestores" 
-                        optionLabel="nome" 
-                        optionValue="nome" 
-                        placeholder="Filtrar por Gestor" 
-                        showClear 
-                        class="custom-input w-full md:w-56 shadow-sm"
-                      />
+                  <div class="flex items-center gap-3">
+                    <Dropdown 
+                      v-model="filtrosTabela['gestor'].value" 
+                      :options="gestores" 
+                      optionLabel="nome" 
+                      optionValue="nome" 
+                      placeholder="Filtrar por Gestor" 
+                      showClear 
+                      class="custom-input w-full md:w-64 shadow-sm"
+                    />
+                  </div>
+                </div>
+              </template>
+
+              <Column header="Pessoa" sortable field="nome" style="min-width: 250px">
+                <template #body="{ data }">
+                  <div class="flex items-center gap-4 py-2">
+                    <div class="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[11px] font-black text-slate-500 border border-slate-100 dark:border-slate-700 shrink-0">{{ getIniciais(data.nome) }}</div>
+                    <div class="flex flex-col">
+                      <span class="text-[13px] font-black text-slate-800 dark:text-white">{{ data.nome }}</span>
+                      <span class="text-[10px] text-slate-400 font-medium">{{ data.email }}</span>
                     </div>
                   </div>
                 </template>
+              </Column>
+              
+              <Column header="Conta (Empresa)" sortable field="empresa">
+                <template #body="{ data }">
+                  <span class="text-[12px] font-bold text-slate-600 dark:text-slate-300">{{ data.empresa || '-' }}</span>
+                </template>
+              </Column>
 
-                <Column header="Pessoa" sortable field="nome" style="min-width: 250px">
-                  <template #body="{ data }">
-                    <div class="flex items-center gap-4 py-2">
-                      <div class="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[11px] font-black text-slate-500 border border-slate-100 dark:border-slate-700 shrink-0">{{ getIniciais(data.nome) }}</div>
-                      <div class="flex flex-col">
-                        <span class="text-[13px] font-black text-slate-800 dark:text-white">{{ data.nome }}</span>
-                        <span class="text-[10px] text-slate-400 font-medium">{{ data.email }}</span>
-                      </div>
-                    </div>
-                  </template>
-                </Column>
-                
-                <Column header="Conta (Empresa)" sortable field="empresa">
-                  <template #body="{ data }">
-                    <span class="text-[12px] font-bold text-slate-600 dark:text-slate-300">{{ data.empresa || '-' }}</span>
-                  </template>
-                </Column>
+              <Column field="gestor" header="Gestor" sortable>
+                <template #body="{ data }">
+                  <div class="flex items-center gap-2">
+                    <i class="pi pi-shield text-slate-300 text-[10px]"></i>
+                    <span class="text-[12px] font-medium text-slate-700 dark:text-slate-200">{{ data.gestor }}</span>
+                  </div>
+                </template>
+              </Column>
 
-                <Column field="gestor" header="Gestor" sortable>
-                  <template #body="{ data }">
-                    <div class="flex items-center gap-2">
-                      <i class="pi pi-shield text-slate-300 text-[10px]"></i>
-                      <span class="text-[12px] font-medium text-slate-700 dark:text-slate-200">{{ data.gestor }}</span>
-                    </div>
-                  </template>
-                </Column>
+              <Column header="Ações" alignFrozen="right" style="width: 100px">
+                <template #body="slotProps">
+                  <div class="flex gap-2 justify-end">
+                    <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" @click="editarCliente(slotProps.data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none rounded-lg" />
+                    <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" @click="confirmarExclusao(slotProps.data.cliente_id)" class="w-8 h-8 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-400 !border-none rounded-lg" />
+                  </div>
+                </template>
+              </Column>
 
-                <Column field="ativo" header="Status" style="width: 100px">
-                  <template #body="{ data }">
-                    <div class="flex flex-col items-center gap-1">
-                      <InputSwitch v-model="data.ativo" @change="alternarStatusCliente(data)" />
-                      <span class="text-[9px] font-black uppercase tracking-widest" :class="data.ativo ? 'text-emerald-500' : 'text-slate-400'">
-                        {{ data.ativo ? 'Ativo' : 'Inativo' }}
-                      </span>
-                    </div>
-                  </template>
-                </Column>
-
-                <Column header="Ações" alignFrozen="right" style="width: 100px">
-                  <template #body="slotProps">
-                    <div class="flex gap-2 justify-end">
-                      <Button v-if="temPermissao('clientes:editar')" icon="pi pi-pencil" @click="editarCliente(slotProps.data)" class="w-8 h-8 !bg-slate-50 dark:!bg-slate-800 !text-slate-400 !border-none rounded-lg transition-colors" />
-                      <Button v-if="temPermissao('clientes:excluir')" icon="pi pi-trash" @click="confirmarExclusao(slotProps.data.cliente_id)" class="w-8 h-8 !bg-rose-50 dark:!bg-rose-500/10 !text-rose-400 !border-none rounded-lg transition-colors" />
-                    </div>
-                  </template>
-                </Column>
-              </DataTable>
-            </div>
+              <Column field="ativo" header="Status" style="width: 100px" alignFrozen="right">
+                <template #body="{ data }">
+                  <div class="flex flex-col items-center gap-1">
+                    <InputSwitch v-model="data.ativo" @change="alternarStatusCliente(data)" />
+                    <span class="text-[9px] font-black uppercase tracking-widest" :class="data.ativo ? 'text-emerald-500' : 'text-slate-400'">
+                      {{ data.ativo ? 'Ativo' : 'Inativo' }}
+                    </span>
+                  </div>
+                </template>
+              </Column>
+            </DataTable>
           </TabPanel>
 
           <TabPanel>
@@ -981,17 +981,27 @@ onMounted(carregarTudo);
 :deep(.p-tabview .p-tabview-nav) {
     border-bottom: none !important;
 }
+/* 🎯 ESTILO FINAL: KILL WHITE MARGINS */
 
-:deep(.p-datatable .p-datatable-thead > tr > th) { 
-    @apply bg-slate-50 dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 py-6 px-4 !important; 
+/* Borda externa da tabela em Slate-100 (Cinza muito claro) */
+:deep(.custom-table-audiencia) {
+    border: 1px solid theme('colors.slate.100') !important;
+    @apply rounded-xl overflow-hidden dark:border-slate-800 !important;
 }
 
-:deep(.p-datatable .p-datatable-tbody > tr) { 
-    @apply bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800/50 text-slate-700 dark:text-slate-300 !important; 
+/* Fundo das células de título das colunas (Header Th) */
+:deep(.custom-table-audiencia .p-datatable-thead > tr > th) { 
+    @apply bg-slate-50 dark:bg-slate-900/50 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 py-5 px-4 !important; 
 }
 
-/* Ajuste para o header da tabela ficar branco */
-:deep(.p-datatable .p-datatable-header) {
-    @apply bg-transparent border-none p-0 !important;
+/* Fundo das linhas da tabela (Body Tr) */
+:deep(.custom-table-audiencia .p-datatable-tbody > tr) { 
+    @apply bg-white dark:bg-slate-900 border-b border-slate-50 dark:border-slate-800/50 transition-colors !important; 
+}
+
+/* Remove qualquer padding extra do TabPanel que possa vazar o branco */
+:deep(.p-tabview-panels) {
+    padding: 0 !important;
+    background: transparent !important;
 }
 </style>
